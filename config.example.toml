@@ -1,0 +1,26 @@
+# Copy to config.toml. Anything left out uses the defaults in story_factory/config.py.
+
+database = "data/stories.db"
+
+[budget]
+# Shared by both pipelines. Paid calls stop once this month's spend reaches it.
+monthly_cap_usd = 18.0
+
+[gemini]
+# Run `python -m story_factory models` to see the models your key can use.
+text_model = "gemini-2.5-flash"
+embedding_model = "gemini-embedding-001"
+# Leave at 0 on the free tier.
+input_usd_per_million = 0.0
+output_usd_per_million = 0.0
+
+[backlog]
+# Approved stories to keep ready for the production pipeline.
+hollow_world = 4
+legends_retold = 2
+sixty_seconds = 8
+
+[quality]
+# Editor scores out of 10 that every category must reach.
+min_score = 7
+max_revisions = 2

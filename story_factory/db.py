@@ -1,0 +1,348 @@
+"""SQLite storage shared by the story factory and the production pipeline.
+
+Story lifecycle (`stories.status`):
+
+    idea -> scripted -> approved -> in_production -> produced -> published
+      \\________\\___________________________________-> rejected / failed
+
+Rejected rows are kept so the same idea is never generated twice.
+"""
+
+from __future__ import annotations
+
+import json
+import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterable
+
+STATUSES = ("idea", "scripted", "approved", "in_production", "produced", "published", "rejected", "failed")
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS inspirations (
+    id INTEGER PRIMARY KEY,
+    source TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('folklore', 'trend')),
+    title TEXT NOT NULL,
+    url TEXT,
+    summary TEXT,
+    region TEXT,
+    license TEXT,
+    popularity INTEGER,
+    used_count INTEGER NOT NULL DEFAULT 0,
+    fetched_at TEXT NOT NULL,
+    UNIQUE (source, source_id)
+);
+
+CREATE TABLE IF NOT EXISTS stories (
+    id INTEGER PRIMARY KEY,
+    kind TEXT NOT NULL CHECK (kind IN ('long', 'short')),
+    series TEXT NOT NULL,
+    status TEXT NOT NULL,
+    title TEXT NOT NULL,
+    title_norm TEXT NOT NULL,
+    logline TEXT,
+    synopsis TEXT,
+    setting TEXT,
+    core_fear TEXT,
+    protagonist TEXT,
+    format TEXT,
+    twist TEXT,
+    ending TEXT,
+    recipe_sig TEXT,
+    legend_key TEXT,
+    inspiration_ids TEXT NOT NULL DEFAULT '[]',
+    synopsis_embedding TEXT,
+    intro TEXT,
+    body TEXT,
+    outro TEXT,
+    narration TEXT,
+    word_count INTEGER,
+    comment_question TEXT,
+    hook_line TEXT,
+    thumbnail_idea TEXT,
+    description_credit TEXT,
+    scenes TEXT,
+    review TEXT,
+    reject_reason TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    claimed_by TEXT,
+    claimed_at TEXT,
+    video_id TEXT,
+    published_at TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_stories_status ON stories (status, kind, series);
+-- A legend is retold only once (rejected attempts don't count).
+CREATE UNIQUE INDEX IF NOT EXISTS ux_stories_legend
+    ON stories (legend_key) WHERE legend_key IS NOT NULL AND status != 'rejected';
+-- The same setting + fear + twist combination never returns.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_stories_recipe
+    ON stories (recipe_sig) WHERE recipe_sig IS NOT NULL AND status != 'rejected';
+
+CREATE TABLE IF NOT EXISTS world_entities (
+    id INTEGER PRIMARY KEY,
+    kind TEXT NOT NULL,
+    name TEXT NOT NULL,
+    name_norm TEXT NOT NULL UNIQUE,
+    description TEXT NOT NULL,
+    first_story_id INTEGER REFERENCES stories (id),
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS story_entities (
+    story_id INTEGER NOT NULL REFERENCES stories (id),
+    entity_id INTEGER NOT NULL REFERENCES world_entities (id),
+    PRIMARY KEY (story_id, entity_id)
+);
+
+CREATE TABLE IF NOT EXISTS costs (
+    id INTEGER PRIMARY KEY,
+    at TEXT NOT NULL,
+    pipeline TEXT NOT NULL,
+    task TEXT NOT NULL,
+    model TEXT,
+    input_units INTEGER NOT NULL DEFAULT 0,
+    output_units INTEGER NOT NULL DEFAULT 0,
+    usd REAL NOT NULL DEFAULT 0
+);
+"""
+
+WORLD_SEED = [
+    ("character", "The Storyteller",
+     "The channel's host. A tall stick figure in a long coat who carries a lantern with a "
+     "red flame. Calm, kind, a little ominous. He collects stories from the hollows and "
+     "never says how he found them."),
+    ("rule", "The Hollow",
+     "Wherever a line runs between places (a road, a railway, a corridor, a sea lane) "
+     "there is a hollow beside it. Most people pass through without noticing. Some don't."),
+    ("object", "The red lantern",
+     "The Storyteller's lantern. Its flame turns red when something from a hollow is near. "
+     "It occasionally appears, unexplained, inside other stories."),
+]
+
+
+def now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def normalize_name(name: str) -> str:
+    return " ".join(name.lower().split())
+
+
+def connect(path: str | Path) -> sqlite3.Connection:
+    path = Path(path)
+    if str(path) != ":memory:":
+        path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(path), isolation_level=None, timeout=30)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 30000")
+    if str(path) != ":memory:":
+        conn.execute("PRAGMA journal_mode = WAL")
+    conn.executescript(SCHEMA)
+    seed_world(conn)
+    return conn
+
+
+def seed_world(conn: sqlite3.Connection) -> None:
+    for kind, name, description in WORLD_SEED:
+        conn.execute(
+            "INSERT OR IGNORE INTO world_entities (kind, name, name_norm, description, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (kind, name, normalize_name(name), description, now()),
+        )
+
+
+# --- Inspirations -----------------------------------------------------------
+
+def upsert_inspiration(conn: sqlite3.Connection, **fields: Any) -> int:
+    fields.setdefault("fetched_at", now())
+    cols = ", ".join(fields)
+    marks = ", ".join("?" for _ in fields)
+    updates = ", ".join(f"{c} = excluded.{c}" for c in fields if c not in ("source", "source_id"))
+    conn.execute(
+        f"INSERT INTO inspirations ({cols}) VALUES ({marks}) "
+        f"ON CONFLICT (source, source_id) DO UPDATE SET {updates}",
+        tuple(fields.values()),
+    )
+    row = conn.execute(
+        "SELECT id FROM inspirations WHERE source = ? AND source_id = ?",
+        (fields["source"], fields["source_id"]),
+    ).fetchone()
+    return row["id"]
+
+
+def unused_legends(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM inspirations i WHERE kind = 'folklore' AND NOT EXISTS ("
+        "  SELECT 1 FROM stories s WHERE s.legend_key = i.source || ':' || i.source_id"
+        "  AND s.status != 'rejected')"
+    ).fetchall()
+
+
+def folklore_sparks(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM inspirations WHERE kind = 'folklore' ORDER BY used_count, RANDOM() LIMIT ?",
+        (limit,),
+    ).fetchall()
+
+
+def top_trends(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM inspirations WHERE kind = 'trend' "
+        "ORDER BY COALESCE(popularity, 0) DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+
+
+def mark_inspirations_used(conn: sqlite3.Connection, ids: Iterable[int]) -> None:
+    conn.executemany("UPDATE inspirations SET used_count = used_count + 1 WHERE id = ?", [(i,) for i in ids])
+
+
+# --- Stories ----------------------------------------------------------------
+
+def insert_story(conn: sqlite3.Connection, **fields: Any) -> int:
+    fields.setdefault("created_at", now())
+    fields.setdefault("updated_at", fields["created_at"])
+    if "inspiration_ids" in fields and not isinstance(fields["inspiration_ids"], str):
+        fields["inspiration_ids"] = json.dumps(fields["inspiration_ids"])
+    cols = ", ".join(fields)
+    marks = ", ".join("?" for _ in fields)
+    cur = conn.execute(f"INSERT INTO stories ({cols}) VALUES ({marks})", tuple(fields.values()))
+    return cur.lastrowid
+
+
+def update_story(conn: sqlite3.Connection, story_id: int, **fields: Any) -> None:
+    if "status" in fields and fields["status"] not in STATUSES:
+        raise ValueError(f"Unknown status {fields['status']!r}")
+    for key in ("scenes", "review"):
+        if key in fields and not isinstance(fields[key], (str, type(None))):
+            fields[key] = json.dumps(fields[key], ensure_ascii=False)
+    fields["updated_at"] = now()
+    sets = ", ".join(f"{c} = ?" for c in fields)
+    conn.execute(f"UPDATE stories SET {sets} WHERE id = ?", (*fields.values(), story_id))
+
+
+def get_story(conn: sqlite3.Connection, story_id: int) -> sqlite3.Row | None:
+    return conn.execute("SELECT * FROM stories WHERE id = ?", (story_id,)).fetchone()
+
+
+def all_stories(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Every story ever pitched, newest first. Rejected ideas still block repeats."""
+    return conn.execute("SELECT * FROM stories ORDER BY id DESC").fetchall()
+
+
+def live_stories(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Stories that are not rejected, newest first."""
+    return conn.execute(
+        "SELECT * FROM stories WHERE status != 'rejected' ORDER BY id DESC"
+    ).fetchall()
+
+
+def recent_recipes(conn: sqlite3.Connection, limit: int = 50) -> list[dict]:
+    rows = conn.execute(
+        "SELECT setting, core_fear, twist FROM stories WHERE status != 'rejected' "
+        "AND recipe_sig IS NOT NULL ORDER BY id DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def used_signatures(conn: sqlite3.Connection) -> set[str]:
+    return {
+        r["recipe_sig"]
+        for r in conn.execute(
+            "SELECT recipe_sig FROM stories WHERE status != 'rejected' AND recipe_sig IS NOT NULL"
+        )
+    }
+
+
+def backlog_counts(conn: sqlite3.Connection) -> dict[str, int]:
+    rows = conn.execute(
+        "SELECT series, COUNT(*) AS n FROM stories WHERE status = 'approved' GROUP BY series"
+    ).fetchall()
+    return {r["series"]: r["n"] for r in rows}
+
+
+def status_counts(conn: sqlite3.Connection) -> dict[str, int]:
+    rows = conn.execute("SELECT status, COUNT(*) AS n FROM stories GROUP BY status").fetchall()
+    return {r["status"]: r["n"] for r in rows}
+
+
+def claim_next(conn: sqlite3.Connection, kind: str, worker: str, series: str | None = None) -> sqlite3.Row | None:
+    """Atomically hand the oldest approved story to the production pipeline."""
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        query = "SELECT id FROM stories WHERE status = 'approved' AND kind = ?"
+        params: list[Any] = [kind]
+        if series:
+            query += " AND series = ?"
+            params.append(series)
+        row = conn.execute(query + " ORDER BY id LIMIT 1", params).fetchone()
+        if row is None:
+            conn.execute("COMMIT")
+            return None
+        stamp = now()
+        conn.execute(
+            "UPDATE stories SET status = 'in_production', claimed_by = ?, claimed_at = ?, "
+            "updated_at = ? WHERE id = ?",
+            (worker, stamp, stamp, row["id"]),
+        )
+        conn.execute("COMMIT")
+    except BaseException:
+        conn.execute("ROLLBACK")
+        raise
+    return get_story(conn, row["id"])
+
+
+# --- Story world ------------------------------------------------------------
+
+def world_entities(conn: sqlite3.Connection, limit: int = 30) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM world_entities ORDER BY (first_story_id IS NULL) DESC, id DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+
+
+def link_entities(conn: sqlite3.Connection, story_id: int, new: list[dict], referenced: list[str]) -> None:
+    for entity in new:
+        name = str(entity.get("name", "")).strip()
+        description = str(entity.get("description", "")).strip()
+        if not name or not description:
+            continue
+        conn.execute(
+            "INSERT OR IGNORE INTO world_entities (kind, name, name_norm, description, first_story_id, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (str(entity.get("kind", "character")), name, normalize_name(name), description, story_id, now()),
+        )
+        referenced = [*referenced, name]
+    for name in referenced:
+        row = conn.execute(
+            "SELECT id FROM world_entities WHERE name_norm = ?", (normalize_name(name),)
+        ).fetchone()
+        if row:
+            conn.execute(
+                "INSERT OR IGNORE INTO story_entities (story_id, entity_id) VALUES (?, ?)",
+                (story_id, row["id"]),
+            )
+
+
+# --- Costs ------------------------------------------------------------------
+
+def record_cost(conn: sqlite3.Connection, *, pipeline: str, task: str, model: str | None,
+                input_units: int, output_units: int, usd: float) -> None:
+    conn.execute(
+        "INSERT INTO costs (at, pipeline, task, model, input_units, output_units, usd) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (now(), pipeline, task, model, input_units, output_units, usd),
+    )
+
+
+def month_spend(conn: sqlite3.Connection) -> float:
+    month = datetime.now(timezone.utc).strftime("%Y-%m")
+    row = conn.execute(
+        "SELECT COALESCE(SUM(usd), 0) AS total FROM costs WHERE substr(at, 1, 7) = ?", (month,)
+    ).fetchone()
+    return float(row["total"])

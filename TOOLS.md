@@ -10,9 +10,12 @@ Output: 3 long episodes per week (8+ minutes) and 4 Shorts per week, about 13 lo
 |---|---|---|---|---|
 | 1 | Orchestrates every step, saves checkpoints, resumes after failures | Our Python orchestrator | Your PC | $0 |
 | 2 | Runs the pipeline on schedule | cron (macOS/Linux) or Task Scheduler (Windows) | Your PC | $0 |
-| 3 | Story ideas, scripts, shot plans, titles, descriptions | Gemini API, Flash text model, free tier | Google | $0 |
+| 3 | Story ideas, scripts, scene plans, titles, descriptions, repeat detection | Gemini API, Flash text and embedding models, free tier | Google | $0 |
+| 3a | Story research: legends and motifs | Wikipedia API | Wikipedia | $0 |
+| 3b | Story research: what horror viewers watch | YouTube Data API | Google | $0 |
+| 3c | Story database shared by both pipelines | SQLite | Your PC | $0 |
 | 4 | Narration (one fixed channel voice) | Gemini API, text-to-speech model | Google | ~$2–4 |
-| 5 | Scene images and character poses | Gemini API, image model, Batch mode | Google | ~$6–8 |
+| 5 | Scene images and character poses (~265 new images a month) | Gemini API, image model, Batch mode | Google | ~$5–6 |
 | 6 | Transparent backgrounds for images | rembg | Your PC | $0 |
 | 7 | Word timing for captions | OpenAI Whisper (local) | Your PC | $0 |
 | 8 | Horror ambience and sound effects | Procedurally generated sounds and CC0 sounds from Freesound | Your PC | $0 |
@@ -28,13 +31,14 @@ One-time setup cost: about **$4–8** to generate the starting character and pro
 
 | Item | Estimate |
 |---|---|
-| Images (~22 per long episode, a few per original Short) | ~$6–8 |
+| Images: ~15 new per long episode, ~3 per original Short, plus ~20% retries (~265 images) | ~$5–6 |
 | Narration (~110 min of long episodes + ~17 min of Shorts) | ~$2–4 |
-| Retries and spare | ~$2 |
 | Everything else | $0 |
-| **Total** | **~$10–14 per month** |
+| **Total** | **~$8–10 per month** |
 
-If Batch mode is not available for the chosen image model, images cost about twice as much and the total rises to about $15–17. That is still under the limit, and the $18 hard stop always applies.
+The image library is not a one-time cost. It is built once (~200 images for the host, recurring cast, common props and places) and reused, but every story still needs new images for its own characters, locations, key scary moments and thumbnail. The library lowers the count over time; it never reaches zero.
+
+If Batch mode is not available for the chosen image model, images cost about twice as much and the total rises to about $13–15. That is still under the limit, and the $18 hard stop always applies.
 
 Prices are estimates from third-party pricing sites, not Google's official page. Check current model prices in Google AI Studio before launch.
 
