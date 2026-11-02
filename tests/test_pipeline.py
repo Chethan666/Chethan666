@@ -217,6 +217,14 @@ class LegendTests(unittest.TestCase):
         second = pipeline.generate_story(ctx, "legends_retold")
         self.assertEqual(second.status, "skipped")
 
+    def test_legend_without_web_search_uses_wikipedia_notes(self):
+        ctx, brain = make_context()
+        add_legend(ctx.conn, 1)
+        ctx.router.one("researcher").supports_web_search = False
+        self.assertEqual(pipeline.generate_story(ctx, "legends_retold").status, "approved")
+        self.assertEqual(brain.tasks("dossier_research"), [])
+        self.assertEqual(len(brain.tasks("dossier")), 1)
+
     def test_copied_legend_text_is_rejected(self):
         ctx, brain = make_context()
         text = "the weeping woman wanders the riverbank at night searching for her lost children"

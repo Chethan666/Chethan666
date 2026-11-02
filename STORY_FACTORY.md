@@ -39,20 +39,22 @@ Shorts go through the same room with shorter targets.
 
 ## Who does what
 
-The default is a **balanced** setup: the strongest affordable writer writes the story, and cheaper models do the scoring, viewer testing and planning.
+The default is a **balanced** setup on three accounts: **Amazon Bedrock** runs most roles (Claude, GPT and Grok through one AWS key), **Google's Gemini API** runs the Gemini roles (Bedrock doesn't offer Gemini), and the **direct Claude API** runs legend research, because only it offers Claude's web search.
 
-| Role | Default model | Price per million tokens (in / out) | Why |
-|---|---|---|---|
-| Head writer: outline, revisions, polish, packaging | Claude Opus 5.5 | $4 / $20 | Top tier for fiction at 2.5× less than Claude Fable 5.1. The writing is the product, so this is where money goes |
-| Draft writers | Claude Opus 5.5, Grok 4.7 | $4 / $20, $2 / $6 | Two competing drafts from two companies. Grok has ranked near the top for fiction and has the cheapest output among strong models |
-| Pitchers | Claude Sonnet 5.5, Gemini 3 Pro, Grok 4.7 | $2 / $10, $2 / $12, $2 / $6 | Pitches are short; three companies give varied ideas |
-| Judges and editors | Claude Sonnet 5.5, Gemini 3 Pro, GPT-5 mini, Grok 4.7 | as above, GPT-5 mini $0.25 / $2 | A judge never scores its own company's work; with four companies, almost every comparison gets two independent judges |
-| Simulated viewers | Gemini 3 Flash, GPT-5 mini | $0.50 / $3, $0.25 / $2 | Reacting like a viewer doesn't need a top model |
-| Researcher (web search) | Claude Sonnet 5.5 | $2 / $10, plus search fees | Builds a sourced fact file on each legend |
-| Scene planner | Claude Sonnet 5.5 | $2 / $10 | Long, exact structured output |
-| Repeat detection | Gemini embedding model | very low | Top proprietary model on the MTEB embedding benchmark |
+| Role | Default model | Runs on | Price per million tokens (in / out) | Why |
+|---|---|---|---|---|
+| Head writer: outline, revisions, polish, packaging | Claude Opus 5.5 | AWS Bedrock | $4 / $20 | Top tier for fiction; the writing is the product, so this is where money goes |
+| Draft writers | Claude Opus 5.5, Grok 4.6 | AWS Bedrock | $4 / $20, $2 / $6 | Two competing drafts from two companies; Grok has ranked near the top for fiction and its output is cheap |
+| Pitchers | Claude Sonnet 5.5, Gemini 3 Pro, Grok 4.6 | Bedrock, Gemini API, Bedrock | $2 / $10, $2 / $12, $2 / $6 | Three companies give varied ideas |
+| Judges and editors | Claude Sonnet 5.5, Gemini 3 Pro, GPT-5.5 (low effort), Grok 4.6 | Bedrock, Gemini API, Bedrock, Bedrock | as above, GPT-5.5 $5 / $30 | A judge never scores its own company's work; four companies give almost every comparison two independent judges |
+| Simulated viewers | Gemini 3 Flash, Grok 4.6 | Gemini API, Bedrock | $0.50 / $3, $2 / $6 | Reacting like a viewer doesn't need a top model |
+| Researcher | Claude Sonnet 5.5 with web search | Direct Claude API | $2 / $10, plus search fees | Builds a sourced fact file on each legend; Bedrock has no web search |
+| Scene planner | Claude Sonnet 5.5 | AWS Bedrock | $2 / $10 | Long, exact structured output |
+| Repeat detection | Gemini embedding model | Gemini API | very low | Top proprietary model on the MTEB embedding benchmark |
 
-`config.example.toml` also has a **premium** preset (Claude Fable 5.1 and GPT-5.5 as writers, at roughly 2–3× the cost). Providers: `anthropic`, `openai`, `google` and `xai` (Grok). Every role is set as `provider:model@effort`, so any model can be swapped. Claude prices are Anthropic's list prices; the GPT and Gemini prices and model names come from third-party trackers, so check them with `python -m story_factory models` and on each provider's pricing page.
+Providers: `aws` (Amazon Bedrock; write the model's maker in its ID, e.g. `aws:anthropic.claude-opus-5-5`), `anthropic`, `google`, `openai` and `xai`. Every role is set as `provider:model@effort`, so any model can be swapped. `config.example.toml` also has a **direct-API** preset (no AWS) and a **premium** preset.
+
+On Bedrock, Claude doesn't get Anthropic's automatic refusal fallback; a declined request fails that one step and the pipeline carries on with the next story. Claude prices are Anthropic's list prices (Bedrock's in-Region prices can be about 10% higher); the other prices and the Bedrock model IDs come from AWS announcements and third-party trackers, so confirm them with `python -m story_factory models`.
 
 ## How repeats are prevented
 
@@ -89,22 +91,19 @@ Two things then improve future stories:
    ```bash
    pip install -r requirements.txt
    ```
-2. Set your API keys:
-   ```bash
-   export ANTHROPIC_API_KEY="..."
-   ```
-   ```bash
-   export OPENAI_API_KEY="..."
-   ```
-   ```bash
-   export GEMINI_API_KEY="..."
-   ```
-   ```bash
-   export XAI_API_KEY="..."
-   ```
-   ```bash
-   export YOUTUBE_API_KEY="..."
-   ```
+2. Set your keys (never paste them into a chat):
+
+   | Variable | Where it comes from | Used for |
+   |---|---|---|
+   | `AWS_BEARER_TOKEN_BEDROCK` | AWS console → Amazon Bedrock → API keys | Every `aws:` model |
+   | `AWS_REGION` | The region where you enabled the models, e.g. `us-east-1` | Bedrock endpoint |
+   | `GEMINI_API_KEY` | aistudio.google.com | Gemini roles and repeat detection |
+   | `ANTHROPIC_API_KEY` | console.anthropic.com | Legend research with web search only (a few dollars a month) |
+   | `YOUTUBE_API_KEY` | console.cloud.google.com → YouTube Data API v3 | Trend research (free) |
+
+   `OPENAI_API_KEY` and `XAI_API_KEY` are only needed if you switch roles to the direct `openai:` or `xai:` providers.
+
+   In the AWS console, also open Bedrock → **Model access** and enable Claude Opus 5.5, Claude Sonnet 5.5, GPT-5.5 and Grok 4.6 in your region. Anthropic models ask for a short use-case form, and new accounts may need a quota increase before the pipeline can run at full speed.
 3. Copy the example config:
    ```bash
    cp config.example.toml config.toml
@@ -131,6 +130,8 @@ python -m story_factory fill --max 10
 ```bash
 python -m story_factory status
 ```
+
+`research` collects legends from 27 folklore categories worldwide (and their subcategories) plus popular horror video titles. `fill` also tops up legends from Wikipedia by itself whenever fewer than 15 unused ones remain, so a weekly `fill` alone keeps everything running.
 
 | Command | What it does |
 |---|---|

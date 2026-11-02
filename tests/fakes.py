@@ -216,6 +216,8 @@ class Brain:
 
 
 class FakeClient:
+    supports_web_search = True
+
     def __init__(self, spec: ModelSpec, brain: Brain):
         self.spec = spec
         self.brain = brain

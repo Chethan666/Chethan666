@@ -6,21 +6,36 @@ database = "data/stories.db"
 # Optional hard stop in USD per month across both pipelines; 0 means no cap.
 monthly_cap_usd = 0
 
-# Writers' room. Format: provider:model[@effort]. Providers: anthropic, openai, google, xai.
-# Run `python -m story_factory models` to check each one against your API keys.
-# Balanced (default): the strongest affordable writer writes; cheaper models judge and test.
+# Writers' room. Format: provider:model[@effort].
+# Providers: aws (Amazon Bedrock; model ID starts with its maker, e.g. anthropic.), google,
+# anthropic (direct Claude API), openai, xai.
+# Run `python -m story_factory models` to check each one against your keys.
+# Default: AWS Bedrock for most roles, Gemini API for Gemini, direct Claude API for web-search research.
 [roles]
-pitchers   = ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview", "xai:grok-4.7"]
-judges     = ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview", "openai:gpt-5-mini@high", "xai:grok-4.7"]
-writers    = ["anthropic:claude-opus-5-5@high", "xai:grok-4.7"]
-reviser    = ["anthropic:claude-opus-5-5@high"]
-audience   = ["google:gemini-3-flash-preview", "openai:gpt-5-mini@low"]
-polisher   = ["anthropic:claude-opus-5-5@high"]
+pitchers   = ["aws:anthropic.claude-sonnet-5-5@high", "google:gemini-3-pro-preview", "aws:xai.grok-4.6"]
+judges     = ["aws:anthropic.claude-sonnet-5-5@high", "google:gemini-3-pro-preview", "aws:openai.gpt-5.5@low", "aws:xai.grok-4.6"]
+writers    = ["aws:anthropic.claude-opus-5-5@high", "aws:xai.grok-4.6"]
+reviser    = ["aws:anthropic.claude-opus-5-5@high"]
+audience   = ["google:gemini-3-flash-preview", "aws:xai.grok-4.6"]
+polisher   = ["aws:anthropic.claude-opus-5-5@high"]
 researcher = ["anthropic:claude-sonnet-5-5@high"]
-planner    = ["anthropic:claude-sonnet-5-5@medium"]
+planner    = ["aws:anthropic.claude-sonnet-5-5@medium"]
 embedder   = ["google:gemini-embedding-001"]
 
-# Premium preset (roughly 2-3x the cost): replace the lines above with these.
+[providers.aws]
+# AWS_REGION in the environment overrides this.
+region = "us-east-1"
+
+# Direct-API preset (no AWS): replace the [roles] lines above with these.
+# pitchers = ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview", "xai:grok-4.7"]
+# judges   = ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview", "openai:gpt-5-mini@high", "xai:grok-4.7"]
+# writers  = ["anthropic:claude-opus-5-5@high", "xai:grok-4.7"]
+# reviser  = ["anthropic:claude-opus-5-5@high"]
+# audience = ["google:gemini-3-flash-preview", "openai:gpt-5-mini@low"]
+# polisher = ["anthropic:claude-opus-5-5@high"]
+# planner  = ["anthropic:claude-sonnet-5-5@medium"]
+
+# Premium preset (roughly 2-3x the cost):
 # pitchers = ["anthropic:claude-fable-5-1@high", "openai:gpt-5.5@high", "google:gemini-3-pro-preview"]
 # judges   = ["anthropic:claude-opus-5-5@high", "openai:gpt-5.5@high", "google:gemini-3-pro-preview"]
 # writers  = ["anthropic:claude-fable-5-1@high", "anthropic:claude-fable-5-1@xhigh", "openai:gpt-5.5@high"]

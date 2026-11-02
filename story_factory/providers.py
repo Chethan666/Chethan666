@@ -1,7 +1,12 @@
-"""Model clients for Anthropic (Claude), OpenAI and Google (Gemini).
+"""Model clients: Anthropic, OpenAI, Google (Gemini), xAI, and Amazon Bedrock.
 
 Every client returns validated JSON for a task. SDKs are imported lazily so the
 pipeline and its tests load without them.
+
+Amazon Bedrock ("aws:" specs) serves several companies' models through one
+Bedrock API key: Claude through Bedrock's Anthropic Messages endpoint, and
+OpenAI and xAI models through its OpenAI-compatible endpoint. Bedrock has no
+Claude web search, so research stays on the direct Claude API.
 """
 
 from __future__ import annotations
@@ -21,6 +26,8 @@ FALLBACK_MODELS = ("claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "clau
 
 class AnthropicClient:
     """Claude via the official SDK, streamed because drafts can run long."""
+
+    supports_web_search = True
 
     def __init__(self, spec: ModelSpec, cfg: dict, recorder: UsageRecorder):
         import anthropic
@@ -252,8 +259,100 @@ class XAIClient:
         return sorted(m.id for m in self.client.models.list())
 
 
+def _aws_region(cfg: dict) -> str:
+    return os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or cfg["providers"]["aws"]["region"]
+
+
+def _aws_key() -> str:
+    key = os.environ.get("AWS_BEARER_TOKEN_BEDROCK")
+    if not key:
+        raise LLMError("Set AWS_BEARER_TOKEN_BEDROCK (an Amazon Bedrock API key) in the environment")
+    return key
+
+
+def _aws_openai_url(cfg: dict) -> str:
+    return cfg["providers"]["aws"]["openai_base_url"].format(region=_aws_region(cfg))
+
+
+class AWSClaudeClient(AnthropicClient):
+    """Claude on Amazon Bedrock via the SDK's Bedrock Mantle client (same Messages API)."""
+
+    supports_web_search = False  # Bedrock doesn't offer Claude's web search tool
+
+    def __init__(self, spec: ModelSpec, cfg: dict, recorder: UsageRecorder):
+        import anthropic
+
+        self.anthropic = anthropic
+        self.spec = spec
+        self.recorder = recorder
+        settings = cfg["providers"]["aws"]
+        self.max_tokens = settings["max_tokens"]
+        self.cfg = cfg
+        self.client = anthropic.AnthropicBedrockMantle(api_key=_aws_key(), aws_region=_aws_region(cfg),
+                                                       timeout=settings["timeout_s"], max_retries=4)
+
+    def research(self, task: str, system: str, prompt: str, max_searches: int = 8) -> str:
+        raise LLMError("Claude web search isn't available on Amazon Bedrock; use an anthropic: researcher")
+
+    def list_models(self) -> list[str]:
+        return aws_models(self.cfg)
+
+
+class AWSResponsesClient(OpenAIClient):
+    """OpenAI models on Amazon Bedrock through its OpenAI-compatible Responses API."""
+
+    def __init__(self, spec: ModelSpec, cfg: dict, recorder: UsageRecorder):
+        import openai
+
+        self.openai = openai
+        self.spec = spec
+        self.recorder = recorder
+        settings = cfg["providers"]["aws"]
+        self.max_tokens = settings["max_tokens"]
+        self.dimensions = None
+        self.cfg = cfg
+        self.client = openai.OpenAI(api_key=_aws_key(), base_url=_aws_openai_url(cfg),
+                                    timeout=settings["timeout_s"], max_retries=4)
+
+    def list_models(self) -> list[str]:
+        return aws_models(self.cfg)
+
+
+class AWSChatClient(XAIClient):
+    """Other companies' models on Amazon Bedrock (such as xAI Grok) through Chat Completions."""
+
+    def __init__(self, spec: ModelSpec, cfg: dict, recorder: UsageRecorder):
+        import openai
+
+        self.openai = openai
+        self.spec = spec
+        self.recorder = recorder
+        settings = cfg["providers"]["aws"]
+        self.max_tokens = settings["max_tokens"]
+        self.cfg = cfg
+        self.client = openai.OpenAI(api_key=_aws_key(), base_url=_aws_openai_url(cfg),
+                                    timeout=settings["timeout_s"], max_retries=4)
+
+    def list_models(self) -> list[str]:
+        return aws_models(self.cfg)
+
+
+def aws_models(cfg: dict) -> list[str]:
+    """Model IDs listed by Bedrock's OpenAI-compatible endpoint."""
+    import openai
+
+    client = openai.OpenAI(api_key=_aws_key(), base_url=_aws_openai_url(cfg), timeout=60)
+    return sorted(m.id for m in client.models.list())
+
+
 PROVIDERS = {"anthropic": AnthropicClient, "openai": OpenAIClient, "google": GoogleClient, "xai": XAIClient}
 
 
 def build(spec: ModelSpec, cfg: dict, recorder: UsageRecorder) -> Any:
+    if spec.provider == "aws":
+        if spec.family == "anthropic":
+            return AWSClaudeClient(spec, cfg, recorder)
+        if any(spec.model.startswith(p) for p in cfg["providers"]["aws"]["responses_api_models"]):
+            return AWSResponsesClient(spec, cfg, recorder)
+        return AWSChatClient(spec, cfg, recorder)
     return PROVIDERS[spec.provider](spec, cfg, recorder)

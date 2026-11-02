@@ -50,11 +50,26 @@ def _url(base: str, **params: Any) -> str:
     return f"{base}?{urllib.parse.urlencode(params)}"
 
 
-def wikipedia_category_pages(fetch: Fetch, category: str, limit: int) -> list[tuple[int, str]]:
+def _members(fetch: Fetch, category: str, kind: str, limit: int) -> list[dict[str, Any]]:
     data = fetch(_url(WIKI_API, action="query", list="categorymembers", cmtitle=category,
-                      cmtype="page", cmlimit=min(limit, 500), format="json"))
-    members = data.get("query", {}).get("categorymembers", [])
-    return [(m["pageid"], m["title"]) for m in members if not SKIP_TITLE.search(m["title"])]
+                      cmtype=kind, cmlimit=min(limit, 500), format="json"))
+    return data.get("query", {}).get("categorymembers", [])
+
+
+def wikipedia_category_pages(fetch: Fetch, category: str, limit: int,
+                             subcategories: bool = False) -> list[tuple[int, str]]:
+    """Pages in a category (and optionally its direct subcategories), up to `limit`."""
+    found: dict[int, str] = {}
+    categories = [category]
+    if subcategories:
+        categories += [c["title"] for c in _members(fetch, category, "subcat", 50)]
+    for name in categories:
+        for m in _members(fetch, name, "page", limit):
+            if len(found) >= limit:
+                break
+            if not SKIP_TITLE.search(m["title"]):
+                found.setdefault(m["pageid"], m["title"])
+    return list(found.items())
 
 
 def wikipedia_summaries(fetch: Fetch, pageids: list[int]) -> dict[int, dict[str, str]]:
@@ -77,7 +92,8 @@ def research_wikipedia(conn: sqlite3.Connection, cfg: dict, fetch: Fetch = http_
     saved = 0
     for entry in rules["wikipedia_categories"]:
         try:
-            pages = wikipedia_category_pages(fetch, entry["category"], rules["wikipedia_page_limit"])
+            pages = wikipedia_category_pages(fetch, entry["category"], rules["wikipedia_page_limit"],
+                                             rules.get("wikipedia_subcategories", False))
             summaries = wikipedia_summaries(fetch, [pid for pid, _ in pages])
         except Exception as exc:  # one bad category must not stop the rest
             log.warning("Skipping %s: %s", entry["category"], exc)
@@ -88,6 +104,15 @@ def research_wikipedia(conn: sqlite3.Connection, cfg: dict, fetch: Fetch = http_
                                   region=entry["region"], license=WIKI_LICENSE)
             saved += 1
     return saved
+
+
+def ensure_legend_supply(conn: sqlite3.Connection, cfg: dict, fetch: Fetch = http_fetch) -> int:
+    """Research Wikipedia automatically when unused legends run low. Returns legends added."""
+    if len(db.unused_legends(conn)) >= cfg["research"]["min_unused_legends"]:
+        return 0
+    before = len(db.unused_legends(conn))
+    research_wikipedia(conn, cfg, fetch)
+    return len(db.unused_legends(conn)) - before
 
 
 def research_youtube(conn: sqlite3.Connection, cfg: dict, api_key: str | None = None,

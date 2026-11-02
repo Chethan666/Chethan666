@@ -10,6 +10,10 @@ def fake_fetch(url: str) -> dict:
     if "categorymembers" in url:
         if query["cmtitle"] == "Category:Broken":
             raise OSError("network down")
+        if query.get("cmtype") == "subcat":
+            return {"query": {"categorymembers": [{"pageid": 90, "title": "Category:Sea ghosts"}]}}
+        if query["cmtitle"] == "Category:Sea ghosts":
+            return {"query": {"categorymembers": [{"pageid": 7, "title": "Flying Dutchman"}]}}
         return {"query": {"categorymembers": [
             {"pageid": 1, "title": "La Llorona"},
             {"pageid": 2, "title": "La Llorona (film)"},
@@ -28,8 +32,25 @@ def fake_fetch(url: str) -> dict:
 
 
 class ResearchTests(unittest.TestCase):
+    def test_subcategories_are_read_when_enabled(self):
+        self.cfg["research"]["wikipedia_categories"] = [{"category": "Category:Ghosts", "region": "Global"}]
+        self.cfg["research"]["wikipedia_subcategories"] = True
+        research.research_wikipedia(self.conn, self.cfg, fetch=fake_fetch)
+        ids = {r["source_id"] for r in self.conn.execute("SELECT source_id FROM inspirations")}
+        self.assertEqual(ids, {"1", "4", "7"})
+
+    def test_legend_supply_tops_up_only_when_low(self):
+        self.cfg["research"]["wikipedia_categories"] = [{"category": "Category:Ghosts", "region": "Global"}]
+        self.cfg["research"]["min_unused_legends"] = 1
+        self.assertEqual(research.ensure_legend_supply(self.conn, self.cfg, fetch=fake_fetch), 2)
+        calls = []
+        self.assertEqual(research.ensure_legend_supply(self.conn, self.cfg,
+                                                       fetch=lambda url: calls.append(url) or {}), 0)
+        self.assertEqual(calls, [])
+
     def setUp(self):
         self.cfg = test_config()
+        self.cfg["research"]["wikipedia_subcategories"] = False  # tests opt in where needed
         self.conn = db.connect(":memory:")
 
     def test_wikipedia_skips_works_lists_and_bad_categories(self):

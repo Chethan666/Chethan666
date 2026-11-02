@@ -199,7 +199,7 @@ def ensure_dossier(ctx: Context, legend: sqlite3.Row) -> dict | None:
     if legend["dossier"]:
         return json.loads(legend["dossier"])
     researcher = ctx.router.one("researcher")
-    if hasattr(researcher, "research"):
+    if getattr(researcher, "supports_web_search", False):
         notes = researcher.research("dossier_research", prompts.SYSTEM_RESEARCHER, prompts.dossier_research(legend))
     else:
         notes = legend["summary"] or ""

@@ -96,6 +96,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"YouTube trend titles saved: {research.research_youtube(conn, cfg)}")
     elif args.command in ("fill", "generate"):
         ctx = _context(cfg)
+        try:
+            added = research.ensure_legend_supply(ctx.conn, cfg)
+            if added:
+                print(f"Topped up legends from Wikipedia: {added} new")
+        except Exception as exc:  # research is a bonus; stories can still be written without it
+            print(f"Wikipedia top-up skipped: {exc}", file=sys.stderr)
         outcomes = (pipeline.fill_backlog(ctx, args.max) if args.command == "fill"
                     else [pipeline.generate_story(ctx, args.series)])
         for o in outcomes:

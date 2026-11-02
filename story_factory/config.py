@@ -18,23 +18,24 @@ DEFAULTS: dict[str, Any] = {
     # simulate viewers and plan scenes. See config.example.toml for a premium preset.
     # Run `python -m story_factory models` to confirm IDs your keys can use.
     "roles": {
+        # Most roles run on Amazon Bedrock (one AWS key). Gemini uses its own API key,
+        # and research uses the direct Claude API because Bedrock has no web search.
         # Pitch competing ideas; several companies give genuinely different ideas.
-        "pitchers": ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview",
-                     "xai:grok-4.7"],
-        # Score and rank pitches and drafts; never judge their own family's work.
+        "pitchers": ["aws:anthropic.claude-sonnet-5-5@high", "google:gemini-3-pro-preview",
+                     "aws:xai.grok-4.6"],
+        # Score and rank pitches and drafts; never judge their own company's work.
         # Four companies, so almost every comparison gets two independent judges.
-        "judges": ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview",
-                   "openai:gpt-5-mini@high", "xai:grok-4.7"],
+        "judges": ["aws:anthropic.claude-sonnet-5-5@high", "google:gemini-3-pro-preview",
+                   "aws:openai.gpt-5.5@low", "aws:xai.grok-4.6"],
         # Each entry writes one competing full draft.
-        # Grok has ranked near the top for fiction and has the cheapest output among strong models.
-        "writers": ["anthropic:claude-opus-5-5@high", "xai:grok-4.7"],
-        "reviser": ["anthropic:claude-opus-5-5@high"],
+        "writers": ["aws:anthropic.claude-opus-5-5@high", "aws:xai.grok-4.6"],
+        "reviser": ["aws:anthropic.claude-opus-5-5@high"],
         # Simulated viewers; personas are spread across these models.
-        "audience": ["google:gemini-3-flash-preview", "openai:gpt-5-mini@low"],
-        "polisher": ["anthropic:claude-opus-5-5@high"],
-        # Needs web search: Claude's server-side web search tool.
+        "audience": ["google:gemini-3-flash-preview", "aws:xai.grok-4.6"],
+        "polisher": ["aws:anthropic.claude-opus-5-5@high"],
+        # Needs Claude's web search, which only the direct Claude API offers.
         "researcher": ["anthropic:claude-sonnet-5-5@high"],
-        "planner": ["anthropic:claude-sonnet-5-5@medium"],
+        "planner": ["aws:anthropic.claude-sonnet-5-5@medium"],
         "embedder": ["google:gemini-embedding-001"],
     },
     "routing": {"parallel_calls": 6},
@@ -43,6 +44,17 @@ DEFAULTS: dict[str, Any] = {
         "openai": {"max_tokens": 64000, "timeout_s": 900, "embedding_dimensions": None},
         "google": {"timeout_s": 600, "embedding_dimensions": 768},
         "xai": {"max_tokens": 64000, "timeout_s": 900},
+        "aws": {
+            # AWS_REGION in the environment overrides this.
+            "region": "us-east-1",
+            "max_tokens": 64000,
+            "timeout_s": 900,
+            # Bedrock's OpenAI-compatible endpoint. AWS pages disagree between /openai/v1
+            # and /v1; if `models` can't list models, try the other.
+            "openai_base_url": "https://bedrock-mantle.{region}.api.aws/openai/v1",
+            # Models served through the Responses API there; others use Chat Completions.
+            "responses_api_models": ["openai.gpt-5"],
+        },
     },
     # USD per million input/output tokens, for the cost log only. Claude prices are
     # Anthropic's list prices; the others are from third-party trackers, so check them.
@@ -56,6 +68,11 @@ DEFAULTS: dict[str, Any] = {
         "gemini-3-pro-preview": [2.0, 12.0],
         "gemini-3-flash-preview": [0.50, 3.0],
         "grok-4.7": [2.0, 6.0],
+        # Amazon Bedrock IDs; in-Region Bedrock prices can run about 10% higher.
+        "anthropic.claude-opus-5-5": [4.0, 20.0],
+        "anthropic.claude-sonnet-5-5": [2.0, 10.0],
+        "openai.gpt-5.5": [5.0, 30.0],
+        "xai.grok-4.6": [2.0, 6.0],
     },
     "backlog": {
         # Approved stories to keep ready for the production pipeline.
@@ -110,7 +127,11 @@ DEFAULTS: dict[str, Any] = {
         "recent_titles_in_prompt": 40,
     },
     "research": {
-        "wikipedia_page_limit": 40,
+        # Research tops itself up automatically before `fill` when fewer unused legends remain.
+        "min_unused_legends": 15,
+        "wikipedia_page_limit": 100,
+        # Also read pages from each category's subcategories (one level down).
+        "wikipedia_subcategories": True,
         "wikipedia_categories": [
             {"category": "Category:Ghosts", "region": "Global"},
             {"category": "Category:Urban legends", "region": "Global"},
@@ -124,6 +145,21 @@ DEFAULTS: dict[str, Any] = {
             {"category": "Category:Indonesian folklore", "region": "Indonesia"},
             {"category": "Category:African legendary creatures", "region": "Africa"},
             {"category": "Category:Brazilian legendary creatures", "region": "Brazil"},
+            {"category": "Category:Female ghosts", "region": "Global"},
+            {"category": "Category:Japanese folklore", "region": "Japan"},
+            {"category": "Category:Korean legendary creatures", "region": "Korea"},
+            {"category": "Category:Chinese ghosts", "region": "China"},
+            {"category": "Category:Thai folklore", "region": "Thailand"},
+            {"category": "Category:Malaysian folklore", "region": "Malaysia"},
+            {"category": "Category:Arabian legendary creatures", "region": "Middle East"},
+            {"category": "Category:Germanic legendary creatures", "region": "Germany"},
+            {"category": "Category:Irish folklore", "region": "Ireland"},
+            {"category": "Category:English folklore", "region": "England"},
+            {"category": "Category:Scandinavian folklore", "region": "Scandinavia"},
+            {"category": "Category:Native American legendary creatures", "region": "North America"},
+            {"category": "Category:Caribbean folklore", "region": "Caribbean"},
+            {"category": "Category:Australian Aboriginal legendary creatures", "region": "Australia"},
+            {"category": "Category:Polynesian legendary creatures", "region": "Polynesia"},
         ],
         "youtube_queries": [
             "animated horror story",

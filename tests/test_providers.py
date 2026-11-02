@@ -172,5 +172,74 @@ class XAIClientTests(unittest.TestCase):
         self.assertIn("JSON Schema", self.bodies[1]["messages"][1]["content"])
 
 
+@unittest.skipUnless(HAS_ANTHROPIC and HAS_OPENAI, "anthropic and openai SDKs not installed")
+class AWSClientTests(unittest.TestCase):
+    def setUp(self):
+        os.environ["AWS_BEARER_TOKEN_BEDROCK"] = "bedrock-test-key"
+        os.environ.pop("AWS_REGION", None)
+        os.environ.pop("AWS_DEFAULT_REGION", None)
+        self.cfg = test_config()
+        self.recorder = UsageRecorder(db.connect(":memory:"), self.cfg)
+        self.requests: list = []
+
+    def transport(self, responses):
+        import httpx2 as httpx
+
+        queue = list(responses)
+
+        def handler(request):
+            self.requests.append(request)
+            status, content, kind = queue.pop(0)
+            return httpx.Response(status, content=content, headers={"content-type": kind})
+
+        return httpx.Client(transport=httpx.MockTransport(handler))
+
+    def test_build_picks_the_right_client(self):
+        spec = lambda text: ModelSpec.parse(text)
+        self.assertIsInstance(providers.build(spec("aws:anthropic.claude-opus-5-5"), self.cfg, self.recorder),
+                              providers.AWSClaudeClient)
+        self.assertIsInstance(providers.build(spec("aws:openai.gpt-5.5"), self.cfg, self.recorder),
+                              providers.AWSResponsesClient)
+        self.assertIsInstance(providers.build(spec("aws:xai.grok-4.6"), self.cfg, self.recorder),
+                              providers.AWSChatClient)
+        self.assertEqual(spec("aws:xai.grok-4.6").family, "xai")
+
+    def test_claude_on_bedrock(self):
+        import anthropic
+
+        client = providers.build(ModelSpec.parse("aws:anthropic.claude-opus-5-5@high"), self.cfg, self.recorder)
+        self.assertFalse(client.supports_web_search)
+        client.client = anthropic.AnthropicBedrockMantle(
+            api_key="bedrock-test-key", aws_region="us-east-1",
+            http_client=self.transport([(200, claude_stream('{"ok": true}'), "text/event-stream")]))
+        self.assertEqual(client.generate_json("t", "s", "p", {"type": "object"}), {"ok": True})
+        request = self.requests[0]
+        body = json.loads(request.content)
+        self.assertEqual(request.url.host, "bedrock-mantle.us-east-1.api.aws")
+        self.assertTrue(request.url.path.endswith("/v1/messages"))
+        self.assertEqual(body["model"], "anthropic.claude-opus-5-5")
+        self.assertEqual(body["output_config"]["effort"], "high")
+        self.assertNotIn("fallbacks", body)  # not offered on Bedrock
+        with self.assertRaises(LLMError):
+            client.research("r", "s", "p")
+
+    def test_gpt_and_grok_on_bedrock(self):
+        import openai
+
+        gpt = providers.build(ModelSpec.parse("aws:openai.gpt-5.5@low"), self.cfg, self.recorder)
+        self.assertEqual(str(gpt.client.base_url), "https://bedrock-mantle.us-east-1.api.aws/openai/v1/")
+        grok = providers.build(ModelSpec.parse("aws:xai.grok-4.6"), self.cfg, self.recorder)
+        grok.client = openai.OpenAI(api_key="k", base_url=str(grok.client.base_url), http_client=self.transport([
+            (200, json.dumps(XAIClientTests.completion('{"winner": "A"}')).encode(), "application/json")]))
+        self.assertEqual(grok.generate_json("t", "s", "p", {"type": "object"}), {"winner": "A"})
+        self.assertEqual(self.requests[0].url.path, "/openai/v1/chat/completions")
+        self.assertEqual(json.loads(self.requests[0].content)["model"], "xai.grok-4.6")
+
+    def test_missing_bedrock_key_is_reported(self):
+        del os.environ["AWS_BEARER_TOKEN_BEDROCK"]
+        with self.assertRaises(LLMError):
+            providers.build(ModelSpec.parse("aws:xai.grok-4.6"), self.cfg, self.recorder)
+
+
 if __name__ == "__main__":
     unittest.main()

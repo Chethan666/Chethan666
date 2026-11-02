@@ -22,7 +22,11 @@ class BudgetExceeded(RuntimeError):
 
 @dataclass(frozen=True)
 class ModelSpec:
-    """`provider:model` with an optional `@effort`, e.g. `anthropic:claude-fable-5-1@high`."""
+    """`provider:model` with an optional `@effort`, e.g. `anthropic:claude-fable-5-1@high`.
+
+    Amazon Bedrock specs name the model's maker in the model ID, e.g.
+    `aws:anthropic.claude-opus-5-5`; the maker is the model's family.
+    """
 
     provider: str
     model: str
@@ -32,12 +36,14 @@ class ModelSpec:
     def parse(cls, text: str) -> "ModelSpec":
         provider, _, rest = text.partition(":")
         model, _, effort = rest.partition("@")
-        if provider not in ("anthropic", "openai", "google", "xai") or not model:
+        if provider not in ("anthropic", "openai", "google", "xai", "aws") or not model:
             raise ValueError(f"Bad model spec {text!r}; use provider:model[@effort]")
         return cls(provider, model, effort or None)
 
     @property
     def family(self) -> str:
+        if self.provider == "aws":
+            return self.model.split(".", 1)[0]
         return self.provider
 
     @property
