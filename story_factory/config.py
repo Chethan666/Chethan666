@@ -14,24 +14,25 @@ DEFAULTS: dict[str, Any] = {
         "monthly_cap_usd": 0,
     },
     # Writers' room: which models fill each role. Format: provider:model[@effort].
+    # "Balanced" defaults: the strongest models write the story; cheaper models score,
+    # simulate viewers and plan scenes. See config.example.toml for a premium preset.
     # Run `python -m story_factory models` to confirm IDs your keys can use.
     "roles": {
         # Pitch competing ideas; several companies give genuinely different ideas.
-        "pitchers": ["anthropic:claude-fable-5-1@high", "openai:gpt-5.5@high",
-                     "google:gemini-3-pro-preview"],
+        "pitchers": ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview",
+                     "openai:gpt-5-mini@high"],
         # Score and rank pitches and drafts; never judge their own family's work.
-        "judges": ["anthropic:claude-opus-5-5@high", "openai:gpt-5.5@high",
-                   "google:gemini-3-pro-preview"],
+        "judges": ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview",
+                   "openai:gpt-5-mini@high"],
         # Each entry writes one competing full draft.
-        "writers": ["anthropic:claude-fable-5-1@high", "anthropic:claude-fable-5-1@xhigh",
-                    "openai:gpt-5.5@high"],
-        "reviser": ["anthropic:claude-fable-5-1@high"],
+        "writers": ["anthropic:claude-opus-5-5@high", "google:gemini-3-pro-preview"],
+        "reviser": ["anthropic:claude-opus-5-5@high"],
         # Simulated viewers; personas are spread across these models.
-        "audience": ["openai:gpt-5.5@medium", "google:gemini-3-pro-preview"],
-        "polisher": ["anthropic:claude-fable-5-1@high"],
+        "audience": ["google:gemini-3-flash-preview", "openai:gpt-5-mini@low"],
+        "polisher": ["anthropic:claude-opus-5-5@high"],
         # Needs web search: Claude's server-side web search tool.
-        "researcher": ["anthropic:claude-opus-5-5@high"],
-        "planner": ["anthropic:claude-opus-5-5@medium"],
+        "researcher": ["anthropic:claude-sonnet-5-5@high"],
+        "planner": ["anthropic:claude-sonnet-5-5@medium"],
         "embedder": ["google:gemini-embedding-001"],
     },
     "routing": {"parallel_calls": 6},
@@ -40,10 +41,17 @@ DEFAULTS: dict[str, Any] = {
         "openai": {"max_tokens": 64000, "timeout_s": 900, "embedding_dimensions": None},
         "google": {"timeout_s": 600, "embedding_dimensions": 768},
     },
-    # USD per million input/output tokens, for the cost log only.
+    # USD per million input/output tokens, for the cost log only. Claude prices are
+    # Anthropic's list prices; the others are from third-party trackers, so check them.
     "prices": {
         "claude-fable-5-1": [10.0, 50.0],
         "claude-opus-5-5": [4.0, 20.0],
+        "claude-sonnet-5-5": [2.0, 10.0],
+        "claude-haiku-5-5": [0.10, 0.50],
+        "gpt-5.5": [5.0, 30.0],
+        "gpt-5-mini": [0.25, 2.0],
+        "gemini-3-pro-preview": [2.0, 12.0],
+        "gemini-3-flash-preview": [0.50, 3.0],
     },
     "backlog": {
         # Approved stories to keep ready for the production pipeline.
@@ -61,8 +69,8 @@ DEFAULTS: dict[str, Any] = {
     "quality": {
         # Median judge score every category must reach (out of 10).
         "min_score": 8,
-        "max_revisions": 3,
-        "pitches_per_pitcher": 4,
+        "max_revisions": 2,
+        "pitches_per_pitcher": 3,
         "tournament_size": 4,
         # Pitches ranked just below the winner are shelved for later if they score this well.
         "shelve_min_score": 7.5,

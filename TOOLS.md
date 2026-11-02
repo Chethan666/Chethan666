@@ -1,6 +1,6 @@
 # Tools and budget
 
-> **Update:** the story pipeline (pipeline 1) now uses the best available models from Anthropic, OpenAI and Google instead of the Gemini free tier, and is no longer bound by the $20 limit. It is estimated at about $100–250 a month; see [STORY_FACTORY.md](STORY_FACTORY.md). The table below still describes the production pipeline (pipeline 2), which hasn't been redesigned yet.
+> **Update:** the story pipeline (pipeline 1) now uses the best available models from Anthropic, OpenAI and Google instead of the Gemini free tier, and is no longer bound by the $20 limit. With the balanced default models it is estimated at about $50–100 a month; see [STORY_FACTORY.md](STORY_FACTORY.md). The table below still describes the production pipeline (pipeline 2), which hasn't been redesigned yet.
 
 Original limit: **$20 per month**, with all paid calls stopping at **$18**.
 
@@ -12,7 +12,7 @@ Output: 3 long episodes per week (8+ minutes) and 4 Shorts per week, about 13 lo
 |---|---|---|---|---|
 | 1 | Orchestrates every step, saves checkpoints, resumes after failures | Our Python orchestrator | Your PC | $0 |
 | 2 | Runs the pipeline on schedule | cron (macOS/Linux) or Task Scheduler (Windows) | Your PC | $0 |
-| 3 | Story ideas, scripts, scene plans, titles, descriptions, repeat detection | Writers' room of Claude, GPT and Gemini models ([STORY_FACTORY.md](STORY_FACTORY.md)) | Anthropic, OpenAI, Google | ~$100–250 (estimate) |
+| 3 | Story ideas, scripts, scene plans, titles, descriptions, repeat detection | Writers' room of Claude, GPT and Gemini models ([STORY_FACTORY.md](STORY_FACTORY.md)) | Anthropic, OpenAI, Google | ~$50–100 (estimate) |
 | 3a | Story research: legends and motifs | Wikipedia API | Wikipedia | $0 |
 | 3b | Story research: what horror viewers watch | YouTube Data API | Google | $0 |
 | 3c | Story database shared by both pipelines | SQLite | Your PC | $0 |

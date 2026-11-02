@@ -8,16 +8,27 @@ monthly_cap_usd = 0
 
 # Writers' room. Format: provider:model[@effort]. Providers: anthropic, openai, google.
 # Run `python -m story_factory models` to check each one against your API keys.
+# Balanced (default): the strongest affordable writer writes; cheaper models judge and test.
 [roles]
-pitchers   = ["anthropic:claude-fable-5-1@high", "openai:gpt-5.5@high", "google:gemini-3-pro-preview"]
-judges     = ["anthropic:claude-opus-5-5@high", "openai:gpt-5.5@high", "google:gemini-3-pro-preview"]
-writers    = ["anthropic:claude-fable-5-1@high", "anthropic:claude-fable-5-1@xhigh", "openai:gpt-5.5@high"]
-reviser    = ["anthropic:claude-fable-5-1@high"]
-audience   = ["openai:gpt-5.5@medium", "google:gemini-3-pro-preview"]
-polisher   = ["anthropic:claude-fable-5-1@high"]
-researcher = ["anthropic:claude-opus-5-5@high"]
-planner    = ["anthropic:claude-opus-5-5@medium"]
+pitchers   = ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview", "openai:gpt-5-mini@high"]
+judges     = ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview", "openai:gpt-5-mini@high"]
+writers    = ["anthropic:claude-opus-5-5@high", "google:gemini-3-pro-preview"]
+reviser    = ["anthropic:claude-opus-5-5@high"]
+audience   = ["google:gemini-3-flash-preview", "openai:gpt-5-mini@low"]
+polisher   = ["anthropic:claude-opus-5-5@high"]
+researcher = ["anthropic:claude-sonnet-5-5@high"]
+planner    = ["anthropic:claude-sonnet-5-5@medium"]
 embedder   = ["google:gemini-embedding-001"]
+
+# Premium preset (roughly 2-3x the cost): replace the lines above with these.
+# pitchers = ["anthropic:claude-fable-5-1@high", "openai:gpt-5.5@high", "google:gemini-3-pro-preview"]
+# judges   = ["anthropic:claude-opus-5-5@high", "openai:gpt-5.5@high", "google:gemini-3-pro-preview"]
+# writers  = ["anthropic:claude-fable-5-1@high", "anthropic:claude-fable-5-1@xhigh", "openai:gpt-5.5@high"]
+# reviser  = ["anthropic:claude-fable-5-1@high"]
+# audience = ["openai:gpt-5.5@medium", "google:gemini-3-pro-preview"]
+# polisher = ["anthropic:claude-fable-5-1@high"]
+# researcher = ["anthropic:claude-opus-5-5@high"]
+# planner  = ["anthropic:claude-opus-5-5@medium"]
 
 [backlog]
 # Approved stories to keep ready for the production pipeline.
@@ -28,4 +39,4 @@ sixty_seconds = 8
 [quality]
 # Median editor score every category must reach (out of 10).
 min_score = 8
-max_revisions = 3
+max_revisions = 2

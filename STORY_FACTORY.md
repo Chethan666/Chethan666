@@ -34,19 +34,20 @@ Shorts go through the same room with shorter targets.
 
 ## Who does what
 
-| Role | Default model | Why |
-|---|---|---|
-| Pitchers | Claude Fable 5.1, GPT-5.5, Gemini 3 Pro | Different companies' models have different instincts, so the ideas are genuinely varied |
-| Head writer (outline, revisions, packaging) | Claude Fable 5.1 | Top of the creative-writing leaderboards with OpenAI's flagship, and Anthropic's most capable model |
-| Draft writers | Claude Fable 5.1 (×2, at different effort levels), GPT-5.5 | Three competing drafts |
-| Judges and editors | Claude Opus 5.5, GPT-5.5, Gemini 3 Pro | A judge never scores work from its own company, because models measurably favor their own family's writing |
-| Simulated viewers | GPT-5.5, Gemini 3 Pro | Not the writer's family, so they react like outsiders |
-| Polisher | Claude Fable 5.1 | Read-aloud line edit |
-| Researcher | Claude Opus 5.5 with web search | Checks legends against real sources before anyone writes |
-| Scene planner | Claude Opus 5.5 | Long, exact structured output |
-| Repeat detection | Gemini embedding model | Top proprietary model on the MTEB embedding benchmark |
+The default is a **balanced** setup: the strongest affordable writer writes the story, and cheaper models do the scoring, viewer testing and planning.
 
-Every role is set in `config.toml` as `provider:model@effort`, so models can be swapped as better ones appear. The GPT and Gemini model names are the best I could confirm; check them with `python -m story_factory models` before the first run.
+| Role | Default model | Price per million tokens (in / out) | Why |
+|---|---|---|---|
+| Head writer: outline, revisions, polish, packaging | Claude Opus 5.5 | $4 / $20 | Top tier for fiction at 2.5× less than Claude Fable 5.1. The writing is the product, so this is where money goes |
+| Draft writers | Claude Opus 5.5, Gemini 3 Pro | $4 / $20, $2 / $12 | Two competing drafts from two companies |
+| Pitchers | Claude Sonnet 5.5, Gemini 3 Pro, GPT-5 mini | $2 / $10, $2 / $12, $0.25 / $2 | Pitches are short; three companies give varied ideas |
+| Judges and editors | Claude Sonnet 5.5, Gemini 3 Pro, GPT-5 mini | as above | A judge never scores its own company's work |
+| Simulated viewers | Gemini 3 Flash, GPT-5 mini | $0.50 / $3, $0.25 / $2 | Reacting like a viewer doesn't need a top model |
+| Researcher (web search) | Claude Sonnet 5.5 | $2 / $10, plus search fees | Builds a sourced fact file on each legend |
+| Scene planner | Claude Sonnet 5.5 | $2 / $10 | Long, exact structured output |
+| Repeat detection | Gemini embedding model | very low | Top proprietary model on the MTEB embedding benchmark |
+
+`config.example.toml` also has a **premium** preset (Claude Fable 5.1 and GPT-5.5 as writers, at roughly 2–3× the cost). Every role is set as `provider:model@effort`, so any model can be swapped. Claude prices are Anthropic's list prices; the GPT and Gemini prices and model names come from third-party trackers, so check them with `python -m story_factory models` and on each provider's pricing page.
 
 ## How repeats are prevented
 
@@ -135,7 +136,15 @@ python -m story_factory status
 
 ## Cost
 
-Cost is no longer capped by default (`monthly_cap_usd = 0`); set a number to add a hard stop. A long episode makes roughly 80 model calls. A rough estimate, not measured on real runs, is $5–15 per long episode and $1–3 per Short. That works out to about $100–250 a month at 13 long episodes and 17 Shorts. Every call's tokens are logged in the `costs` table, so after the first runs `status` shows the real figure.
+Rough estimates for the balanced default, not yet measured on real runs:
+
+| | Per story | Per month (13 long, 17 Shorts) |
+|---|---|---|
+| Long episode | ~$3–6 | ~$40–80 |
+| Short | ~$0.50–1 | ~$10–17 |
+| **Total** | | **~$50–100** |
+
+The premium preset is roughly $100–250 a month. There is no spending cap by default; set `monthly_cap_usd` for a hard stop. Every call's tokens and estimated price are logged in the `costs` table, so `status` shows the real spend after the first runs.
 
 ## Tests
 
