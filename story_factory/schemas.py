@@ -69,8 +69,16 @@ POLISH = obj(intro=S, body=S, outro=S, pronunciations=arr(obj(word=S, say_as=S))
 FINAL_CHECK = obj(flags=obj(**{f: B for f in SAFETY_FLAGS}), accuracy_issues=arr(S),
                   cultural_issues=arr(S))
 
-SCENES = obj(scenes=arr(obj(text=S, location=S, characters=arr(S), visual=S, mood=S,
-                            sfx=arr(S), key_moment=B)))
+# How the narrator should deliver a scene; the voice step turns these into direction.
+DELIVERIES = ("steady", "slow", "tense", "hushed", "urgent", "tender")
+
+SCENES = obj(
+    # Fixed looks so every image draws each character the same way.
+    cast=arr(obj(name=S, look=S)),
+    scenes=arr(obj(text=S, location=S, characters=arr(S), visual=S, mood=S,
+                   delivery=enum(*DELIVERIES), sfx=arr(S), key_moment=B)))
+
+HOOKS = obj(openings=arr(S))
 
 PACKAGING = obj(titles=arr(S), thumbnail_brief=S, thumbnail_text=S, description=S,
                 tags=arr(S), pinned_comment=S)

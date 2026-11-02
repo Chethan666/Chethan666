@@ -147,12 +147,14 @@ MIGRATIONS = {
     "stories": {
         "pitch": "TEXT", "pitch_score": "REAL", "author_models": "TEXT", "beat_sheet": "TEXT",
         "audience_report": "TEXT", "pronunciations": "TEXT", "packaging": "TEXT",
-        "production_log": "TEXT",
+        "production_log": "TEXT", "cast": "TEXT",
     },
     "inspirations": {"dossier": "TEXT"},
+    "world_entities": {"look": "TEXT"},
+    "costs": {"story_id": "INTEGER"},
 }
 JSON_COLUMNS = ("scenes", "review", "pitch", "author_models", "beat_sheet", "audience_report",
-                "pronunciations", "packaging", "production_log")
+                "pronunciations", "packaging", "production_log", "cast")
 
 
 def now() -> str:
@@ -384,14 +386,29 @@ def link_entities(conn: sqlite3.Connection, story_id: int, new: list[dict], refe
             )
 
 
+def known_looks(conn: sqlite3.Connection) -> list[tuple[str, str]]:
+    """Recurring characters whose look is fixed in the world canon."""
+    return [(r["name"], r["look"]) for r in conn.execute(
+        "SELECT name, look FROM world_entities WHERE kind = 'character' AND look IS NOT NULL ORDER BY id")]
+
+
+def fix_looks(conn: sqlite3.Connection, cast: list[dict]) -> None:
+    """Store the first look given to each world character; later stories reuse it."""
+    for member in cast:
+        conn.execute(
+            "UPDATE world_entities SET look = ? WHERE name_norm = ? AND kind = 'character' AND look IS NULL",
+            (str(member.get("look", "")).strip() or None, normalize_name(str(member.get("name", "")))),
+        )
+
+
 # --- Costs ------------------------------------------------------------------
 
 def record_cost(conn: sqlite3.Connection, *, pipeline: str, task: str, model: str | None,
-                input_units: int, output_units: int, usd: float) -> None:
+                input_units: int, output_units: int, usd: float, story_id: int | None = None) -> None:
     conn.execute(
-        "INSERT INTO costs (at, pipeline, task, model, input_units, output_units, usd) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (now(), pipeline, task, model, input_units, output_units, usd),
+        "INSERT INTO costs (at, pipeline, task, model, input_units, output_units, usd, story_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (now(), pipeline, task, model, input_units, output_units, usd, story_id),
     )
 
 
@@ -431,3 +448,30 @@ def month_spend(conn: sqlite3.Connection) -> float:
         "SELECT COALESCE(SUM(usd), 0) AS total FROM costs WHERE substr(at, 1, 7) = ?", (month,)
     ).fetchone()
     return float(row["total"])
+
+
+# --- Reports ------------------------------------------------------------------
+
+def stats(conn: sqlite3.Connection) -> dict[str, Any]:
+    by_series = [dict(r) for r in conn.execute(
+        "SELECT series, status, COUNT(*) AS n FROM stories GROUP BY series, status ORDER BY series, status")]
+    cost_per_story = [dict(r) for r in conn.execute(
+        "SELECT s.kind, COUNT(DISTINCT s.id) AS stories, ROUND(SUM(c.usd), 2) AS usd, "
+        "ROUND(SUM(c.usd) / COUNT(DISTINCT s.id), 2) AS usd_per_story "
+        "FROM costs c JOIN stories s ON s.id = c.story_id "
+        "WHERE s.status NOT IN ('rejected', 'shelved', 'idea') GROUP BY s.kind")]
+    unattributed = conn.execute("SELECT ROUND(COALESCE(SUM(usd), 0), 2) FROM costs WHERE story_id IS NULL").fetchone()[0]
+    by_model = [dict(r) for r in conn.execute(
+        "SELECT model, COUNT(*) AS calls, ROUND(SUM(usd), 2) AS usd FROM costs GROUP BY model ORDER BY usd DESC")]
+    winners: dict[str, int] = {}
+    for row in conn.execute("SELECT author_models FROM stories WHERE author_models IS NOT NULL "
+                            "AND status NOT IN ('rejected', 'shelved', 'idea')"):
+        draft = json.loads(row["author_models"]).get("draft")
+        if draft:
+            winners[draft] = winners.get(draft, 0) + 1
+    reasons = [dict(r) for r in conn.execute(
+        "SELECT substr(reject_reason, 1, 70) AS reason, COUNT(*) AS n FROM stories "
+        "WHERE status = 'rejected' GROUP BY 1 ORDER BY n DESC LIMIT 8")]
+    return {"stories": by_series, "cost_per_approved_story": cost_per_story,
+            "pitching_and_research_usd": unattributed, "spend_by_model": by_model,
+            "draft_wins_by_model": winners, "top_reject_reasons": reasons}

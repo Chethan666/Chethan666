@@ -11,22 +11,27 @@ Its goal is the best possible story, not the cheapest. Every step either creates
                   │ Wikipedia legends · YouTube demand titles · web-researched dossier    │
                   └──────────────────────────────────┬────────────────────────────────────┘
                                                      ▼
- 1. PITCH CONTEST   3 pitchers (Claude, GPT, Gemini), each with its own fresh recipe, pitch 4 ideas
-                    → 8-layer repeat check → judges from OTHER companies score every pitch
+ 1. PITCH CONTEST   3 pitchers (Claude, Gemini, Grok), each with its own fresh recipe, pitch 3 ideas
+                    → 9-layer repeat check → judges from OTHER companies score every pitch
                     → top 4 go head-to-head, each pair judged in both orders → winner
                     → strong runners-up are SHELVED for a later run
  2. OUTLINE         head writer builds a beat sheet: hook, escalations, false relief, clue plants/payoffs
                     → independent editors approve it or send it back
- 3. DRAFT CONTEST   3 writers draft the full script from the outline → head-to-head judging
+ 3. DRAFT CONTEST   2 writers (Claude, Grok) draft the full script → head-to-head judging
  4. EDITORS' LOOP   independent editors score 7 qualities; median of every one must reach 8/10
-                    → head writer revises against their line notes (up to 3 rounds) or the story is rejected
- 5. AUDIENCE TEST   5 simulated viewers rate every ~30 seconds and say where they'd leave
+                    → head writer revises against their line notes (up to 2 rounds) or the story is rejected
+ 5. HOOK LAB        4 alternative openings compete with the original for the first ten seconds;
+                    the original stays unless judges prefer a new one
+ 6. AUDIENCE TEST   5 simulated viewers rate every ~30 seconds and say where they'd leave
                     → weak parts are rewritten, kept only if judges agree the new version is better
- 6. POLISH          read-aloud line edit for one narrator voice + pronunciation guide for the voice engine
+ 7. POLISH          read-aloud line edit for one narrator voice + pronunciation guide for the voice engine
                     (discarded if it changes the story)
- 7. FINAL CHECK     rule violations, legend accuracy against the dossier, cultural sensitivity
- 8. SCENE PLAN      exact narration spans, visuals, sound cues, key moments that need new images
- 9. PACKAGING       5 titles, thumbnail brief and text, description with credit, tags, pinned comment
+ 8. FINAL CHECK     rule violations, legend accuracy against the dossier, cultural sensitivity
+ 9. SCENE PLAN      exact narration spans, visuals, sound cues, a delivery cue for the narrator,
+                    key moments that need new images, and a CAST with one fixed look per character
+                    (recurring world characters always keep their first look)
+10. PACKAGING       5 titles ranked head-to-head for click appeal, thumbnail brief and text,
+                    description with credit, tags, pinned comment
                     → APPROVED, waiting for pipeline 2
 ```
 
@@ -39,15 +44,15 @@ The default is a **balanced** setup: the strongest affordable writer writes the 
 | Role | Default model | Price per million tokens (in / out) | Why |
 |---|---|---|---|
 | Head writer: outline, revisions, polish, packaging | Claude Opus 5.5 | $4 / $20 | Top tier for fiction at 2.5× less than Claude Fable 5.1. The writing is the product, so this is where money goes |
-| Draft writers | Claude Opus 5.5, Gemini 3 Pro | $4 / $20, $2 / $12 | Two competing drafts from two companies |
-| Pitchers | Claude Sonnet 5.5, Gemini 3 Pro, GPT-5 mini | $2 / $10, $2 / $12, $0.25 / $2 | Pitches are short; three companies give varied ideas |
-| Judges and editors | Claude Sonnet 5.5, Gemini 3 Pro, GPT-5 mini | as above | A judge never scores its own company's work |
+| Draft writers | Claude Opus 5.5, Grok 4.7 | $4 / $20, $2 / $6 | Two competing drafts from two companies. Grok has ranked near the top for fiction and has the cheapest output among strong models |
+| Pitchers | Claude Sonnet 5.5, Gemini 3 Pro, Grok 4.7 | $2 / $10, $2 / $12, $2 / $6 | Pitches are short; three companies give varied ideas |
+| Judges and editors | Claude Sonnet 5.5, Gemini 3 Pro, GPT-5 mini, Grok 4.7 | as above, GPT-5 mini $0.25 / $2 | A judge never scores its own company's work; with four companies, almost every comparison gets two independent judges |
 | Simulated viewers | Gemini 3 Flash, GPT-5 mini | $0.50 / $3, $0.25 / $2 | Reacting like a viewer doesn't need a top model |
 | Researcher (web search) | Claude Sonnet 5.5 | $2 / $10, plus search fees | Builds a sourced fact file on each legend |
 | Scene planner | Claude Sonnet 5.5 | $2 / $10 | Long, exact structured output |
 | Repeat detection | Gemini embedding model | very low | Top proprietary model on the MTEB embedding benchmark |
 
-`config.example.toml` also has a **premium** preset (Claude Fable 5.1 and GPT-5.5 as writers, at roughly 2–3× the cost). Every role is set as `provider:model@effort`, so any model can be swapped. Claude prices are Anthropic's list prices; the GPT and Gemini prices and model names come from third-party trackers, so check them with `python -m story_factory models` and on each provider's pricing page.
+`config.example.toml` also has a **premium** preset (Claude Fable 5.1 and GPT-5.5 as writers, at roughly 2–3× the cost). Providers: `anthropic`, `openai`, `google` and `xai` (Grok). Every role is set as `provider:model@effort`, so any model can be swapped. Claude prices are Anthropic's list prices; the GPT and Gemini prices and model names come from third-party trackers, so check them with `python -m story_factory models` and on each provider's pricing page.
 
 ## How repeats are prevented
 
@@ -95,6 +100,9 @@ Two things then improve future stories:
    export GEMINI_API_KEY="..."
    ```
    ```bash
+   export XAI_API_KEY="..."
+   ```
+   ```bash
    export YOUTUBE_API_KEY="..."
    ```
 3. Copy the example config:
@@ -133,6 +141,7 @@ python -m story_factory status
 | `set-status ID STATUS` | (Pipeline 2) record progress, such as `published --video-id abc123` |
 | `record-performance ID ...` | (Pipeline 2) save a video's YouTube metrics |
 | `learn` | Turn measured performance into lessons for future pitches |
+| `stats` | Cost per approved story, spend by model, which models win the draft contest, and the most common rejection reasons |
 
 ## Cost
 

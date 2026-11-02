@@ -1,8 +1,8 @@
 """The writers' room: how one story is made.
 
     research legend (web) -> pitch contest -> beat outline -> competing drafts
-    -> editors' loop -> simulated audience -> read-aloud polish -> final checks
-    -> scene plan -> packaging -> approved
+    -> editors' loop -> hook lab -> simulated audience -> read-aloud polish
+    -> final checks -> scene plan with cast -> packaging with title contest -> approved
 
 Different companies' models fill different roles, and work is always judged by
 models from a different family than its author.
@@ -130,11 +130,24 @@ def review_issues(agg: dict[str, Any], min_score: float) -> list[str]:
     return issues
 
 
-def scene_issues(narration: str, scenes: Any, kind: str) -> list[str]:
+def scene_issues(narration: str, scenes: Any, kind: str, cast: Any = None) -> list[str]:
+    """Checks a scene plan; when `cast` is given, also checks names, looks and delivery cues."""
     (lo, hi), (key_lo, key_hi) = scene_ranges(kind)
     if not isinstance(scenes, list) or not scenes:
         return ["no scenes returned"]
     issues: list[str] = []
+    if cast is not None:
+        names = {dedup.normalize(str(m.get("name", ""))) for m in cast if isinstance(m, dict)}
+        if any(not str(m.get("look", "")).strip() for m in cast if isinstance(m, dict)):
+            issues.append("every cast member needs a fixed look")
+        for i, scene in enumerate(scenes):
+            if not isinstance(scene, dict):
+                continue
+            unknown = [c for c in scene.get("characters", []) if dedup.normalize(str(c)) not in names]
+            if unknown:
+                issues.append(f"scene {i + 1} uses characters missing from the cast: {', '.join(map(str, unknown))}")
+            if scene.get("delivery") not in schemas.DELIVERIES:
+                issues.append(f"scene {i + 1} needs a delivery cue from {', '.join(schemas.DELIVERIES)}")
     if not lo <= len(scenes) <= hi:
         issues.append(f"{len(scenes)} scenes; need {lo}-{hi}")
     keys = sum(1 for s in scenes if isinstance(s, dict) and s.get("key_moment") is True)
@@ -468,18 +481,58 @@ def final_check(ctx: Context, story: Story, script: dict[str, Any]) -> list[str]
     return list(dict.fromkeys(issues))
 
 
-def plan_scenes(ctx: Context, kind: str, narration: str) -> tuple[list | None, list[str]]:
+def plan_scenes(ctx: Context, kind: str, narration: str) -> tuple[list | None, list[dict], list[str]]:
+    """Returns (scenes, cast, problems). Recurring characters keep their canon look."""
     scene_range, key_range = scene_ranges(kind)
     planner = ctx.router.one("planner")
-    base = prompts.scene_plan(narration, scene_range, key_range)
+    canon = dict(db.known_looks(ctx.conn))
+    base = prompts.scene_plan(narration, scene_range, key_range, list(canon.items()))
     issues: list[str] = []
     for _ in range(2):
         prompt = base if not issues else base + "\nFIX THESE PROBLEMS:\n" + "\n".join(issues)
-        scenes = planner.generate_json("scene_plan", prompts.SYSTEM_EDITOR, prompt, schemas.SCENES).get("scenes")
-        issues = scene_issues(narration, scenes, kind)
+        plan = planner.generate_json("scene_plan", prompts.SYSTEM_EDITOR, prompt, schemas.SCENES)
+        scenes, cast = plan.get("scenes"), plan.get("cast") or []
+        issues = scene_issues(narration, scenes, kind, cast)
         if not issues:
-            return scenes, []
-    return None, issues
+            by_norm = {dedup.normalize(name): look for name, look in canon.items()}
+            for member in cast:  # enforce the canon look rather than trusting a rewrite
+                member["look"] = by_norm.get(dedup.normalize(member["name"]), member["look"])
+            return scenes, cast, []
+    return None, [], issues
+
+
+def hook_lab(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, Any]:
+    """Try alternative openings; keep one only if judges prefer it to the original."""
+    sentences = [x for x in re.split(r"(?<=[.!?…])\s+", script["body"].strip()) if x]
+    if len(sentences) < 3:
+        return script
+    cut = 1
+    while cut < min(3, len(sentences) - 1) and len(" ".join(sentences[:cut]).split()) < 25:
+        cut += 1
+    opening, rest = " ".join(sentences[:cut]), sentences[cut:]
+    continuation = " ".join(rest[:2])
+    reviser = ctx.router.one("reviser")
+    result = reviser.generate_json("alternative_openings", prompts.SYSTEM_WRITER, prompts.alternative_openings(
+        script, opening, ctx.cfg["quality"]["hook_alternatives"]), schemas.HOOKS)
+    limit = 2 * len(opening.split()) + 10
+    candidates = [opening] + list(dict.fromkeys(
+        o.strip() for o in result.get("openings", []) if o.strip() and o.strip() != opening and len(o.split()) <= limit))
+    if len(candidates) == 1:
+        return script
+
+    def compare(judge: Any, a: str, b: str) -> str:
+        return judge.generate_json("compare_openings", prompts.SYSTEM_EDITOR,
+                                   prompts.compare_openings(a, b, continuation), schemas.PAIRWISE)["winner"]
+
+    ranked = tournament.rank(candidates, lambda a, b: ctx.router.judges([reviser.spec.family]), compare,
+                             ctx.router.parallel, prior=lambda o: 1.0 if o is opening else 0.0)
+    best = ranked[0].item
+    story.note("hook_lab", candidates=len(candidates), replaced=best is not opening)
+    if best is opening:
+        return script
+    candidate = dict(script, body=" ".join([best, *rest]),
+                     hook_line=re.split(r"(?<=[.!?…])\s+", best.strip())[0])
+    return script if script_issues(candidate, story.series.kind, ctx.cfg) else candidate
 
 
 def package(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, Any]:
@@ -487,7 +540,17 @@ def package(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, Any
     credit = script.get("description_credit") or "This is an original work of fiction."
     result = writer.generate_json("packaging", prompts.SYSTEM_WRITER,
                                   prompts.packaging(story.series, script, story.pitch, credit), schemas.PACKAGING)
-    titles = [t.strip() for t in result.get("titles", []) if t.strip() and len(t.strip()) <= 70]
+    titles = list(dict.fromkeys(t.strip() for t in result.get("titles", []) if t.strip() and len(t.strip()) <= 70))
+    if len(titles) > 1:
+        def compare(judge: Any, a: str, b: str) -> str:
+            return judge.generate_json("compare_titles", prompts.SYSTEM_EDITOR, prompts.compare_titles(
+                a, b, result.get("thumbnail_brief", ""), story.pitch["synopsis"]), schemas.PAIRWISE)["winner"]
+
+        finalists = titles[:4]
+        ranked = tournament.rank(finalists, lambda a, b: ctx.router.judges([writer.spec.family]), compare,
+                                 ctx.router.parallel)
+        titles = [r.item for r in ranked] + titles[4:]
+        story.note("title_contest", winner=titles[0])
     result["titles"] = titles or [story.pitch["title"]]
     return result
 
@@ -588,12 +651,15 @@ def generate_story(ctx: Context, series_name: str) -> Outcome:
 
 
 def _guarded_develop(ctx: Context, story_id: int, story: Story) -> Outcome:
+    ctx.router.recorder.story_id = story_id  # attribute every call's cost to this story
     try:
         return develop(ctx, story_id, story)
     except (LLMError, BudgetExceeded) as exc:
         # Don't leave a half-made story stuck in the queue; its recipe is freed.
         _reject(ctx, story_id, story.series.name, f"interrupted: {exc}", story=story)
         raise
+    finally:
+        ctx.router.recorder.story_id = None
 
 
 def develop(ctx: Context, story_id: int, story: Story) -> Outcome:
@@ -606,6 +672,7 @@ def develop(ctx: Context, story_id: int, story: Story) -> Outcome:
     if script is None:
         return _reject(ctx, story_id, series.name, reason, review, story)
 
+    script = hook_lab(ctx, story, script)
     script, audience_report = audience_test(ctx, story, script)
     script, pronunciations = polish(ctx, story, script)
 
@@ -636,7 +703,7 @@ def develop(ctx: Context, story_id: int, story: Story) -> Outcome:
         description_credit=str(script.get("description_credit", "")).strip(),
         review=review, audience_report=audience_report, pronunciations=pronunciations)
 
-    scenes, issues = plan_scenes(ctx, kind, narration)
+    scenes, cast, issues = plan_scenes(ctx, kind, narration)
     if scenes is None:
         return _reject(ctx, story_id, series.name, "scene plan invalid: " + "; ".join(issues[:4]), review, story)
     packaging = package(ctx, story, script)
@@ -644,8 +711,9 @@ def develop(ctx: Context, story_id: int, story: Story) -> Outcome:
     if series.uses_world:
         db.link_entities(ctx.conn, story_id, script.get("new_entities") or [],
                          [str(n) for n in script.get("referenced_entities") or []])
+        db.fix_looks(ctx.conn, cast)
     db.mark_inspirations_used(ctx.conn, [row["id"] for row in ([story.legend] if story.legend else []) + story.sparks])
-    db.update_story(ctx.conn, story_id, status="approved", scenes=scenes, packaging=packaging,
+    db.update_story(ctx.conn, story_id, status="approved", scenes=scenes, cast=cast, packaging=packaging,
                     author_models=story.authors, production_log=story.log)
     log.info("Story #%d approved: %s", story_id, story.pitch["title"])
     return Outcome(series.name, "approved", story_id, story.pitch["title"])

@@ -300,14 +300,46 @@ def final_check(script: dict[str, Any], dossier: dict | None) -> str:
             "culturally insensitive. Empty lists mean it is clear.")
 
 
-def scene_plan(narration: str, scene_range: tuple[int, int], key_range: tuple[int, int]) -> str:
+def scene_plan(narration: str, scene_range: tuple[int, int], key_range: tuple[int, int],
+               known_looks: Sequence[tuple[str, str]] = ()) -> str:
+    canon = ""
+    if known_looks:
+        canon = ("Recurring characters already have fixed looks; reuse them word for word if they "
+                 "appear:\n" + "\n".join(f"- {name}: {look}" for name, look in known_looks) + "\n")
     return (f"NARRATION:\n{narration}\nTASK: Split the narration into {scene_range[0]}-{scene_range[1]} "
             "visual scenes for the animator. Each scene's `text` is copied exactly from the narration; "
             "scenes are in order and together cover the whole narration with nothing skipped. "
             "Describe each picture in words (what is drawn and what moves), keeping it drawable: few "
             "figures, clear silhouettes, darkness and at most one red accent. List sound effects. "
+            "Give each scene a delivery cue for the narrator's voice. "
             f"Mark {key_range[0]}-{key_range[1]} scenes as key_moment: the scares, reveals and "
-            "emotional peaks that deserve a brand-new image.")
+            "emotional peaks that deserve a brand-new image.\n"
+            "Also write the cast: every character who appears, with one fixed look an illustrator "
+            "can repeat in every image (build, height, clothing, hair or headwear, one distinctive "
+            "detail), in the channel's stickman style. Scenes refer to characters by these exact "
+            f"names.\n{canon}")
+
+
+def alternative_openings(script: dict[str, Any], opening: str, count: int) -> str:
+    return (f"Script:\n{_script(script)}\n\nThe story body currently opens with:\n\"{opening}\"\n\n"
+            f"Write {count} alternative versions of exactly that opening passage. Each must raise a "
+            "concrete, unanswered question within the first two sentences, plant the same clues, lead "
+            "seamlessly into the sentence that follows it, and stay about the same length. Make them "
+            "genuinely different approaches: a strange detail, a line of dialogue, a rule, a sound, "
+            "a time stamp.")
+
+
+def compare_openings(a: str, b: str, continuation: str) -> str:
+    return (f"Two ways to open the same horror story. Whatever opening is chosen, the story continues: "
+            f"\"{continuation}\"\n\nOPENING A:\n{a}\n\nOPENING B:\n{b}\n\nA viewer will decide within "
+            "ten seconds whether to keep watching. Which opening makes them unable to leave? Reason "
+            "briefly, then choose.")
+
+
+def compare_titles(a: str, b: str, thumbnail: str, synopsis: str) -> str:
+    return (f"Two YouTube titles for the same horror story video. Thumbnail: {thumbnail}\nStory: "
+            f"{synopsis}\n\nTITLE A: {a}\nTITLE B: {b}\n\nWhich title would more viewers click on "
+            "a crowded home page, while still being honest about the story? Reason briefly, then choose.")
 
 
 def packaging(series: Any, script: dict[str, Any], pitch: dict[str, Any], credit: str) -> str:

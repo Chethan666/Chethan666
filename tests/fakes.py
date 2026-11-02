@@ -20,7 +20,7 @@ def test_config() -> dict:
     cfg["database"] = ":memory:"
     cfg["roles"] = {
         "pitchers": ["anthropic:writer-a", "openai:writer-b", "google:writer-c"],
-        "judges": ["anthropic:judge-a", "openai:judge-b", "google:judge-c"],
+        "judges": ["anthropic:judge-a", "openai:judge-b", "google:judge-c", "xai:judge-d"],
         "writers": ["anthropic:writer-a", "openai:writer-b"],
         "reviser": ["anthropic:writer-a"],
         "audience": ["openai:viewer-b", "google:viewer-c"],
@@ -69,6 +69,9 @@ class Brain:
         self.final_issues: deque[list[str]] = deque()
         self.overrides: dict[str, Callable[[str, ModelSpec], dict]] = {}
         self.failing: set[str] = set()  # model labels that raise
+        self.prefer_opening: str | None = None  # text the hook-lab judges prefer
+        self.prefer_title: str | None = None
+        self.cast_override: Callable[[list[str]], list[dict]] | None = None
 
     def tasks(self, name: str) -> list[str]:
         return [label for task, label in self.calls if task == name]
@@ -177,13 +180,35 @@ class Brain:
         narration = _between(prompt, "NARRATION:\n", "\nTASK: Split")
         parts = [p for p in re.split(r"(?<=[.?!])\s+", narration.strip()) if p]
         keys = 4 if len(parts) > 15 else 1
-        return {"scenes": [{"text": t, "location": "a dark road", "characters": ["Protagonist"],
-                            "visual": "A stick figure under one streetlight", "mood": "uneasy",
-                            "sfx": ["wind"], "key_moment": i < keys} for i, t in enumerate(parts)]}
+        cast = [{"name": "Protagonist", "look": "Tall, long grey coat, flat cap, a red scarf"},
+                {"name": "The Storyteller", "look": "Invented look that canon must override"}]
+        if self.cast_override:
+            cast = self.cast_override([c["name"] for c in cast])
+        return {"cast": cast, "scenes": [
+            {"text": t, "location": "a dark road", "characters": ["Protagonist"] if i % 2 else ["The Storyteller"],
+             "visual": "A stick figure under one streetlight", "mood": "uneasy", "delivery": "slow",
+             "sfx": ["wind"], "key_moment": i < keys} for i, t in enumerate(parts)]}
+
+    def _alternative_openings(self, prompt: str, spec: ModelSpec) -> dict:
+        return {"openings": ["A brand new opening that asks who knocked at midnight. It never stopped.",
+                             "The knocking started at 3:07 every night. Nobody else heard it."]}
+
+    def _compare_openings(self, prompt: str, spec: ModelSpec) -> dict:
+        a = _between(prompt, "OPENING A:\n", "\n\nOPENING B:")
+        b = _between(prompt, "OPENING B:\n", "\n\nA viewer")
+        winner = "A" if self.prefer_opening and self.prefer_opening in a else \
+            "B" if self.prefer_opening and self.prefer_opening in b else "A"
+        return {"reason": "hook", "winner": winner}
+
+    def _compare_titles(self, prompt: str, spec: ModelSpec) -> dict:
+        a = _between(prompt, "TITLE A: ", "\n")
+        b = _between(prompt, "TITLE B: ", "\n")
+        return {"reason": "click", "winner": "B" if self.prefer_title == b else "A"}
 
     def _packaging(self, prompt: str, spec: ModelSpec) -> dict:
-        return {"titles": ["The Extra Passenger", "Night Bus 9"], "thumbnail_brief": "A red lantern",
-                "thumbnail_text": "WHO?", "description": "A story. This is an original work of fiction.",
+        return {"titles": ["The Extra Passenger", "Night Bus 9", "Seat Ten", "Do Not Board"],
+                "thumbnail_brief": "A red lantern", "thumbnail_text": "WHO?",
+                "description": "A story. This is an original work of fiction.",
                 "tags": ["horror"], "pinned_comment": "Would you get off the bus?"}
 
     def _learn(self, prompt: str, spec: ModelSpec) -> dict:

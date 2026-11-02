@@ -6,13 +6,13 @@ database = "data/stories.db"
 # Optional hard stop in USD per month across both pipelines; 0 means no cap.
 monthly_cap_usd = 0
 
-# Writers' room. Format: provider:model[@effort]. Providers: anthropic, openai, google.
+# Writers' room. Format: provider:model[@effort]. Providers: anthropic, openai, google, xai.
 # Run `python -m story_factory models` to check each one against your API keys.
 # Balanced (default): the strongest affordable writer writes; cheaper models judge and test.
 [roles]
-pitchers   = ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview", "openai:gpt-5-mini@high"]
-judges     = ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview", "openai:gpt-5-mini@high"]
-writers    = ["anthropic:claude-opus-5-5@high", "google:gemini-3-pro-preview"]
+pitchers   = ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview", "xai:grok-4.7"]
+judges     = ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview", "openai:gpt-5-mini@high", "xai:grok-4.7"]
+writers    = ["anthropic:claude-opus-5-5@high", "xai:grok-4.7"]
 reviser    = ["anthropic:claude-opus-5-5@high"]
 audience   = ["google:gemini-3-flash-preview", "openai:gpt-5-mini@low"]
 polisher   = ["anthropic:claude-opus-5-5@high"]

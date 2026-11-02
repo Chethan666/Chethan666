@@ -129,5 +129,48 @@ class OpenAIClientTests(unittest.TestCase):
         self.assertEqual(body["instructions"], "sys")
 
 
+@unittest.skipUnless(HAS_OPENAI, "openai SDK not installed")
+class XAIClientTests(unittest.TestCase):
+    def make(self, responses):
+        import httpx2 as httpx
+        import openai
+
+        self.bodies: list[dict] = []
+        queue = list(responses)
+
+        def handler(request):
+            self.bodies.append(json.loads(request.content))
+            self.url = str(request.url)
+            status, payload = queue.pop(0)
+            return httpx.Response(status, json=payload)
+
+        os.environ.setdefault("XAI_API_KEY", "test-key")
+        client = providers.XAIClient(ModelSpec.parse("xai:grok-4.7"), test_config(),
+                                     UsageRecorder(db.connect(":memory:"), test_config()))
+        client.client = openai.OpenAI(api_key="k", base_url=providers.XAIClient.BASE_URL,
+                                      http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+        return client
+
+    @staticmethod
+    def completion(text: str) -> dict:
+        return {"id": "c1", "object": "chat.completion", "created": 0, "model": "grok-4.7",
+                "choices": [{"index": 0, "finish_reason": "stop",
+                             "message": {"role": "assistant", "content": text}}],
+                "usage": {"prompt_tokens": 4, "completion_tokens": 2, "total_tokens": 6}}
+
+    def test_strict_schema_then_fallback_to_json_mode(self):
+        client = self.make([(200, self.completion('{"winner": "A"}'))])
+        self.assertEqual(client.generate_json("t", "sys", "p", {"type": "object"})["winner"], "A")
+        self.assertTrue(self.url.startswith("https://api.x.ai/v1/chat/completions"))
+        self.assertEqual(self.bodies[0]["response_format"]["type"], "json_schema")
+        self.assertEqual(self.bodies[0]["messages"][0], {"role": "system", "content": "sys"})
+
+        client = self.make([(400, {"error": {"message": "schema not supported"}}),
+                            (200, self.completion('{"winner": "B"}'))])
+        self.assertEqual(client.generate_json("t", "sys", "p", {"type": "object"})["winner"], "B")
+        self.assertEqual(self.bodies[1]["response_format"], {"type": "json_object"})
+        self.assertIn("JSON Schema", self.bodies[1]["messages"][1]["content"])
+
+
 if __name__ == "__main__":
     unittest.main()

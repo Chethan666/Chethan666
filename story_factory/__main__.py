@@ -63,6 +63,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--likes", type=int)
     p.add_argument("--comments", type=int)
     sub.add_parser("learn", help="turn real performance into lessons for future pitches")
+    sub.add_parser("stats", help="cost per story, winning models and common rejection reasons")
 
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -139,6 +140,8 @@ def main(argv: list[str] | None = None) -> int:
                               avg_view_percentage=args.avg_view_percentage, ctr=args.ctr,
                               likes=args.likes, comments=args.comments)
         print(f"Metrics saved for story #{args.id}")
+    elif args.command == "stats":
+        print(json.dumps(db.stats(db.connect(cfg["database"])), indent=2))
     elif args.command == "learn":
         ctx = _context(cfg)
         insights = learning.learn(ctx.conn, ctx.router)

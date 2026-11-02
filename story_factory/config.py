@@ -20,12 +20,14 @@ DEFAULTS: dict[str, Any] = {
     "roles": {
         # Pitch competing ideas; several companies give genuinely different ideas.
         "pitchers": ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview",
-                     "openai:gpt-5-mini@high"],
+                     "xai:grok-4.7"],
         # Score and rank pitches and drafts; never judge their own family's work.
+        # Four companies, so almost every comparison gets two independent judges.
         "judges": ["anthropic:claude-sonnet-5-5@high", "google:gemini-3-pro-preview",
-                   "openai:gpt-5-mini@high"],
+                   "openai:gpt-5-mini@high", "xai:grok-4.7"],
         # Each entry writes one competing full draft.
-        "writers": ["anthropic:claude-opus-5-5@high", "google:gemini-3-pro-preview"],
+        # Grok has ranked near the top for fiction and has the cheapest output among strong models.
+        "writers": ["anthropic:claude-opus-5-5@high", "xai:grok-4.7"],
         "reviser": ["anthropic:claude-opus-5-5@high"],
         # Simulated viewers; personas are spread across these models.
         "audience": ["google:gemini-3-flash-preview", "openai:gpt-5-mini@low"],
@@ -40,6 +42,7 @@ DEFAULTS: dict[str, Any] = {
         "anthropic": {"max_tokens": 64000, "timeout_s": 900},
         "openai": {"max_tokens": 64000, "timeout_s": 900, "embedding_dimensions": None},
         "google": {"timeout_s": 600, "embedding_dimensions": 768},
+        "xai": {"max_tokens": 64000, "timeout_s": 900},
     },
     # USD per million input/output tokens, for the cost log only. Claude prices are
     # Anthropic's list prices; the others are from third-party trackers, so check them.
@@ -52,6 +55,7 @@ DEFAULTS: dict[str, Any] = {
         "gpt-5-mini": [0.25, 2.0],
         "gemini-3-pro-preview": [2.0, 12.0],
         "gemini-3-flash-preview": [0.50, 3.0],
+        "grok-4.7": [2.0, 6.0],
     },
     "backlog": {
         # Approved stories to keep ready for the production pipeline.
@@ -79,6 +83,8 @@ DEFAULTS: dict[str, Any] = {
         "audience_chunk_words": 70,
         "audience_min_interest": 7,
         "max_chunks_to_rewrite": 5,
+        # Alternative openings the hook lab writes and pits against the original.
+        "hook_alternatives": 4,
         "audience_personas": [
             "a 24-year-old horror fan who plays story channels at night and is bored by cliches",
             "a 17-year-old Shorts scroller who leaves within seconds unless something grabs them",

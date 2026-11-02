@@ -195,7 +195,64 @@ class GoogleClient:
         return sorted(m["name"].removeprefix("models/") for m in data.get("models", []))
 
 
-PROVIDERS = {"anthropic": AnthropicClient, "openai": OpenAIClient, "google": GoogleClient}
+class XAIClient:
+    """xAI Grok through its OpenAI-compatible Chat Completions endpoint.
+
+    Uses strict JSON schemas; if the model rejects them, retries once asking for
+    JSON in words (the same fallback the Gemini client uses).
+    """
+
+    BASE_URL = "https://api.x.ai/v1"
+
+    def __init__(self, spec: ModelSpec, cfg: dict, recorder: UsageRecorder):
+        import openai
+
+        self.openai = openai
+        self.spec = spec
+        self.recorder = recorder
+        settings = cfg["providers"]["xai"]
+        self.max_tokens = settings["max_tokens"]
+        api_key = os.environ.get("XAI_API_KEY")
+        if not api_key:
+            raise LLMError("Set XAI_API_KEY in the environment")
+        self.client = openai.OpenAI(api_key=api_key, base_url=self.BASE_URL,
+                                    timeout=settings["timeout_s"], max_retries=4)
+
+    def _complete(self, task: str, messages: list[dict], response_format: dict) -> Any:
+        try:
+            response = self.client.chat.completions.create(
+                model=self.spec.model, messages=messages, response_format=response_format,
+                max_completion_tokens=self.max_tokens)
+        except self.openai.APIConnectionError as exc:
+            raise LLMError(f"{self.spec.label} connection failed: {exc}") from exc
+        if response.usage:
+            self.recorder.record(task, self.spec, response.usage.prompt_tokens, response.usage.completion_tokens)
+        choice = response.choices[0]
+        if choice.finish_reason == "length":
+            raise LLMError(f"{self.spec.label} hit max tokens before finishing")
+        return choice.message.content or ""
+
+    def generate_json(self, task: str, system: str, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
+        self.recorder.check()
+        messages = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
+        try:
+            text = self._complete(task, messages, {"type": "json_schema", "json_schema": {
+                "name": task, "schema": schema, "strict": True}})
+        except self.openai.BadRequestError:
+            messages[1]["content"] = f"{prompt}\n\nReturn JSON matching this JSON Schema exactly:\n{json.dumps(schema)}"
+            try:
+                text = self._complete(task, messages, {"type": "json_object"})
+            except self.openai.APIStatusError as exc:
+                raise LLMError(f"{self.spec.label} HTTP {exc.status_code}: {exc.message}") from exc
+        except self.openai.APIStatusError as exc:
+            raise LLMError(f"{self.spec.label} HTTP {exc.status_code}: {exc.message}") from exc
+        return parse_json(text)
+
+    def list_models(self) -> list[str]:
+        return sorted(m.id for m in self.client.models.list())
+
+
+PROVIDERS = {"anthropic": AnthropicClient, "openai": OpenAIClient, "google": GoogleClient, "xai": XAIClient}
 
 
 def build(spec: ModelSpec, cfg: dict, recorder: UsageRecorder) -> Any:

@@ -142,6 +142,70 @@ class WritersRoomTests(unittest.TestCase):
         self.assertEqual(pipeline.generate_story(ctx, "sixty_seconds").status, "approved")
 
 
+class EnhancementTests(unittest.TestCase):
+    def test_hook_lab_replaces_the_opening_when_judges_prefer_an_alternative(self):
+        ctx, brain = make_context()
+        brain.prefer_opening = "The knocking started at 3:07"
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        story = db.get_story(ctx.conn, outcome.story_id)
+        self.assertTrue(story["body"].startswith("The knocking started at 3:07"))
+        self.assertEqual(story["hook_line"], "The knocking started at 3:07 every night.")
+
+    def test_hook_lab_keeps_the_original_on_a_tie(self):
+        ctx, brain = make_context()
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        log = json.loads(db.get_story(ctx.conn, outcome.story_id)["production_log"])
+        self.assertIn({"stage": "hook_lab", "candidates": 3, "replaced": False}, log)
+
+    def test_title_contest_orders_titles(self):
+        ctx, brain = make_context()
+        brain.prefer_title = "Seat Ten"
+        outcome = pipeline.generate_story(ctx, "sixty_seconds")
+        titles = json.loads(db.get_story(ctx.conn, outcome.story_id)["packaging"])["titles"]
+        self.assertEqual(titles[0], "Seat Ten")
+        self.assertEqual(len(titles), 4)
+
+    def test_cast_is_stored_and_recurring_looks_stay_fixed(self):
+        ctx, brain = make_context()
+        first = pipeline.generate_story(ctx, "hollow_world")
+        cast = json.loads(db.get_story(ctx.conn, first.story_id)["cast"])
+        self.assertEqual({m["name"] for m in cast}, {"Protagonist", "The Storyteller"})
+        canon = dict(db.known_looks(ctx.conn))["The Storyteller"]
+        brain.cast_override = lambda names: [{"name": n, "look": "A completely different look"} for n in names]
+        second = pipeline.generate_story(ctx, "hollow_world")
+        cast = {m["name"]: m["look"] for m in json.loads(db.get_story(ctx.conn, second.story_id)["cast"])}
+        self.assertEqual(cast["The Storyteller"], canon)
+        self.assertEqual(cast["Protagonist"], "A completely different look")
+
+    def test_scene_plan_with_unknown_character_is_retried(self):
+        ctx, brain = make_context()
+        attempts = []
+        original = brain._scene_plan
+
+        def plan(prompt, spec):
+            attempts.append(prompt)
+            result = original(prompt, spec)
+            if len(attempts) == 1:
+                result["scenes"][0]["characters"] = ["Nobody We Cast"]
+            return result
+
+        brain.overrides["scene_plan"] = plan
+        self.assertEqual(pipeline.generate_story(ctx, "sixty_seconds").status, "approved")
+        self.assertIn("missing from the cast", attempts[1])
+
+    def test_costs_are_attributed_to_stories_and_reported(self):
+        ctx, brain = make_context()
+        outcome = pipeline.generate_story(ctx, "sixty_seconds")
+        ctx.router.recorder.record("write_draft", ModelSpec("anthropic", "writer-a"), 10, 10)  # outside a story
+        ctx.router.recorder.story_id = outcome.story_id
+        ctx.router.recorder.record("write_draft", ModelSpec("anthropic", "writer-a"), 10, 10)
+        ctx.router.recorder.story_id = None
+        report = db.stats(ctx.conn)
+        self.assertEqual(report["cost_per_approved_story"][0]["stories"], 1)
+        self.assertEqual(report["draft_wins_by_model"], {"openai:writer-b": 1})
+        self.assertTrue(report["spend_by_model"])
+
+
 class LegendTests(unittest.TestCase):
     def test_legend_is_researched_once_and_told_once(self):
         ctx, brain = make_context()
@@ -238,8 +302,9 @@ class ComponentTests(unittest.TestCase):
     def test_router_judges_skip_author_families(self):
         brain = Brain()
         router = Router(test_config(), db.connect(":memory:"), factory=lambda spec: FakeClient(spec, brain))
-        self.assertEqual({j.spec.family for j in router.judges(["anthropic"])}, {"openai", "google"})
-        self.assertEqual(len(router.judges(["anthropic", "openai", "google"])), 3)
+        self.assertEqual({j.spec.family for j in router.judges(["anthropic"])}, {"openai", "google", "xai"})
+        self.assertEqual({j.spec.family for j in router.judges(["anthropic", "openai"])}, {"google", "xai"})
+        self.assertEqual(len(router.judges(["anthropic", "openai", "google", "xai"])), 4)
 
     def test_model_spec(self):
         spec = ModelSpec.parse("anthropic:claude-fable-5-1@xhigh")

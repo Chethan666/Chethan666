@@ -32,7 +32,7 @@ class ModelSpec:
     def parse(cls, text: str) -> "ModelSpec":
         provider, _, rest = text.partition(":")
         model, _, effort = rest.partition("@")
-        if provider not in ("anthropic", "openai", "google") or not model:
+        if provider not in ("anthropic", "openai", "google", "xai") or not model:
             raise ValueError(f"Bad model spec {text!r}; use provider:model[@effort]")
         return cls(provider, model, effort or None)
 
@@ -74,6 +74,8 @@ class UsageRecorder:
         self.prices = cfg.get("prices", {})
         self.cap = cfg["budget"].get("monthly_cap_usd")
         self.pipeline = pipeline
+        # Set by the pipeline while it develops a story, so costs can be reported per story.
+        self.story_id: int | None = None
         self.lock = threading.Lock()
 
     def check(self) -> None:
@@ -89,4 +91,5 @@ class UsageRecorder:
         usd = (input_tokens * price_in + output_tokens * price_out) / 1_000_000
         with self.lock:
             db.record_cost(self.conn, pipeline=self.pipeline, task=task, model=spec.label,
-                           input_units=input_tokens, output_units=output_tokens, usd=usd)
+                           input_units=input_tokens, output_units=output_tokens, usd=usd,
+                           story_id=self.story_id)
