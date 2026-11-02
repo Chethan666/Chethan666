@@ -10,21 +10,40 @@ from typing import Any
 DEFAULTS: dict[str, Any] = {
     "database": "data/stories.db",
     "budget": {
-        # Shared by both pipelines; paid calls stop once the month reaches this.
-        "monthly_cap_usd": 18.0,
+        # Optional monthly cap in USD across both pipelines; 0 disables it.
+        "monthly_cap_usd": 0,
     },
-    "gemini": {
-        # Check current model IDs with `python -m story_factory models`.
-        "text_model": "gemini-2.5-flash",
-        "embedding_model": "gemini-embedding-001",
-        "embedding_dimensions": 768,
-        # Free tier costs nothing; set real prices if you move to paid text calls.
-        "input_usd_per_million": 0.0,
-        "output_usd_per_million": 0.0,
-        "timeout_s": 180,
-        "max_retries": 4,
-        # Spacing between calls keeps the free tier's per-minute limit happy.
-        "min_interval_s": 4.0,
+    # Writers' room: which models fill each role. Format: provider:model[@effort].
+    # Run `python -m story_factory models` to confirm IDs your keys can use.
+    "roles": {
+        # Pitch competing ideas; several companies give genuinely different ideas.
+        "pitchers": ["anthropic:claude-fable-5-1@high", "openai:gpt-5.5@high",
+                     "google:gemini-3-pro-preview"],
+        # Score and rank pitches and drafts; never judge their own family's work.
+        "judges": ["anthropic:claude-opus-5-5@high", "openai:gpt-5.5@high",
+                   "google:gemini-3-pro-preview"],
+        # Each entry writes one competing full draft.
+        "writers": ["anthropic:claude-fable-5-1@high", "anthropic:claude-fable-5-1@xhigh",
+                    "openai:gpt-5.5@high"],
+        "reviser": ["anthropic:claude-fable-5-1@high"],
+        # Simulated viewers; personas are spread across these models.
+        "audience": ["openai:gpt-5.5@medium", "google:gemini-3-pro-preview"],
+        "polisher": ["anthropic:claude-fable-5-1@high"],
+        # Needs web search: Claude's server-side web search tool.
+        "researcher": ["anthropic:claude-opus-5-5@high"],
+        "planner": ["anthropic:claude-opus-5-5@medium"],
+        "embedder": ["google:gemini-embedding-001"],
+    },
+    "routing": {"parallel_calls": 6},
+    "providers": {
+        "anthropic": {"max_tokens": 64000, "timeout_s": 900},
+        "openai": {"max_tokens": 64000, "timeout_s": 900, "embedding_dimensions": None},
+        "google": {"timeout_s": 600, "embedding_dimensions": 768},
+    },
+    # USD per million input/output tokens, for the cost log only.
+    "prices": {
+        "claude-fable-5-1": [10.0, 50.0],
+        "claude-opus-5-5": [4.0, 20.0],
     },
     "backlog": {
         # Approved stories to keep ready for the production pipeline.
@@ -40,10 +59,25 @@ DEFAULTS: dict[str, Any] = {
         "short_max_words": 170,
     },
     "quality": {
-        "min_score": 7,
-        "max_revisions": 2,
-        "candidates_per_call": 3,
-        "max_attempts_per_story": 3,
+        # Median judge score every category must reach (out of 10).
+        "min_score": 8,
+        "max_revisions": 3,
+        "pitches_per_pitcher": 4,
+        "tournament_size": 4,
+        # Pitches ranked just below the winner are shelved for later if they score this well.
+        "shelve_min_score": 7.5,
+        "max_attempts_per_story": 2,
+        # Simulated-viewer test: chunks of about 30 seconds of narration.
+        "audience_chunk_words": 70,
+        "audience_min_interest": 7,
+        "max_chunks_to_rewrite": 5,
+        "audience_personas": [
+            "a 24-year-old horror fan who plays story channels at night and is bored by cliches",
+            "a 17-year-old Shorts scroller who leaves within seconds unless something grabs them",
+            "a 45-year-old who loves stories for their characters and emotional payoff, not jump scares",
+            "a 30-year-old skeptic who notices plot holes, contrivances and cheap twists",
+            "a 28-year-old Brazilian who understands English well but needs clear spoken language",
+        ],
     },
     "dedup": {
         "title_similarity": 0.85,

@@ -1,0 +1,202 @@
+"""Model clients for Anthropic (Claude), OpenAI and Google (Gemini).
+
+Every client returns validated JSON for a task. SDKs are imported lazily so the
+pipeline and its tests load without them.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import time
+import urllib.error
+import urllib.request
+from typing import Any
+
+from .llm import LLMError, ModelSpec, UsageRecorder, parse_json
+
+# Claude models that take the server-side refusal fallback.
+FALLBACK_MODELS = ("claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5")
+
+
+class AnthropicClient:
+    """Claude via the official SDK, streamed because drafts can run long."""
+
+    def __init__(self, spec: ModelSpec, cfg: dict, recorder: UsageRecorder):
+        import anthropic
+
+        self.anthropic = anthropic
+        self.spec = spec
+        self.recorder = recorder
+        self.max_tokens = cfg["providers"]["anthropic"]["max_tokens"]
+        self.client = anthropic.Anthropic(timeout=cfg["providers"]["anthropic"]["timeout_s"], max_retries=4)
+
+    def _request(self, task: str, **kwargs: Any) -> Any:
+        if self.spec.model in FALLBACK_MODELS:
+            # Re-runs a declined request on Anthropic's recommended fallback model.
+            kwargs.update(betas=["server-side-fallback-2026-07-01"], fallbacks="default")
+        if self.spec.effort:
+            kwargs.setdefault("output_config", {})["effort"] = self.spec.effort
+        try:
+            with self.client.beta.messages.stream(model=self.spec.model, max_tokens=self.max_tokens,
+                                                  **kwargs) as stream:
+                message = stream.get_final_message()
+        except self.anthropic.APIStatusError as exc:
+            raise LLMError(f"{self.spec.label} HTTP {exc.status_code}: {exc.message}") from exc
+        except self.anthropic.APIConnectionError as exc:
+            raise LLMError(f"{self.spec.label} connection failed: {exc}") from exc
+        self.recorder.record(task, self.spec,
+                             message.usage.input_tokens, message.usage.output_tokens)
+        if message.stop_reason == "refusal":
+            raise LLMError(f"{self.spec.label} declined the request")
+        if message.stop_reason == "max_tokens":
+            raise LLMError(f"{self.spec.label} hit max_tokens before finishing")
+        return message
+
+    def generate_json(self, task: str, system: str, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
+        self.recorder.check()
+        message = self._request(
+            task,
+            system=system,
+            messages=[{"role": "user", "content": prompt}],
+            output_config={"format": {"type": "json_schema", "schema": schema}},
+        )
+        text = next((b.text for b in message.content if b.type == "text"), "")
+        return parse_json(text)
+
+    def research(self, task: str, system: str, prompt: str, max_searches: int = 8) -> str:
+        """Free-text research with Claude's server-side web search."""
+        self.recorder.check()
+        messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
+        tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": max_searches}]
+        for _ in range(6):
+            message = self._request(task, system=system, messages=messages, tools=tools)
+            if message.stop_reason != "pause_turn":
+                return "\n".join(b.text for b in message.content if b.type == "text").strip()
+            # A long search turn paused; send it back so the server continues it.
+            messages.append({"role": "assistant", "content": message.content})
+        raise LLMError(f"{self.spec.label} research did not finish")
+
+    def list_models(self) -> list[str]:
+        return [m.id for m in self.client.models.list()]
+
+
+class OpenAIClient:
+    """OpenAI via the official SDK's Responses API with strict JSON schemas."""
+
+    def __init__(self, spec: ModelSpec, cfg: dict, recorder: UsageRecorder):
+        import openai
+
+        self.openai = openai
+        self.spec = spec
+        self.recorder = recorder
+        self.max_tokens = cfg["providers"]["openai"]["max_tokens"]
+        self.dimensions = cfg["providers"]["openai"].get("embedding_dimensions")
+        self.client = openai.OpenAI(timeout=cfg["providers"]["openai"]["timeout_s"], max_retries=4)
+
+    def generate_json(self, task: str, system: str, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
+        self.recorder.check()
+        kwargs: dict[str, Any] = dict(
+            model=self.spec.model, instructions=system, input=prompt, max_output_tokens=self.max_tokens,
+            text={"format": {"type": "json_schema", "name": task, "schema": schema, "strict": True}},
+        )
+        if self.spec.effort:
+            kwargs["reasoning"] = {"effort": self.spec.effort}
+        try:
+            response = self.client.responses.create(**kwargs)
+        except self.openai.APIStatusError as exc:
+            raise LLMError(f"{self.spec.label} HTTP {exc.status_code}: {exc.message}") from exc
+        except self.openai.APIConnectionError as exc:
+            raise LLMError(f"{self.spec.label} connection failed: {exc}") from exc
+        if response.usage:
+            self.recorder.record(task, self.spec, response.usage.input_tokens, response.usage.output_tokens)
+        if response.status != "completed":
+            raise LLMError(f"{self.spec.label} response {response.status}")
+        return parse_json(response.output_text)
+
+    def embed(self, text: str) -> list[float]:
+        kwargs: dict[str, Any] = {"model": self.spec.model, "input": text}
+        if self.dimensions:
+            kwargs["dimensions"] = self.dimensions
+        result = self.client.embeddings.create(**kwargs)
+        self.recorder.record("embed", self.spec, result.usage.prompt_tokens, 0)
+        return list(result.data[0].embedding)
+
+    def list_models(self) -> list[str]:
+        return sorted(m.id for m in self.client.models.list())
+
+
+class GoogleClient:
+    """Gemini over its REST API (text JSON and embeddings)."""
+
+    BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
+
+    def __init__(self, spec: ModelSpec, cfg: dict, recorder: UsageRecorder):
+        self.spec = spec
+        self.recorder = recorder
+        self.cfg = cfg["providers"]["google"]
+        self.api_key = os.environ.get("GEMINI_API_KEY")
+        if not self.api_key:
+            raise LLMError("Set GEMINI_API_KEY in the environment")
+
+    def _post(self, path: str, body: dict | None, method: str = "POST") -> dict[str, Any]:
+        data = json.dumps(body).encode() if body is not None else None
+        for attempt in range(5):
+            request = urllib.request.Request(self.BASE_URL + path, data=data, method=method, headers={
+                "Content-Type": "application/json", "x-goog-api-key": self.api_key})
+            try:
+                with urllib.request.urlopen(request, timeout=self.cfg["timeout_s"]) as response:
+                    return json.loads(response.read())
+            except urllib.error.HTTPError as exc:
+                if (exc.code != 429 and exc.code < 500) or attempt == 4:
+                    raise LLMError(f"{self.spec.label} HTTP {exc.code}: "
+                                   f"{exc.read().decode(errors='replace')[:300]}") from exc
+            except (urllib.error.URLError, TimeoutError) as exc:
+                if attempt == 4:
+                    raise LLMError(f"{self.spec.label} request failed: {exc}") from exc
+            time.sleep(2 ** (attempt + 2))
+        raise AssertionError("unreachable")
+
+    def generate_json(self, task: str, system: str, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
+        self.recorder.check()
+        body = {
+            "systemInstruction": {"parts": [{"text": system}]},
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {"responseMimeType": "application/json", "responseJsonSchema": schema},
+        }
+        try:
+            data = self._post(f"/models/{self.spec.model}:generateContent", body)
+        except LLMError as exc:
+            if "HTTP 400" not in str(exc):
+                raise
+            # Older models reject some schema keywords; ask for the shape in words instead.
+            del body["generationConfig"]["responseJsonSchema"]
+            body["contents"][0]["parts"][0]["text"] = (
+                f"{prompt}\n\nReturn JSON matching this JSON Schema exactly:\n{json.dumps(schema)}")
+            data = self._post(f"/models/{self.spec.model}:generateContent", body)
+        usage = data.get("usageMetadata", {})
+        self.recorder.record(task, self.spec, int(usage.get("promptTokenCount", 0)),
+                             int(usage.get("candidatesTokenCount", 0)) + int(usage.get("thoughtsTokenCount", 0)))
+        candidates = data.get("candidates") or []
+        if not candidates or not candidates[0].get("content", {}).get("parts"):
+            reason = candidates[0].get("finishReason") if candidates else data.get("promptFeedback")
+            raise LLMError(f"{self.spec.label} returned no text ({reason})")
+        return parse_json("".join(p.get("text", "") for p in candidates[0]["content"]["parts"]))
+
+    def embed(self, text: str) -> list[float]:
+        body = {"content": {"parts": [{"text": text}]}, "taskType": "SEMANTIC_SIMILARITY",
+                "outputDimensionality": self.cfg["embedding_dimensions"]}
+        data = self._post(f"/models/{self.spec.model}:embedContent", body)
+        self.recorder.record("embed", self.spec, len(text.split()), 0)
+        return [float(v) for v in data["embedding"]["values"]]
+
+    def list_models(self) -> list[str]:
+        data = self._post("/models?pageSize=1000", None, method="GET")
+        return sorted(m["name"].removeprefix("models/") for m in data.get("models", []))
+
+
+PROVIDERS = {"anthropic": AnthropicClient, "openai": OpenAIClient, "google": GoogleClient}
+
+
+def build(spec: ModelSpec, cfg: dict, recorder: UsageRecorder) -> Any:
+    return PROVIDERS[spec.provider](spec, cfg, recorder)

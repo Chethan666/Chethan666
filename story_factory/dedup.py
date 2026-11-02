@@ -18,10 +18,9 @@ import re
 import sqlite3
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
-from . import db, prompts
-from .llm import LLM
+from . import db
 
 STOPWORDS = frozenset(
     "a an and are as at be but by for from has have he her his i in into is it its of on or "
@@ -85,8 +84,10 @@ class Verdict:
     embedding: list[float] = field(default_factory=list)
 
 
-def check_premise(conn: sqlite3.Connection, llm: LLM, cfg: dict, premise: dict[str, Any],
-                  recipe_sig: str) -> Verdict:
+def check_premise(conn: sqlite3.Connection, cfg: dict, premise: dict[str, Any], recipe_sig: str,
+                  embed: Callable[[str], list[float]],
+                  same_story: Callable[[dict[str, Any], sqlite3.Row], tuple[bool, str]]) -> Verdict:
+    """`embed` turns text into a vector; `same_story` asks an AI judge about a borderline pair."""
     rules = cfg["dedup"]
     # Rejected ideas block repeats too, so the factory never pitches them again.
     existing = db.all_stories(conn)
@@ -107,7 +108,7 @@ def check_premise(conn: sqlite3.Connection, llm: LLM, cfg: dict, premise: dict[s
         if score >= rules["synopsis_lexical_similarity"]:
             return Verdict(False, f"synopsis wording too close to story #{row['id']} ({score:.2f})")
 
-    embedding = llm.embed(premise_text(premise))
+    embedding = embed(premise_text(premise))
     scored = []
     for row in existing:
         if row["synopsis_embedding"]:
@@ -120,9 +121,9 @@ def check_premise(conn: sqlite3.Connection, llm: LLM, cfg: dict, premise: dict[s
 
     borderline = [(s, r) for s, r in scored if s >= rules["semantic_soft"]][: rules["judge_top_k"]]
     for score, row in borderline:
-        answer = llm.generate_json("judge_duplicate", prompts.judge_duplicate(premise, row), temperature=0.0)
-        if answer.get("same_story") is True:
-            return Verdict(False, f"judge: same story as #{row['id']} ({score:.2f}): {answer.get('reason', '')}")
+        same, reason = same_story(premise, row)
+        if same:
+            return Verdict(False, f"judge: same story as #{row['id']} ({score:.2f}): {reason}")
 
     return Verdict(True, embedding=embedding)
 

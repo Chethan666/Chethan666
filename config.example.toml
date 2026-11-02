@@ -3,16 +3,21 @@
 database = "data/stories.db"
 
 [budget]
-# Shared by both pipelines. Paid calls stop once this month's spend reaches it.
-monthly_cap_usd = 18.0
+# Optional hard stop in USD per month across both pipelines; 0 means no cap.
+monthly_cap_usd = 0
 
-[gemini]
-# Run `python -m story_factory models` to see the models your key can use.
-text_model = "gemini-2.5-flash"
-embedding_model = "gemini-embedding-001"
-# Leave at 0 on the free tier.
-input_usd_per_million = 0.0
-output_usd_per_million = 0.0
+# Writers' room. Format: provider:model[@effort]. Providers: anthropic, openai, google.
+# Run `python -m story_factory models` to check each one against your API keys.
+[roles]
+pitchers   = ["anthropic:claude-fable-5-1@high", "openai:gpt-5.5@high", "google:gemini-3-pro-preview"]
+judges     = ["anthropic:claude-opus-5-5@high", "openai:gpt-5.5@high", "google:gemini-3-pro-preview"]
+writers    = ["anthropic:claude-fable-5-1@high", "anthropic:claude-fable-5-1@xhigh", "openai:gpt-5.5@high"]
+reviser    = ["anthropic:claude-fable-5-1@high"]
+audience   = ["openai:gpt-5.5@medium", "google:gemini-3-pro-preview"]
+polisher   = ["anthropic:claude-fable-5-1@high"]
+researcher = ["anthropic:claude-opus-5-5@high"]
+planner    = ["anthropic:claude-opus-5-5@medium"]
+embedder   = ["google:gemini-embedding-001"]
 
 [backlog]
 # Approved stories to keep ready for the production pipeline.
@@ -21,6 +26,6 @@ legends_retold = 2
 sixty_seconds = 8
 
 [quality]
-# Editor scores out of 10 that every category must reach.
-min_score = 7
-max_revisions = 2
+# Median editor score every category must reach (out of 10).
+min_score = 8
+max_revisions = 3

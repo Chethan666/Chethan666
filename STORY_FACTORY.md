@@ -1,29 +1,110 @@
 # Story Factory (pipeline 1)
 
-The story factory researches inspiration, writes original horror stories, rejects anything that repeats an earlier story, and stores approved stories in a SQLite database. The production pipeline (pipeline 2, not built yet) claims stories from that database and turns them into videos.
+The story factory is a writers' room made of AI models from several companies. It researches, pitches, writes, edits and tests horror stories. Approved stories go into a SQLite database, where the production pipeline (pipeline 2) claims them and turns them into videos.
 
-It uses only the Python standard library and the Gemini API free tier, so it costs $0 to run.
+Its goal is the best possible story, not the cheapest. Every step either creates competition (several pitches, several drafts) or adds an independent critic (editors, simulated viewers, a final checker).
+
+## The flow
+
+```
+                  ┌───────────────────────── Research (weekly) ──────────────────────────┐
+                  │ Wikipedia legends · YouTube demand titles · web-researched dossier    │
+                  └──────────────────────────────────┬────────────────────────────────────┘
+                                                     ▼
+ 1. PITCH CONTEST   3 pitchers (Claude, GPT, Gemini), each with its own fresh recipe, pitch 4 ideas
+                    → 8-layer repeat check → judges from OTHER companies score every pitch
+                    → top 4 go head-to-head, each pair judged in both orders → winner
+                    → strong runners-up are SHELVED for a later run
+ 2. OUTLINE         head writer builds a beat sheet: hook, escalations, false relief, clue plants/payoffs
+                    → independent editors approve it or send it back
+ 3. DRAFT CONTEST   3 writers draft the full script from the outline → head-to-head judging
+ 4. EDITORS' LOOP   independent editors score 7 qualities; median of every one must reach 8/10
+                    → head writer revises against their line notes (up to 3 rounds) or the story is rejected
+ 5. AUDIENCE TEST   5 simulated viewers rate every ~30 seconds and say where they'd leave
+                    → weak parts are rewritten, kept only if judges agree the new version is better
+ 6. POLISH          read-aloud line edit for one narrator voice + pronunciation guide for the voice engine
+                    (discarded if it changes the story)
+ 7. FINAL CHECK     rule violations, legend accuracy against the dossier, cultural sensitivity
+ 8. SCENE PLAN      exact narration spans, visuals, sound cues, key moments that need new images
+ 9. PACKAGING       5 titles, thumbnail brief and text, description with credit, tags, pinned comment
+                    → APPROVED, waiting for pipeline 2
+```
+
+Shorts go through the same room with shorter targets.
+
+## Who does what
+
+| Role | Default model | Why |
+|---|---|---|
+| Pitchers | Claude Fable 5.1, GPT-5.5, Gemini 3 Pro | Different companies' models have different instincts, so the ideas are genuinely varied |
+| Head writer (outline, revisions, packaging) | Claude Fable 5.1 | Top of the creative-writing leaderboards with OpenAI's flagship, and Anthropic's most capable model |
+| Draft writers | Claude Fable 5.1 (×2, at different effort levels), GPT-5.5 | Three competing drafts |
+| Judges and editors | Claude Opus 5.5, GPT-5.5, Gemini 3 Pro | A judge never scores work from its own company, because models measurably favor their own family's writing |
+| Simulated viewers | GPT-5.5, Gemini 3 Pro | Not the writer's family, so they react like outsiders |
+| Polisher | Claude Fable 5.1 | Read-aloud line edit |
+| Researcher | Claude Opus 5.5 with web search | Checks legends against real sources before anyone writes |
+| Scene planner | Claude Opus 5.5 | Long, exact structured output |
+| Repeat detection | Gemini embedding model | Top proprietary model on the MTEB embedding benchmark |
+
+Every role is set in `config.toml` as `provider:model@effort`, so models can be swapped as better ones appear. The GPT and Gemini model names are the best I could confirm; check them with `python -m story_factory models` before the first run.
+
+## How repeats are prevented
+
+| Layer | What it catches |
+|---|---|
+| Recipe signature | The same setting + fear + twist combination can never be used twice. A database constraint enforces it |
+| Cooldowns | The same setting within 8 stories, twist within 4, or fear within 3 |
+| Legend ledger | Each legend is retold once. A database constraint enforces it |
+| Prompt memory | Pitchers see the 40 most recent titles and are told to differ from them |
+| Title check | Near-identical titles |
+| Wording check | Synopses sharing too many word pairs with an earlier one |
+| Meaning check | Embeddings catch the same story in different words; borderline cases go to an AI judge |
+| Same-round twins | Two pitchers pitching the same idea in one round |
+| Script check | Near-copies of earlier scripts, and any 8-word run copied from research text |
+
+Rejected and shelved ideas stay in the database and keep blocking repeats.
+
+## Learning from real results
+
+Once pipeline 2 publishes videos, it records their YouTube metrics:
+
+```bash
+python -m story_factory record-performance 12 --views 48000 --avg-view-percentage 61 --ctr 7.4
+```
+
+Two things then improve future stories:
+
+- **Ingredient weights:** settings, fears, twists, formats and endings from videos that keep viewers watching longer are drawn more often. This starts after 5 measured videos.
+- **Written lessons:** `python -m story_factory learn` has a judge compare the best and worst performers and write insights. This needs at least 12 measured videos. Every future pitch prompt sees the latest insights.
 
 ## Setup
 
-1. Install Python 3.11 or newer.
-2. Create a Gemini API key in Google AI Studio, then set it:
+1. Install Python 3.11+ and the SDKs:
    ```bash
-   export GEMINI_API_KEY="your-key"
+   pip install -r requirements.txt
    ```
-3. Optional: create a YouTube Data API key in Google Cloud for audience-demand research:
+2. Set your API keys:
    ```bash
-   export YOUTUBE_API_KEY="your-key"
+   export ANTHROPIC_API_KEY="..."
    ```
-4. Copy the example config and adjust it if needed:
+   ```bash
+   export OPENAI_API_KEY="..."
+   ```
+   ```bash
+   export GEMINI_API_KEY="..."
+   ```
+   ```bash
+   export YOUTUBE_API_KEY="..."
+   ```
+3. Copy the example config:
    ```bash
    cp config.example.toml config.toml
    ```
-5. Check which Gemini models your key can use, and update `text_model` and `embedding_model` in `config.toml` if the defaults are not listed:
+4. Check every configured model against what your keys can use:
    ```bash
    python -m story_factory models
    ```
-6. Create the database:
+5. Create the database:
    ```bash
    python -m story_factory init
    ```
@@ -42,56 +123,19 @@ python -m story_factory fill --max 10
 python -m story_factory status
 ```
 
-`research` collects folklore and popular horror video titles. `fill` generates stories until each series has its target number of approved stories waiting (4 *Tales from the Hollow*, 2 *Legends Retold*, 8 *60-Second Horror* by default). Schedule both with cron or Windows Task Scheduler.
-
-Other commands:
-
 | Command | What it does |
 |---|---|
 | `generate SERIES` | Make one story for `hollow_world`, `legends_retold` or `sixty_seconds` |
-| `show ID` | Print a story as JSON |
+| `show ID` | Print a story with its outline, reviews, audience report and packaging |
 | `world` | List the shared story world's canon |
-| `claim --kind long` | (Pipeline 2) take the oldest approved story; marks it `in_production` |
+| `claim --kind long` | (Pipeline 2) take the oldest approved story |
 | `set-status ID STATUS` | (Pipeline 2) record progress, such as `published --video-id abc123` |
+| `record-performance ID ...` | (Pipeline 2) save a video's YouTube metrics |
+| `learn` | Turn measured performance into lessons for future pitches |
 
-## How a story is made
+## Cost
 
-1. **Recipe.** A setting, core fear, protagonist, format, twist and ending are drawn from `story_factory/catalog.py`. There are millions of combinations.
-2. **Research.**
-   - *Legends Retold* takes one Wikipedia legend that has never been used.
-   - *Tales from the Hollow* gets two folklore motifs as sparks, plus the shared world's canon.
-   - Every series sees popular YouTube horror titles, as demand signals only.
-3. **Premises.** Gemini pitches three premises. The first one that passes the repeat checks is kept.
-4. **Script.** The script is written to a fixed structure: Storyteller intro, hook in the first sentence, rising dread, false relief, climax, twist or emotional ending, and an outro question. It has to deliver eight audience needs (curiosity, safe thrill, relatability, attachment, fair clues, an earned ending, an emotional core, something to discuss).
-5. **Checks.**
-   - Word count (1,200-1,500 for long episodes, about 8.5-10.5 minutes; 110-170 for Shorts).
-   - No claims that the story is true.
-   - No passage copied from the research text.
-   - A strict editor review that scores seven qualities and flags rule breaks (gore, harm to children, real people, copyrighted characters and more).
-   - Failing scripts are revised up to twice, then rejected.
-6. **Scene plan.** The narration is split into scenes with exact text spans, locations, visuals, mood and sound cues. Key moments are marked because they need brand-new images. The plan is validated against the narration.
-7. **Approved.** New characters and places join the shared world for future stories.
-
-## How repeats are prevented
-
-| Layer | What it catches |
-|---|---|
-| Recipe signature | The same setting + fear + twist combination can never be used twice. A database constraint enforces it |
-| Cooldowns | The same setting within 8 stories, twist within 4, or fear within 3 |
-| Legend ledger | Each legend is retold once. A database constraint enforces it |
-| Prompt memory | Gemini sees the 40 most recent titles and loglines and is told to differ from them |
-| Title check | Near-identical titles |
-| Wording check | Synopses that share too many word pairs with an earlier one |
-| Meaning check | Embeddings catch the same story told in different words. Clear matches are rejected; borderline ones go to an AI judge that compares the two stories directly |
-| Script check | Near-copies of earlier scripts, and any 8-word run copied from research text |
-
-Rejected ideas stay in the database and keep blocking repeats, so the factory never wastes calls pitching them again.
-
-## Sources
-
-- **Wikipedia:** legends and motifs, CC BY-SA. Used as research notes only; scripts are checked for copied passages, and legend episodes credit the tradition.
-- **YouTube Data API:** titles and view counts of popular horror videos. These are demand signals; plots and titles are never copied.
-- **Not used on purpose:** Reddit, creepypasta sites and other authors' stories, because those stories belong to their writers.
+Cost is no longer capped by default (`monthly_cap_usd = 0`); set a number to add a hard stop. A long episode makes roughly 80 model calls. A rough estimate, not measured on real runs, is $5–15 per long episode and $1–3 per Short. That works out to about $100–250 a month at 13 long episodes and 17 Shorts. Every call's tokens are logged in the `costs` table, so after the first runs `status` shows the real figure.
 
 ## Tests
 
@@ -99,4 +143,4 @@ Rejected ideas stay in the database and keep blocking repeats, so the factory ne
 python -m unittest discover -s tests -t .
 ```
 
-The tests run offline with a fake model and cover the repeat checks, the legend ledger, copy detection, revisions, scene validation, the budget cap and claiming.
+The pipeline tests run offline with fake models and check: judges never score their own company's work; the best draft wins; runners-up are shelved and used first; repeats are blocked; weak audience moments are rewritten; a polish that changes the story is discarded; and failures don't leave stories stuck. With the SDKs installed, the provider tests also run the real Anthropic and OpenAI SDKs against a mocked network to check requests and response handling.

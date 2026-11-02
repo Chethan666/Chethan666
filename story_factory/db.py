@@ -3,9 +3,10 @@
 Story lifecycle (`stories.status`):
 
     idea -> scripted -> approved -> in_production -> produced -> published
-      \\________\\___________________________________-> rejected / failed
+      |  \\________\\___________________________________-> rejected / failed
+      +-> shelved (a strong runner-up pitch, developed in a later run)
 
-Rejected rows are kept so the same idea is never generated twice.
+Rejected and shelved rows are kept so the same idea is never generated twice.
 """
 
 from __future__ import annotations
@@ -16,7 +17,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-STATUSES = ("idea", "scripted", "approved", "in_production", "produced", "published", "rejected", "failed")
+STATUSES = ("idea", "shelved", "scripted", "approved", "in_production", "produced", "published",
+            "rejected", "failed")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS inspirations (
@@ -97,6 +99,23 @@ CREATE TABLE IF NOT EXISTS story_entities (
     PRIMARY KEY (story_id, entity_id)
 );
 
+CREATE TABLE IF NOT EXISTS performance (
+    id INTEGER PRIMARY KEY,
+    story_id INTEGER NOT NULL REFERENCES stories (id),
+    measured_at TEXT NOT NULL,
+    views INTEGER,
+    avg_view_percentage REAL,
+    ctr REAL,
+    likes INTEGER,
+    comments INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS learnings (
+    id INTEGER PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    insights TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS costs (
     id INTEGER PRIMARY KEY,
     at TEXT NOT NULL,
@@ -123,6 +142,19 @@ WORLD_SEED = [
 ]
 
 
+# Columns added after the first release; `connect` adds any that are missing.
+MIGRATIONS = {
+    "stories": {
+        "pitch": "TEXT", "pitch_score": "REAL", "author_models": "TEXT", "beat_sheet": "TEXT",
+        "audience_report": "TEXT", "pronunciations": "TEXT", "packaging": "TEXT",
+        "production_log": "TEXT",
+    },
+    "inspirations": {"dossier": "TEXT"},
+}
+JSON_COLUMNS = ("scenes", "review", "pitch", "author_models", "beat_sheet", "audience_report",
+                "pronunciations", "packaging", "production_log")
+
+
 def now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -135,15 +167,25 @@ def connect(path: str | Path) -> sqlite3.Connection:
     path = Path(path)
     if str(path) != ":memory:":
         path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path), isolation_level=None, timeout=30)
+    # Model calls run on worker threads; UsageRecorder serializes their writes.
+    conn = sqlite3.connect(str(path), isolation_level=None, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA busy_timeout = 30000")
     if str(path) != ":memory:":
         conn.execute("PRAGMA journal_mode = WAL")
     conn.executescript(SCHEMA)
+    migrate(conn)
     seed_world(conn)
     return conn
+
+
+def migrate(conn: sqlite3.Connection) -> None:
+    for table, columns in MIGRATIONS.items():
+        existing = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+        for name, kind in columns.items():
+            if name not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {kind}")
 
 
 def seed_world(conn: sqlite3.Connection) -> None:
@@ -206,8 +248,9 @@ def mark_inspirations_used(conn: sqlite3.Connection, ids: Iterable[int]) -> None
 def insert_story(conn: sqlite3.Connection, **fields: Any) -> int:
     fields.setdefault("created_at", now())
     fields.setdefault("updated_at", fields["created_at"])
-    if "inspiration_ids" in fields and not isinstance(fields["inspiration_ids"], str):
-        fields["inspiration_ids"] = json.dumps(fields["inspiration_ids"])
+    for key in ("inspiration_ids", *JSON_COLUMNS):
+        if key in fields and not isinstance(fields[key], (str, type(None))):
+            fields[key] = json.dumps(fields[key], ensure_ascii=False)
     cols = ", ".join(fields)
     marks = ", ".join("?" for _ in fields)
     cur = conn.execute(f"INSERT INTO stories ({cols}) VALUES ({marks})", tuple(fields.values()))
@@ -217,7 +260,7 @@ def insert_story(conn: sqlite3.Connection, **fields: Any) -> int:
 def update_story(conn: sqlite3.Connection, story_id: int, **fields: Any) -> None:
     if "status" in fields and fields["status"] not in STATUSES:
         raise ValueError(f"Unknown status {fields['status']!r}")
-    for key in ("scenes", "review"):
+    for key in JSON_COLUMNS:
         if key in fields and not isinstance(fields[key], (str, type(None))):
             fields[key] = json.dumps(fields[key], ensure_ascii=False)
     fields["updated_at"] = now()
@@ -257,6 +300,18 @@ def used_signatures(conn: sqlite3.Connection) -> set[str]:
             "SELECT recipe_sig FROM stories WHERE status != 'rejected' AND recipe_sig IS NOT NULL"
         )
     }
+
+
+def best_shelved(conn: sqlite3.Connection, series: str) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM stories WHERE status = 'shelved' AND series = ? "
+        "ORDER BY pitch_score DESC, id LIMIT 1", (series,)
+    ).fetchone()
+
+
+def set_dossier(conn: sqlite3.Connection, inspiration_id: int, dossier: dict) -> None:
+    conn.execute("UPDATE inspirations SET dossier = ? WHERE id = ?",
+                 (json.dumps(dossier, ensure_ascii=False), inspiration_id))
 
 
 def backlog_counts(conn: sqlite3.Connection) -> dict[str, int]:
@@ -338,6 +393,36 @@ def record_cost(conn: sqlite3.Connection, *, pipeline: str, task: str, model: st
         "VALUES (?, ?, ?, ?, ?, ?, ?)",
         (now(), pipeline, task, model, input_units, output_units, usd),
     )
+
+
+# --- Performance feedback ---------------------------------------------------
+
+def record_performance(conn: sqlite3.Connection, story_id: int, **metrics: Any) -> None:
+    conn.execute(
+        "INSERT INTO performance (story_id, measured_at, views, avg_view_percentage, ctr, likes, comments) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (story_id, now(), metrics.get("views"), metrics.get("avg_view_percentage"),
+         metrics.get("ctr"), metrics.get("likes"), metrics.get("comments")),
+    )
+
+
+def latest_performance(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Each published story with its most recent metrics."""
+    return conn.execute(
+        "SELECT s.*, p.views, p.avg_view_percentage, p.ctr, p.likes, p.comments FROM stories s "
+        "JOIN performance p ON p.story_id = s.id WHERE p.id = ("
+        "  SELECT MAX(id) FROM performance WHERE story_id = s.id)"
+    ).fetchall()
+
+
+def save_learnings(conn: sqlite3.Connection, insights: list[str]) -> None:
+    conn.execute("INSERT INTO learnings (created_at, insights) VALUES (?, ?)",
+                 (now(), json.dumps(insights, ensure_ascii=False)))
+
+
+def latest_learnings(conn: sqlite3.Connection) -> list[str]:
+    row = conn.execute("SELECT insights FROM learnings ORDER BY id DESC LIMIT 1").fetchone()
+    return json.loads(row["insights"]) if row else []
 
 
 def month_spend(conn: sqlite3.Connection) -> float:

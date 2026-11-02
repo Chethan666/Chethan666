@@ -8,20 +8,21 @@ import logging
 import random
 import sys
 
-from . import catalog, db, pipeline, research
+from . import catalog, db, learning, pipeline, research
 from .config import load_config
-from .llm import BudgetExceeded, GeminiClient, LLMError
+from .llm import BudgetExceeded, LLMError, ModelSpec
+from .router import Router
 
 
 def _context(cfg: dict) -> pipeline.Context:
     conn = db.connect(cfg["database"])
-    return pipeline.Context(conn=conn, cfg=cfg, llm=GeminiClient(cfg, conn), rng=random.Random())
+    return pipeline.Context(conn=conn, cfg=cfg, router=Router(cfg, conn), rng=random.Random())
 
 
 def _story_json(row) -> dict:
     story = dict(row)
     story.pop("synopsis_embedding", None)
-    for key in ("scenes", "review", "inspiration_ids"):
+    for key in ("inspiration_ids", *db.JSON_COLUMNS):
         if story.get(key):
             story[key] = json.loads(story[key])
     return story
@@ -34,7 +35,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("init", help="create the database and seed the story world")
-    sub.add_parser("models", help="list Gemini models available to your API key")
+    sub.add_parser("models", help="check every configured model against what your API keys can use")
     p = sub.add_parser("research", help="collect folklore and audience-demand signals")
     p.add_argument("--skip-wikipedia", action="store_true")
     p.add_argument("--skip-youtube", action="store_true")
@@ -54,6 +55,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("id", type=int)
     p.add_argument("status", choices=db.STATUSES)
     p.add_argument("--video-id")
+    p = sub.add_parser("record-performance", help="(production pipeline) save a video's YouTube metrics")
+    p.add_argument("id", type=int)
+    p.add_argument("--views", type=int)
+    p.add_argument("--avg-view-percentage", type=float)
+    p.add_argument("--ctr", type=float)
+    p.add_argument("--likes", type=int)
+    p.add_argument("--comments", type=int)
+    sub.add_parser("learn", help="turn real performance into lessons for future pitches")
 
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -64,9 +73,20 @@ def main(argv: list[str] | None = None) -> int:
         db.connect(cfg["database"])
         print(f"Database ready at {cfg['database']}")
     elif args.command == "models":
-        conn = db.connect(cfg["database"])
-        for model in GeminiClient(cfg, conn).list_models():
-            print(f"{model['name']:<45} {', '.join(model['methods'])}")
+        router = Router(cfg, db.connect(cfg["database"]))
+        available: dict[str, list[str] | None] = {}
+        for role, specs in cfg["roles"].items():
+            for text in specs:
+                spec = ModelSpec.parse(text)
+                if spec.provider not in available:
+                    try:
+                        available[spec.provider] = router._client(text).list_models()
+                    except (LLMError, Exception) as exc:  # missing key or SDK: report, keep going
+                        print(f"{spec.provider}: cannot list models ({exc})")
+                        available[spec.provider] = None
+                models = available[spec.provider]
+                state = "UNVERIFIED" if models is None else "OK" if spec.model in models else "NOT FOUND"
+                print(f"{role:<11} {text:<45} {state}")
     elif args.command == "research":
         conn = db.connect(cfg["database"])
         if not args.skip_wikipedia:
@@ -87,7 +107,9 @@ def main(argv: list[str] | None = None) -> int:
         for name, target in cfg["backlog"].items():
             print(f"  {name:<16} {backlog.get(name, 0)}/{target}")
         print("All stories:", json.dumps(db.status_counts(conn)))
-        print(f"Spend this month: ${db.month_spend(conn):.2f} of ${cfg['budget']['monthly_cap_usd']:.2f}")
+        cap = cfg["budget"]["monthly_cap_usd"]
+        print(f"Spend this month: ${db.month_spend(conn):.2f}" + (f" of ${cap:.2f}" if cap else " (no cap)"))
+        print("Shelved pitches waiting:", db.status_counts(conn).get("shelved", 0))
     elif args.command == "show":
         row = db.get_story(db.connect(cfg["database"]), args.id)
         if row is None:
@@ -112,6 +134,15 @@ def main(argv: list[str] | None = None) -> int:
             fields["published_at"] = db.now()
         db.update_story(conn, args.id, **fields)
         print(f"Story #{args.id} -> {args.status}")
+    elif args.command == "record-performance":
+        db.record_performance(db.connect(cfg["database"]), args.id, views=args.views,
+                              avg_view_percentage=args.avg_view_percentage, ctr=args.ctr,
+                              likes=args.likes, comments=args.comments)
+        print(f"Metrics saved for story #{args.id}")
+    elif args.command == "learn":
+        ctx = _context(cfg)
+        insights = learning.learn(ctx.conn, ctx.router)
+        print("\n".join(f"- {i}" for i in insights) or "Not enough published videos with metrics yet")
     return 0
 
 

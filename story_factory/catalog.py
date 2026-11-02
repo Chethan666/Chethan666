@@ -188,30 +188,39 @@ class Recipe:
         return f"{self.setting}|{self.core_fear}|{self.twist}"
 
 
+def _choose(rng: random.Random, values: list[str] | tuple[str, ...], weights: dict[str, float] | None) -> str:
+    if not weights:
+        return rng.choice(values)
+    return rng.choices(values, weights=[weights.get(v, 1.0) for v in values])[0]
+
+
 def pick_recipe(
     rng: random.Random,
     series: Series,
     recent: list[dict],
     used_signatures: set[str],
     dedup_cfg: dict,
+    weights: dict[str, dict[str, float]] | None = None,
     max_draws: int = 2000,
 ) -> Recipe:
     """Draw a recipe whose signature is new and that respects the cooldowns.
 
     `recent` holds the latest non-rejected stories, newest first, as dicts with
-    `setting`, `core_fear` and `twist` keys.
+    `setting`, `core_fear` and `twist` keys. `weights` (from real audience
+    retention) makes better-performing ingredients more likely.
     """
+    weights = weights or {}
     blocked_settings = {s["setting"] for s in recent[: dedup_cfg["setting_cooldown"]]}
     blocked_twists = {s["twist"] for s in recent[: dedup_cfg["twist_cooldown"]]}
     blocked_fears = {s["core_fear"] for s in recent[: dedup_cfg["fear_cooldown"]]}
     for _ in range(max_draws):
         recipe = Recipe(
-            setting=rng.choice(SETTINGS),
-            core_fear=rng.choice(CORE_FEARS),
+            setting=_choose(rng, SETTINGS, weights.get("setting")),
+            core_fear=_choose(rng, CORE_FEARS, weights.get("core_fear")),
             protagonist=rng.choice(PROTAGONISTS),
-            format=rng.choice(series.formats),
-            twist=rng.choice(TWISTS),
-            ending=rng.choice(series.endings),
+            format=_choose(rng, series.formats, weights.get("format")),
+            twist=_choose(rng, TWISTS, weights.get("twist")),
+            ending=_choose(rng, series.endings, weights.get("ending")),
         )
         if (
             recipe.signature not in used_signatures
