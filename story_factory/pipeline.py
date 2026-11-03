@@ -368,21 +368,27 @@ def draft_contest(ctx: Context, story: Story, outline: dict[str, Any]) -> tuple[
 def fit_length(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, Any]:
     """Bring the script inside the word range with a dedicated edit (models count words badly).
 
-    Keeps the original if the edits don't land in range.
+    Keeps whichever version came closest to the range.
     """
     lo, hi = word_range(ctx.cfg, story.series.kind)
     reviser = ctx.router.one("reviser")
-    candidate = script
-    for _ in range(ctx.cfg["quality"]["length_fix_attempts"]):
+
+    def distance(candidate: dict[str, Any]) -> int:
         words = len(narration_of(candidate).split())
-        if lo <= words <= hi:
-            if candidate is not script:
-                story.note("fit_length", words=words)
-            return candidate
+        return max(lo - words, 0, words - hi)
+
+    best = candidate = script
+    for _ in range(ctx.cfg["quality"]["length_fix_attempts"]):
+        if distance(candidate) == 0:
+            break
+        words = len(narration_of(candidate).split())
         candidate = tidy(reviser.generate_json("fit_length", prompts.SYSTEM_WRITER,
                                                prompts.fit_length(candidate, words, lo, hi), schemas.SCRIPT))
-    words = len(narration_of(candidate).split())
-    return candidate if lo <= words <= hi else script
+        if distance(candidate) < distance(best):
+            best = candidate
+    if best is not script:
+        story.note("fit_length", words=len(narration_of(best).split()), in_range=distance(best) == 0)
+    return best
 
 
 def repair(ctx: Context, story: Story, script: dict[str, Any], notes: list[str]) -> dict[str, Any]:
@@ -433,8 +439,7 @@ def editors_loop(ctx: Context, story: Story, script: dict[str, Any], author_fami
             return script, agg, ""
         if round_ == cfg["quality"]["max_revisions"]:
             return None, agg, "; ".join(issues[:6])
-        script = reviser.generate_json("revise", prompts.SYSTEM_WRITER,
-                                       prompts.revise(kind, script, issues, lo, hi), schemas.SCRIPT)
+        script = repair(ctx, story, script, issues)
         author_family = reviser.spec.family
         story.authors["reviser"] = reviser.spec.label
     raise AssertionError("unreachable")

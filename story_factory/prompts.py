@@ -267,7 +267,9 @@ def fit_length(script: dict[str, Any], current: int, min_words: int, max_words: 
 
 
 def revise(kind: str, script: dict[str, Any], notes: list[str], min_words: int, max_words: int) -> str:
-    return (f"Current script:\n{json.dumps(script, ensure_ascii=False)}\n\nEditors' notes:\n"
+    current = len(" ".join(str(script.get(k, "")) for k in ("intro", "body", "outro")).split())
+    return (f"Current script ({current} words; it must stay {min_words}-{max_words}):\n"
+            f"{json.dumps(script, ensure_ascii=False)}\n\nEditors' notes:\n"
             + "\n".join(f"- {n}" for n in notes)
             + f"\n\nRevise the script to address every note while keeping what already works. "
             f"intro + body + outro: {min_words}-{max_words} words. Return every field.")
