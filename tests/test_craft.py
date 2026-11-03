@@ -177,6 +177,9 @@ class StructureTests(unittest.TestCase):
         self.assertEqual(pipeline.tidy(short, "short")["intro"], "")
         short["body"] = "The lantern is lit. At 3:47 her phone played a song. " + short["body"]
         self.assertTrue(pipeline.tidy(short, "short")["body"].startswith("At 3:47"))
+        short["body"] = "You sign off on car 4. The lantern is lit. Pine smoke and wool. Is the lantern lit? No."
+        self.assertEqual(pipeline.tidy(short, "short")["body"],
+                         "You sign off on car 4. Pine smoke and wool. Is the lantern lit? No.")
 
 
 class StyleTests(unittest.TestCase):
