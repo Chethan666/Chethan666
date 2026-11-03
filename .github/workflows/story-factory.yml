@@ -107,17 +107,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-        run: |
-          id=$(gh api "repos/$REPO/actions/artifacts?per_page=100" --jq \
-            '[.artifacts[] | select(.expired == false and (.name == "story-db" or (.name | startswith("stories-"))))][0].id // empty')
-          if [ -n "$id" ]; then
-            mkdir -p data
-            gh api "repos/$REPO/actions/artifacts/$id/zip" > "$RUNNER_TEMP/story-db.zip"
-            unzip -o "$RUNNER_TEMP/story-db.zip" -d data
-            echo "Restored the story database from artifact $id"
-          else
-            echo "No saved story database yet; starting a new one"
-          fi
+        run: .github/scripts/restore-story-db.sh
 
       - name: Wikipedia research
         if: env.MODE == 'story'

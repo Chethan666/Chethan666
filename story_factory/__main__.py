@@ -209,7 +209,8 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "report":
         conn = db.connect(cfg["database"])
         row = db.get_story(conn, args.id) if args.id else conn.execute(
-            "SELECT * FROM stories WHERE status != 'shelved' ORDER BY id DESC LIMIT 1").fetchone()
+            # The story worked on last (a shelved idea developed today has an old id).
+            "SELECT * FROM stories WHERE status != 'shelved' ORDER BY updated_at DESC, id DESC LIMIT 1").fetchone()
         print(report(conn, row) if row else "No stories yet.")
     elif args.command == "ping":
         router = Router(cfg, db.connect(cfg["database"]))
