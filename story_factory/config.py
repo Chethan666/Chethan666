@@ -49,9 +49,9 @@ DEFAULTS: dict[str, Any] = {
             "region": "us-east-1",
             "max_tokens": 64000,
             "timeout_s": 900,
-            # Bedrock's OpenAI-compatible endpoint. AWS pages disagree between /openai/v1
-            # and /v1; if `models` can't list models, try the other.
-            "openai_base_url": "https://bedrock-mantle.{region}.api.aws/openai/v1",
+            # Bedrock's OpenAI-compatible endpoint (/v1 confirmed by a live run; a 404 is
+            # still retried on /openai/v1).
+            "openai_base_url": "https://bedrock-mantle.{region}.api.aws/v1",
             # Models served through the Responses API there; others use Chat Completions.
             "responses_api_models": ["openai.gpt-5"],
         },

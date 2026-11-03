@@ -103,7 +103,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--comments", type=int)
     sub.add_parser("learn", help="turn real performance into lessons for future pitches")
     sub.add_parser("stats", help="cost per story, winning models and common rejection reasons")
-    sub.add_parser("ping", help="send a tiny real request to every configured model (costs a fraction of a cent)")
+    p = sub.add_parser("ping", help="send a tiny real request to every configured model (costs a fraction of a cent)")
+    p.add_argument("--models", help="comma-separated provider:model specs to test instead of the configured roles")
     p = sub.add_parser("report", help="Markdown summary of a story (default: the latest)")
     p.add_argument("id", type=int, nargs="?")
 
@@ -201,10 +202,12 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "ping":
         router = Router(cfg, db.connect(cfg["database"]))
         failed = 0
-        for text in dict.fromkeys(t for specs in cfg["roles"].values() for t in specs):
+        specs = ([t.strip() for t in args.models.split(",") if t.strip()] if args.models
+                 else [t for specs in cfg["roles"].values() for t in specs])
+        for text in dict.fromkeys(specs):
             try:
                 client = router._client(text)
-                if hasattr(client, "embed") and text in cfg["roles"]["embedder"]:
+                if hasattr(client, "embed") and (text in cfg["roles"]["embedder"] or "embed" in text):
                     result = f"OK ({len(client.embed('A lantern in the fog.'))} dimensions)"
                 else:
                     reply = client.generate_json("ping", "You answer with JSON only.", 'Reply {"ok": true}.', PING_SCHEMA)

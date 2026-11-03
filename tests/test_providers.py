@@ -227,12 +227,12 @@ class AWSClientTests(unittest.TestCase):
         import openai
 
         gpt = providers.build(ModelSpec.parse("aws:openai.gpt-5.5@low"), self.cfg, self.recorder)
-        self.assertEqual(str(gpt.client.base_url), "https://bedrock-mantle.us-east-1.api.aws/openai/v1/")
+        self.assertEqual(str(gpt.client.base_url), "https://bedrock-mantle.us-east-1.api.aws/v1/")
         grok = providers.build(ModelSpec.parse("aws:xai.grok-4.6"), self.cfg, self.recorder)
         grok.client = openai.OpenAI(api_key="k", base_url=str(grok.client.base_url), http_client=self.transport([
             (200, json.dumps(XAIClientTests.completion('{"winner": "A"}')).encode(), "application/json")]))
         self.assertEqual(grok.generate_json("t", "s", "p", {"type": "object"}), {"winner": "A"})
-        self.assertEqual(self.requests[0].url.path, "/openai/v1/chat/completions")
+        self.assertEqual(self.requests[0].url.path, "/v1/chat/completions")
         self.assertEqual(json.loads(self.requests[0].content)["model"], "xai.grok-4.6")
 
     def test_404_switches_to_the_other_bedrock_address(self):
@@ -244,9 +244,9 @@ class AWSClientTests(unittest.TestCase):
             (404, b'{"error": {"message": "not found"}}', "application/json"),
             (200, ok, "application/json"), (200, ok, "application/json")]))
         self.assertEqual(grok.generate_json("t", "s", "p", {"type": "object"}), {"winner": "B"})
-        self.assertEqual([r.url.path for r in self.requests], ["/openai/v1/chat/completions", "/v1/chat/completions"])
+        self.assertEqual([r.url.path for r in self.requests], ["/v1/chat/completions", "/openai/v1/chat/completions"])
         grok.generate_json("t", "s", "p", {"type": "object"})  # stays on the address that worked
-        self.assertEqual(self.requests[-1].url.path, "/v1/chat/completions")
+        self.assertEqual(self.requests[-1].url.path, "/openai/v1/chat/completions")
 
     def test_missing_bedrock_key_is_reported(self):
         del os.environ["AWS_BEARER_TOKEN_BEDROCK"]
