@@ -26,3 +26,6 @@ region = "us-east-1"
 [quality]
 # Allow an extra editing round; these models revise in smaller steps.
 max_revisions = 3
+# Test bar for open models. The main setup (Claude and GPT writers) keeps 8; raise this
+# back to 8 before publishing anything written by this setup.
+min_score = 7
