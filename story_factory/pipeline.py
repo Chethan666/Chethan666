@@ -385,6 +385,28 @@ def fit_length(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, 
     return candidate if lo <= words <= hi else script
 
 
+def repair(ctx: Context, story: Story, script: dict[str, Any], notes: list[str]) -> dict[str, Any]:
+    """Fix specific problems without breaking the script's structure.
+
+    Revise against the notes, refit the length, then make one targeted repair of
+    anything structural (length, closing question) the revision broke.
+    """
+    kind = story.series.kind
+    lo, hi = word_range(ctx.cfg, kind)
+    reviser = ctx.router.one("reviser")
+    keep = ("Keep the structure: the outro must still end with exactly one question to the viewer, "
+            "and change only what these notes require.")
+    fixed = tidy(reviser.generate_json("revise", prompts.SYSTEM_WRITER,
+                                       prompts.revise(kind, script, [*notes, keep], lo, hi), schemas.SCRIPT))
+    fixed = fit_length(ctx, story, fixed)
+    structural = script_issues(fixed, kind, ctx.cfg)
+    if structural:
+        fixed = tidy(reviser.generate_json("revise", prompts.SYSTEM_WRITER,
+                                           prompts.revise(kind, fixed, [*structural, keep], lo, hi), schemas.SCRIPT))
+        fixed = fit_length(ctx, story, fixed)
+    return fixed
+
+
 def editors_loop(ctx: Context, story: Story, script: dict[str, Any], author_family: str,
                  story_id: int) -> tuple[dict[str, Any] | None, dict[str, Any], str]:
     """Review and revise until every editor median clears the bar. Returns (script|None, review, reason)."""
@@ -714,10 +736,8 @@ def develop(ctx: Context, story_id: int, story: Story) -> Outcome:
 
     problems = final_check(ctx, story, script)
     if problems:
-        reviser = ctx.router.one("reviser")
-        lo, hi = word_range(ctx.cfg, kind)
-        fixed = reviser.generate_json("revise", prompts.SYSTEM_WRITER,
-                                      prompts.revise(kind, script, problems, lo, hi), schemas.SCRIPT)
+        story.note("final_check", problems=problems[:4])
+        fixed = repair(ctx, story, script, problems)
         problems = script_issues(fixed, kind, ctx.cfg) or final_check(ctx, story, fixed)
         if problems:
             return _reject(ctx, story_id, series.name, "final check: " + "; ".join(problems[:4]), review, story)

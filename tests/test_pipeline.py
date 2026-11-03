@@ -128,6 +128,24 @@ class WritersRoomTests(unittest.TestCase):
         self.assertEqual(outcome.status, "rejected")
         self.assertIn("final check", outcome.detail)
 
+    def test_final_check_fix_that_breaks_structure_is_repaired(self):
+        ctx, brain = make_context()
+        brain.final_issues.extend([["the legend's region is wrong"]])
+        calls = []
+
+        def revise(prompt, spec):
+            calls.append(prompt)
+            script = brain.make_script(False)
+            if len(calls) == 1:  # the first fix forgets the closing question
+                script["outro"] = "Some rides never end."
+            return script
+
+        brain.overrides["revise"] = revise
+        outcome = pipeline.generate_story(ctx, "sixty_seconds")
+        self.assertEqual(outcome.status, "approved", outcome.detail)
+        self.assertEqual(len(calls), 2)
+        self.assertIn("must end with one question", calls[1])
+
     def test_model_failure_mid_story_does_not_leave_it_stuck(self):
         ctx, brain = make_context()
 
