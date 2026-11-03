@@ -117,6 +117,8 @@ DEFAULTS: dict[str, Any] = {
         "bible_min_coverage": 0.75,
         # Dedicated line edits for machine-sounding phrasing before each editor round.
         "style_fix_attempts": 2,
+        # Repair rounds when the final check finds must-fix issues.
+        "final_check_repairs": 2,
         # Dramatic pauses the polish step may mark for the narrator.
         "max_pauses_long": 12,
         "max_pauses_short": 3,

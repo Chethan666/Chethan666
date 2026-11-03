@@ -318,8 +318,12 @@ def bible_issues(bible: dict[str, Any], kind: str) -> list[str]:
     return issues
 
 
-def bible_promises(bible: dict[str, Any], kind: str) -> list[tuple[str, str]]:
-    """What the finished script must visibly deliver, as (id, requirement) pairs."""
+def bible_promises(bible: dict[str, Any], kind: str, dossier: dict | None = None) -> list[tuple[str, str]]:
+    """What the finished script must visibly deliver, as (id, requirement) pairs.
+
+    For a retold legend, its traditional core elements are promises too, so accuracy
+    is fixed during editing rather than discovered at the final check.
+    """
     hero, threat = bible.get("hero") or {}, bible.get("threat") or {}
     items = [("human_detail", f"the hero's human detail appears: {hero.get('human_detail', '')}"),
              ("want", f"we learn what the hero wants: {hero.get('want', '')}")]
@@ -339,6 +343,9 @@ def bible_promises(bible: dict[str, Any], kind: str) -> list[tuple[str, str]]:
         if isinstance(clue, dict):
             items += [(f"clue{i}_plant", f"clue planted early: {clue.get('plant', '')}"),
                       (f"clue{i}_payoff", f"clue paid off later: {clue.get('payoff', '')}")]
+    for i, element in enumerate((dossier or {}).get("core_elements") or [], 1):
+        if i <= 3 and str(element).strip():
+            items.append((f"legend{i}", f"the legend's traditional core is told accurately: {element}"))
     return [(i, r) for i, r in items if r.split(":", 1)[1].strip()]
 
 
@@ -775,7 +782,7 @@ def check_bible(ctx: Context, story: Story, script: dict[str, Any],
     """
     if not story.bible:
         return [], []
-    promises = bible_promises(story.bible, story.series.kind)
+    promises = bible_promises(story.bible, story.series.kind, story.dossier)
     if not promises:
         return [], []
     judge = FailoverJudge(ctx.router.judges([author_family]))
@@ -947,18 +954,28 @@ def polish(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[dict[str
     return candidate, [p for p in result.get("pronunciations", []) if p.get("word")], pauses
 
 
-def final_check(ctx: Context, story: Story, script: dict[str, Any]) -> list[str]:
+def final_check(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """Returns (must-fix issues, minor suggestions). Rule violations always must be fixed."""
     results = ctx.router.panel(
         lambda judge: judge.generate_json("final_check", prompts.SYSTEM_EDITOR,
                                           prompts.final_check(script, story.dossier), schemas.FINAL_CHECK),
         ctx.router.judges([ctx.router.one("polisher").spec.family]))
-    issues = sorted({f"rule violation: {f.replace('_', ' ')}" for r in results
-                     for f, raised in r.get("flags", {}).items() if raised is True})
+    blocking = sorted({f"rule violation: {f.replace('_', ' ')}" for r in results
+                       for f, raised in r.get("flags", {}).items() if raised is True})
+    minor: list[str] = []
     for r in results:
+        groups = [("cultural", r.get("cultural_issues", []))]
         if story.dossier:  # original stories have no legend to be inaccurate about
-            issues += [f"accuracy: {i}" for i in r.get("accuracy_issues", []) if _real_issue(i)]
-        issues += [f"cultural: {i}" for i in r.get("cultural_issues", []) if _real_issue(i)]
-    return list(dict.fromkeys(issues))
+            groups.insert(0, ("accuracy", r.get("accuracy_issues", [])))
+        for label, items in groups:
+            for item in items:
+                # A plain string (from a model that ignored the schema) counts as must-fix.
+                text = item.get("issue", "") if isinstance(item, dict) else item
+                if not _real_issue(text):
+                    continue
+                severe = not isinstance(item, dict) or item.get("severity") != "minor"
+                (blocking if severe else minor).append(f"{label}: {str(text).strip()}")
+    return list(dict.fromkeys(blocking)), list(dict.fromkeys(minor))
 
 
 NOT_AN_ISSUE = re.compile(
@@ -1220,15 +1237,19 @@ def develop(ctx: Context, story_id: int, story: Story) -> Outcome:
     script, audience_report = audience_test(ctx, story, script)
     script, pronunciations, pauses = polish(ctx, story, script)
 
-    problems = final_check(ctx, story, script)
+    problems, minor = final_check(ctx, story, script)
+    for _ in range(ctx.cfg["quality"]["final_check_repairs"]):
+        if not problems:
+            break
+        story.note("final_check", problems=problems[:4], minor=len(minor))
+        fixed = repair(ctx, story, script, problems + minor)
+        problems = script_issues(fixed, kind, ctx.cfg)
+        if not problems:
+            script = fixed
+            problems, minor = final_check(ctx, story, script)
     if problems:
-        story.note("final_check", problems=problems[:4])
-        fixed = repair(ctx, story, script, problems)
-        problems = script_issues(fixed, kind, ctx.cfg) or final_check(ctx, story, fixed)
-        if problems:
-            return _reject(ctx, story_id, series.name, "final check: " + "; ".join(problems[:4]), review, story)
-        script = fixed
-    story.note("final_check", clear=True)
+        return _reject(ctx, story_id, series.name, "final check: " + "; ".join(problems[:4]), review, story)
+    story.note("final_check", clear=True, minor_left=minor[:4])
 
     narration = narration_of(script)
     copy = dedup.check_script(ctx.conn, ctx.cfg, story_id, narration, _sources(story))

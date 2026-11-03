@@ -92,8 +92,11 @@ POLISH = obj(intro=S, body=S, outro=S, pronunciations=arr(obj(word=S, say_as=S))
              # Silences for the narrator: after this exact phrase, pause this long.
              pauses=arr(obj(after=S, ms=I)))
 
-FINAL_CHECK = obj(flags=obj(**{f: B for f in SAFETY_FLAGS}), accuracy_issues=arr(S),
-                  cultural_issues=arr(S))
+# Judges grade each issue: only must_fix blocks; minor ones are offered to the reviser.
+ISSUE = obj(issue=S, severity=enum("must_fix", "minor"))
+
+FINAL_CHECK = obj(flags=obj(**{f: B for f in SAFETY_FLAGS}), accuracy_issues=arr(ISSUE),
+                  cultural_issues=arr(ISSUE))
 
 # How the narrator should deliver a scene; the voice step turns these into direction.
 DELIVERIES = ("steady", "slow", "tense", "hushed", "urgent", "tender")

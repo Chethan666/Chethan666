@@ -43,7 +43,9 @@ Its goal is the best possible story, not the cheapest. Every step either creates
                     → weak parts are rewritten, kept only if judges agree the new version is better
  8. POLISH          read-aloud line edit for one narrator voice, a pronunciation guide and up to 12
                     DRAMATIC PAUSES for the voice engine (discarded if it changes the story)
- 9. FINAL CHECK     rule violations, legend accuracy against the dossier, cultural sensitivity
+ 9. FINAL CHECK     rule violations, legend accuracy against the dossier, cultural sensitivity; judges
+                    grade each issue must-fix or minor, only must-fix blocks (two repair rounds).
+                    A retold legend's core elements are story-bible promises, checked while editing
 10. SCENE PLAN      exact narration spans, visuals (red only for the story's red accent), sound cues
                     including the story's sound motif, a delivery cue for the narrator, key moments,
                     and a CAST with one fixed look per character (recurring characters keep their look)

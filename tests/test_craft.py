@@ -349,6 +349,35 @@ class ChannelGrowthTests(unittest.TestCase):
         self.assertEqual(brain.tasks("rewrite_chunks"), [])
 
 
+class FinalCheckTests(unittest.TestCase):
+    def graded(self, *issues):
+        return lambda prompt, spec: {"flags": {"gore": False}, "accuracy_issues": [],
+                                     "cultural_issues": [{"issue": i, "severity": sev} for i, sev in issues]}
+
+    def test_minor_suggestions_never_block(self):
+        ctx, brain = make_context()
+        brain.overrides["final_check"] = self.graded(("explain the Angelus bell", "minor"))
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        self.assertEqual(outcome.status, "approved", outcome.detail)
+        self.assertEqual(brain.tasks("revise"), [])
+
+    def test_must_fix_issues_get_two_repair_rounds(self):
+        ctx, brain = make_context()
+        brain.overrides["final_check"] = self.graded(("a stereotype in part two", "must_fix"))
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        self.assertEqual(outcome.status, "rejected")
+        self.assertIn("a stereotype in part two", outcome.detail)
+        self.assertEqual(len(brain.tasks("revise")), ctx.cfg["quality"]["final_check_repairs"])
+
+    def test_legend_core_is_a_promise_checked_while_editing(self):
+        bible = Brain()._story_bible("", None)
+        dossier = {"core_elements": ["punishes those who work the fields at noon", "carries a scythe"]}
+        promises = dict(pipeline.bible_promises(bible, "long", dossier))
+        self.assertIn("punishes those who work the fields at noon", promises["legend1"])
+        self.assertIn("legend2", promises)
+        self.assertNotIn("legend1", dict(pipeline.bible_promises(bible, "long")))
+
+
 class BenchmarkTests(unittest.TestCase):
     def test_benchmark_compares_two_setups_blind(self):
         brain = Brain()
