@@ -297,7 +297,8 @@ def story_bible(*, series: Any, kind: str, recipe: Any, formats: dict[str, str],
         "Recipe:\n" + _recipe(recipe, formats, endings),
         "Approved pitch:\n" + _pitch(pitch), _legend(legend, dossier), _world(world),
         "Before any plotting, make the storyteller's decisions for this episode, as a story bible.\n"
-        "hero: a specific person, not a job. name; who (age, life, in one line); want (what they are "
+        "hero: a specific person, not a job. name (invented, and not the name of any famous real "
+        "person); who (age, life, in one line); want (what they are "
         "trying to get tonight); wound (the past hurt that shapes them); flaw (what will lead them "
         "into a mistake); false_belief (what they wrongly believe, which the ending tests); "
         "human_detail (one small, specific habit or object that makes us love them); voice (how "
@@ -324,7 +325,8 @@ def review_bible(kind: str, pitch: dict[str, Any], bible: dict[str, Any]) -> str
             "that matter to the plot; the threat's rules are consistent and its limits create "
             "suspense; the theme and the ending's answer feel true; the hero's choice is active and "
             "understandable; the clues are fair and their payoffs surprising; and nothing is generic "
-            "or cliched. List each specific problem otherwise.")
+            "or cliched; and no character shares the name of a famous real person. List each specific "
+            "problem otherwise.")
 
 
 def revise_bible(bible: dict[str, Any], problems: list[str]) -> str:
