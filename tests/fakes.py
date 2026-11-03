@@ -174,7 +174,8 @@ class Brain:
 
     def _final_check(self, prompt: str, spec: ModelSpec) -> dict:
         issues = self.final_issues.popleft() if self.final_issues else []
-        return {"flags": {"gore": False}, "accuracy_issues": issues, "cultural_issues": []}
+        # Cultural issues apply to every story (accuracy only to retold legends).
+        return {"flags": {"gore": False}, "accuracy_issues": [], "cultural_issues": issues}
 
     def _scene_plan(self, prompt: str, spec: ModelSpec) -> dict:
         narration = _between(prompt, "NARRATION:\n", "\nTASK: Split")

@@ -539,9 +539,21 @@ def final_check(ctx: Context, story: Story, script: dict[str, Any]) -> list[str]
     issues = sorted({f"rule violation: {f.replace('_', ' ')}" for r in results
                      for f, raised in r.get("flags", {}).items() if raised is True})
     for r in results:
-        issues += [f"accuracy: {i}" for i in r.get("accuracy_issues", []) if str(i).strip()]
-        issues += [f"cultural: {i}" for i in r.get("cultural_issues", []) if str(i).strip()]
+        if story.dossier:  # original stories have no legend to be inaccurate about
+            issues += [f"accuracy: {i}" for i in r.get("accuracy_issues", []) if _real_issue(i)]
+        issues += [f"cultural: {i}" for i in r.get("cultural_issues", []) if _real_issue(i)]
     return list(dict.fromkeys(issues))
+
+
+NOT_AN_ISSUE = re.compile(
+    r"^\W*(none|no (issues?|problems?|errors?|concerns?)|n/?a|not applicable|nothing|clear|"
+    r"(the )?story is (an )?original|no (specific )?legend)", re.IGNORECASE)
+
+
+def _real_issue(text: Any) -> bool:
+    """Judges sometimes write "None" or "story is original fiction" into an issue list."""
+    text = str(text).strip()
+    return bool(text) and not NOT_AN_ISSUE.match(text)
 
 
 def plan_scenes(ctx: Context, kind: str, narration: str) -> tuple[list | None, list[dict], list[str]]:

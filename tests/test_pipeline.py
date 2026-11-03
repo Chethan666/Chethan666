@@ -159,6 +159,15 @@ class WritersRoomTests(unittest.TestCase):
         with self.assertRaises(LLMError):
             pipeline.generate_story(ctx, "sixty_seconds")
 
+    def test_non_issues_in_the_final_check_are_ignored(self):
+        ctx, brain = make_context()
+        brain.final_issues.extend([["No specific legend or culture referenced; story is original fiction."],
+                                   ["None"], ["N/A"], []])
+        self.assertEqual(pipeline.generate_story(ctx, "sixty_seconds").status, "approved")
+        self.assertEqual(brain.tasks("revise"), [])
+        self.assertFalse(pipeline._real_issue("none."))
+        self.assertTrue(pipeline._real_issue("The kris dagger belongs to Malay, not Thai, tradition"))
+
     def test_model_failure_mid_story_does_not_leave_it_stuck(self):
         ctx, brain = make_context()
 

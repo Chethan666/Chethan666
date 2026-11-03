@@ -305,11 +305,15 @@ def polish(kind: str, script: dict[str, Any], min_words: int, max_words: int) ->
 
 
 def final_check(script: dict[str, Any], dossier: dict | None) -> str:
-    accuracy = (f"Check the legend against this dossier:\n{json.dumps(dossier, ensure_ascii=False)}\n\n"
-                if dossier else "")
+    if dossier:
+        accuracy = (f"Check the legend against this dossier:\n{json.dumps(dossier, ensure_ascii=False)}\n\n")
+        task = "list factual errors about the legend"
+    else:
+        accuracy = "This is an original story, not a retold legend.\n\n"
+        task = "leave accuracy_issues empty (there is no legend to check)"
     return (f"{accuracy}Script:\n{_script(script)}\n\nFinal compliance check before publishing. Flag "
-            "any rule violation, list factual errors about the legend (if any) and anything "
-            "culturally insensitive. Empty lists mean it is clear.")
+            f"any rule violation, {task}, and list anything culturally insensitive. List only real "
+            "problems that must be fixed; empty lists mean it is clear.")
 
 
 def scene_plan(narration: str, scene_range: tuple[int, int], key_range: tuple[int, int],
