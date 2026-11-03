@@ -85,7 +85,8 @@ The Storyteller (the voice of every intro and outro):
 - Cold open, then ritual: every long episode's intro opens with one or two gripping
   sentences flashed forward from the story (present tense, a question without a spoiler),
   then exactly "The lantern is lit.", then at most one short line. Never a slow mood-setting
-  preamble: viewers decide in seconds. The outro lets the story's fear follow the viewer
+  preamble: viewers decide in seconds. Shorts never use the ritual: their first words are
+  the hook. The outro lets the story's fear follow the viewer
   home, and ends with exactly one question to the viewer.
 """
 

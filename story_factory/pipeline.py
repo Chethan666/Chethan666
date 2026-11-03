@@ -49,6 +49,7 @@ NAMED_FEELINGS = re.compile(
     r"uneasy|nervous|anxious|horrified|fear|dread|panic(ked)?)\b", re.IGNORECASE)
 # The Storyteller's ritual: every long episode's intro opens with it.
 RITUAL_OPENING = "The lantern is lit."
+RITUAL_AT_START = re.compile(r"^\s*the lantern is lit[.!,]?\s*", re.IGNORECASE)
 SENTENCE_END = re.compile(r"(?<=[.!?…])\s+")
 SCRIPT_FIELDS = ("intro", "body", "outro", "comment_question", "hook_line", "thumbnail_idea",
                  "description_credit", "new_entities", "referenced_entities")
@@ -114,6 +115,9 @@ def tidy(script: dict[str, Any], kind: str | None = None) -> dict[str, Any]:
     only returned it separately); hook_line is the body's first sentence. A long
     episode's intro always opens with the Storyteller's ritual line.
     """
+    if kind == "short":  # a Short's first seconds belong to the hook, never the ritual
+        for key in ("intro", "body"):
+            script[key] = RITUAL_AT_START.sub("", str(script.get(key) or "")).strip()
     intro = str(script.get("intro") or "").strip()
     if kind == "long" and intro and dedup.normalize(RITUAL_OPENING) not in dedup.normalize(intro):
         script["intro"] = f"{RITUAL_OPENING} {intro}"  # the cold open should precede it; better late than missing

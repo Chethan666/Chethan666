@@ -157,6 +157,8 @@ class StructureTests(unittest.TestCase):
         self.assertEqual(script["intro"].count("lantern is lit"), 1)
         short = Brain().make_script(long=False)
         self.assertEqual(pipeline.tidy(short, "short")["intro"], "")
+        short["body"] = "The lantern is lit. At 3:47 her phone played a song. " + short["body"]
+        self.assertTrue(pipeline.tidy(short, "short")["body"].startswith("At 3:47"))
 
 
 class StyleTests(unittest.TestCase):
