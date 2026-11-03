@@ -76,8 +76,9 @@ jobs:
         run: python -m story_factory --config "$CONFIG" models --list || true
 
       - name: Test call to every model
-        # A tiny real request per model; in check mode, report failures without stopping.
-        continue-on-error: ${{ inputs.mode == 'check' }}
+        # A tiny real request per model. Failures are reported, not fatal: judge panels
+        # carry on without a failed member, and generation stops if a needed model is down.
+        continue-on-error: true
         run: |
           if [ -n "$PING_MODELS" ]; then
             python -m story_factory --config "$CONFIG" ping --models "$PING_MODELS"

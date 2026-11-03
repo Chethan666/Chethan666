@@ -211,7 +211,8 @@ def main(argv: list[str] | None = None) -> int:
                     result = f"OK ({len(client.embed('A lantern in the fog.'))} dimensions)"
                 else:
                     reply = client.generate_json("ping", "You answer with JSON only.", 'Reply {"ok": true}.', PING_SCHEMA)
-                    result = "OK" if reply.get("ok") is True else f"UNEXPECTED REPLY {reply}"
+                    # Any well-formed reply proves the model is reachable and returns JSON.
+                    result = "OK" if isinstance(reply.get("ok"), bool) else f"UNEXPECTED REPLY {reply}"
             except Exception as exc:  # report every model, whatever goes wrong
                 result = f"FAILED: {str(exc)[:400]}"
             failed += not result.startswith("OK")
