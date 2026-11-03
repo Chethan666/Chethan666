@@ -107,6 +107,9 @@ SCENES = obj(
 HOOKS = obj(openings=arr(S))
 
 PACKAGING = obj(titles=arr(S), thumbnail_brief=S, thumbnail_text=S, description=S,
-                tags=arr(S), pinned_comment=S)
+                tags=arr(S), pinned_comment=S, end_screen_line=S)
+
+# A 60-second Short cut from a long episode, sending viewers to the full story.
+TEASER = obj(body=S, outro=S)
 
 LEARNINGS = obj(insights=arr(S))

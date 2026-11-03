@@ -26,7 +26,9 @@ Its goal is the best possible story, not the cheapest. Every step either creates
                     planned REHOOKS (~30 s, ~2 min, midpoint), a midpoint reversal and a peak moment
                     → free structure check → independent editors approve it or send it back
  4. DRAFT CONTEST   2 writers draft the script; long episodes are written in 3 PARTS (each part sees the
-                    story so far), then The Storyteller's intro and outro are written around them
+                    story so far), then The Storyteller's frame: a COLD OPEN flashed forward from the
+                    story, "The lantern is lit.", and an outro that lets the fear follow viewers home;
+                    Shorts aim for a last line that loops back into the first
                     → head-to-head judging
  5. EDITORS' LOOP   each round: fit the length → FREE STYLE CHECKS (machine-sounding phrases, named
                     feelings, long sentences, repeated openings, dashes, hard words) with a dedicated
@@ -45,8 +47,11 @@ Its goal is the best possible story, not the cheapest. Every step either creates
 10. SCENE PLAN      exact narration spans, visuals (red only for the story's red accent), sound cues
                     including the story's sound motif, a delivery cue for the narrator, key moments,
                     and a CAST with one fixed look per character (recurring characters keep their look)
-11. PACKAGING       5 titles, the top 3 ranked head-to-head, a thumbnail built on the red accent,
-                    description with credit, tags, pinned comment
+11. PACKAGING       5 titles, the top 3 ranked head-to-head, a phone-readable thumbnail (one or two
+                    figures, the red accent, at most 3 words) that adds to the title, description with
+                    credit, tags, pinned comment, and an end-screen line inviting the next story
+12. TEASER SHORT    every long episode also gets a 60-second teaser Short with its own scene plan,
+                    stopping on a cliffhanger that sends viewers to the full episode
                     → APPROVED, waiting for pipeline 2
 ```
 
@@ -83,7 +88,11 @@ models write even better from the same instructions. Every writer prompt carries
 - **A house style with examples**: three short original passages showing a hook, dramatic irony
   and an ending with an aftertaste, plus a "never like this" passage with its fix.
 - **The Storyteller's voice and ritual**: warm, unhurried, speaks to "you", never explains;
-  every long episode opens with "The lantern is lit." (added automatically if missing).
+  every long episode opens cold on a flash-forward, then "The lantern is lit." (added
+  automatically if missing). Simulated viewers rate the intro too.
+- **Every hero is new**: the story bible sees the heroes of the last 12 episodes and must
+  differ in age, gender, background and culture, with an invented name no famous person has.
+- **Advertiser-friendly**: strong profanity blocks a story.
 - **Writing for the ear and a global audience**: plain words, short sentences, a refrain,
   writing for sound.
 
@@ -98,6 +107,13 @@ config). A model that rejects the setting is retried without it.
 **Fewer judge calls, more writing**: quick comparisons (openings, titles, audience rewrites)
 use 2 judges, full contests 3 (`quick_judges`, `judges_per_comparison`). The savings pay for
 the story bible, writing in parts and the bible check.
+
+**Between GitHub runs, the database persists**: each run restores the database the last run
+saved (an Actions artifact kept 90 days and re-saved every run), so repeat prevention, the
+shelf, the shared world and the hero history all carry over.
+
+**Judges that loop fail fast**: quick judgments have a smaller output limit
+(`[task_max_tokens]`), so a model stuck in a loop gives up in seconds and the panel carries on.
 
 ## Benchmarking model setups
 

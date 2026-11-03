@@ -120,6 +120,13 @@ DEFAULTS: dict[str, Any] = {
         # Dramatic pauses the polish step may mark for the narrator.
         "max_pauses_long": 12,
         "max_pauses_short": 3,
+        # Packaging limits: a thumbnail must read at phone size.
+        "thumbnail_brief_max_words": 45,
+        "thumbnail_text_max_words": 4,
+        # Every long episode also gets a 60-second teaser Short pointing to it.
+        "teaser_shorts": True,
+        # Recent heroes the story bible must differ from.
+        "recent_heroes": 12,
         "audience_personas": [
             "a 24-year-old horror fan who plays story channels at night and is bored by cliches",
             "a 17-year-old Shorts scroller who leaves within seconds unless something grabs them",
@@ -148,6 +155,12 @@ DEFAULTS: dict[str, Any] = {
         "score_pitch": 0.2, "compare_pitches": 0.2, "compare_drafts": 0.2, "compare_openings": 0.2,
         "compare_titles": 0.2, "review": 0.2, "review_outline": 0.2, "review_bible": 0.2,
         "bible_check": 0.1, "final_check": 0.1, "judge_duplicate": 0.1, "scene_plan": 0.3,
+    },
+    # Output cap per task for chat-completion models: a quick judgment that runs past
+    # this is looping, so it fails fast and the panel carries on without it.
+    "task_max_tokens": {
+        "score_pitch": 6000, "compare_pitches": 6000, "compare_drafts": 6000, "compare_openings": 4000,
+        "compare_titles": 4000, "judge_duplicate": 4000, "review_outline": 8000, "review_bible": 8000,
     },
     "dedup": {
         "title_similarity": 0.85,

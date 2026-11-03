@@ -22,6 +22,7 @@ Rules that are never broken:
 - No real living or recently deceased people, real crimes, or real companies as villains.
 - No gore, torture or lingering injury; violence is implied, brief and off-screen.
 - No sexual content. No harm to children; children may appear only safely.
+- No strong profanity: the channel stays advertiser-friendly.
 - No suicide or self-harm methods.
 - No copyrighted characters, creatures or plots (famous creepypastas, film, TV or game monsters).
 - Treat every culture's folklore with accuracy and respect; no stereotypes.
@@ -81,9 +82,11 @@ The Storyteller (the voice of every intro and outro):
 - Speaks to the viewer as "you", like someone sharing a fire. Faintly amused by the dark,
   tender toward the people in the stories. Short sentences.
 - Never explains what a story meant.
-- Ritual: every long episode's intro begins with exactly "The lantern is lit." The intro
-  then sets the mood in a few lines without summarizing. The outro lets the story's fear
-  follow the viewer home, and ends with exactly one question to the viewer.
+- Cold open, then ritual: every long episode's intro opens with one or two gripping
+  sentences flashed forward from the story (present tense, a question without a spoiler),
+  then exactly "The lantern is lit.", then at most one short line. Never a slow mood-setting
+  preamble: viewers decide in seconds. The outro lets the story's fear follow the viewer
+  home, and ends with exactly one question to the viewer.
 """
 
 STYLE_SAMPLES = """\
@@ -288,7 +291,7 @@ def judge_duplicate(premise: dict[str, Any], existing: sqlite3.Row) -> str:
 
 def story_bible(*, series: Any, kind: str, recipe: Any, formats: dict[str, str], endings: dict[str, str],
                 pitch: dict[str, Any], legend: sqlite3.Row | None, dossier: dict | None,
-                world: Sequence[sqlite3.Row]) -> str:
+                world: Sequence[sqlite3.Row], recent_heroes: Sequence[str] = ()) -> str:
     size = ("" if kind == "long" else
             " This is a 60-second Short: keep every field to one short line, give one or two clues, "
             "and leave breath_moment, refrain and refrain_turn empty if there is no room.")
@@ -296,6 +299,9 @@ def story_bible(*, series: Any, kind: str, recipe: Any, formats: dict[str, str],
         f"Series: {series.title}. {series.description}",
         "Recipe:\n" + _recipe(recipe, formats, endings),
         "Approved pitch:\n" + _pitch(pitch), _legend(legend, dossier), _world(world),
+        ("Heroes of our recent episodes. Make this hero clearly different from all of them in age, "
+         "gender, background, culture and life situation, and never reuse their names:\n"
+         + "\n".join(f"- {h}" for h in recent_heroes)) if recent_heroes else "",
         "Before any plotting, make the storyteller's decisions for this episode, as a story bible.\n"
         "hero: a specific person, not a job. name (invented, and not the name of any famous real "
         "person); who (age, life, in one line); want (what they are "
@@ -363,7 +369,8 @@ def beat_sheet(*, series: Any, kind: str, recipe: Any, formats: dict[str, str], 
                      "peak_moment: the single most frightening moment.")
     else:
         shape = ("a hook in the first sentence; one fast escalation; the hero's choice if there is "
-                 "room; a sting in the final line; and a one-line Storyteller question")
+                 "room; a sting in the final line that, where it fits, loops back into the first line "
+                 "so a replay feels seamless; and a one-line Storyteller question")
         retention = ("rehooks: one question that lands by about 15 seconds. midpoint_reversal: "
                      "empty unless there is one. peak_moment: the sting.")
     return "\n\n".join(p for p in [
@@ -401,11 +408,13 @@ def write_draft(*, series: Any, kind: str, recipe: Any, formats: dict[str, str],
                 pitch: dict[str, Any], outline: dict[str, Any], min_words: int, max_words: int,
                 legend: sqlite3.Row | None, dossier: dict | None, world: Sequence[sqlite3.Row],
                 bible: dict | None = None) -> str:
-    structure = ("intro: The Storyteller, 25-60 words, sets the mood without summarizing. body: the "
-                 "story. outro: The Storyteller, 25-60 words, ending with exactly one question to "
-                 "the viewer." if kind == "long" else
-                 "intro: empty string. body: the story; the first sentence is the hook. outro: one "
-                 "short Storyteller line ending with a question to the viewer.")
+    structure = ("intro: The Storyteller, 30-60 words: a cold open of one or two sentences flashed "
+                 "forward from the story, then exactly \"The lantern is lit.\", then at most one short "
+                 "line. body: the story. outro: The Storyteller, 25-60 words, ending with exactly one "
+                 "question to the viewer." if kind == "long" else
+                 "intro: empty string. body: the story; the first sentence is the hook, and where it "
+                 "fits, the last line flows back into the first so a replay loops seamlessly. outro: "
+                 "one short Storyteller line ending with a question to the viewer.")
     return "\n\n".join(p for p in [
         f"Series: {series.title}. {series.description}",
         "Recipe:\n" + _recipe(recipe, formats, endings),
@@ -452,8 +461,10 @@ def write_frame(*, series: Any, kind: str, pitch: dict[str, Any], bible: dict | 
     return "\n\n".join(p for p in [
         f"Series: {series.title}. {series.description}", "Approved pitch:\n" + _pitch(pitch),
         _bible(bible), _world(world), f"The finished story body:\n{body}",
-        "Write The Storyteller's frame for this story. intro: 25-60 words, beginning with exactly "
-        "\"The lantern is lit.\", setting the mood without summarizing or spoiling. outro: 25-60 "
+        "Write The Storyteller's frame for this story. intro: 30-60 words in this order: a cold "
+        "open of one or two sentences flashed forward from a gripping moment in the story, in the "
+        "present tense, raising a question without spoiling the ending; then exactly \"The lantern "
+        "is lit.\"; then at most one short line. outro: 25-60 "
         "words that let the fear follow the viewer home (use the story bible's aftertaste) and end "
         "with exactly one question to the viewer, ideally about the open detail or the hero's "
         "choice. comment_question repeats that final question exactly. thumbnail_idea: one simple "
@@ -607,10 +618,23 @@ def packaging(series: Any, script: dict[str, Any], pitch: dict[str, Any], credit
            "the story's key moment, without spoiling the twist.\n\n" if bible else "")
     return (f"Series: {series.title}.\nPitch:\n{_pitch(pitch)}\n\nFinal script:\n{_script(script)}\n\n{red}"
             "Package this video for YouTube. titles: five options, best first, at most 60 characters, "
-            "curiosity without lying. thumbnail_brief: one simple, striking drawable image in our "
-            "style. thumbnail_text: two to four words, or empty if the image works alone. description: "
-            f"two short paragraphs that tease without spoiling, ending with: \"{credit}\". tags: ten to "
-            "fifteen. pinned_comment: a question that invites theories or personal stories.")
+            "curiosity without lying. thumbnail_brief: at most 35 words describing one simple, "
+            "striking image in our style that reads at phone size: one or two figures at most, one "
+            "red element, plenty of darkness; it should add a question the title doesn't, never "
+            "repeat the title. thumbnail_text: at most three words, or empty if the image works "
+            f"alone. description: two short paragraphs that tease without spoiling, ending with: "
+            f"\"{credit}\". tags: ten to fifteen. pinned_comment: a question that invites theories or "
+            "personal stories. end_screen_line: one line of at most 20 words The Storyteller says over "
+            "the end screen, inviting the viewer to the next story without naming it.")
+
+
+def teaser_short(script: dict[str, Any], min_words: int, max_words: int) -> str:
+    return (f"Full episode script:\n{_script(script)}\n\nCut a 60-second teaser Short from this episode "
+            f"that makes viewers watch the full story. body: {min_words - 20}-{max_words - 25} words in the "
+            "episode's own voice: open on its strongest hook, climb through the rising dread, and stop "
+            "on a cliffhanger just before the reveal. Never give away the twist or the ending. outro: "
+            "one short Storyteller line saying the full story is on the channel, ending with a question "
+            "to the viewer.")
 
 
 def learn(top: Sequence[sqlite3.Row], bottom: Sequence[sqlite3.Row]) -> str:

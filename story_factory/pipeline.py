@@ -41,6 +41,8 @@ AI_ISMS = re.compile(
     r"every fib(er|re) of|hung in the air|for what felt like (an eternity|hours|forever)|"
     r"(a|the) weight of (it all|the world)|as if on cue|a chill (crept|settled)|"
     r"breath (he|she|they|i) didn'?t know)", re.IGNORECASE)
+# Strong profanity costs ad revenue; mild words are left to the editors.
+PROFANITY = re.compile(r"\b(fuck\w*|motherfuck\w*|shit\w*|cunt\w*|bullshit)\b", re.IGNORECASE)
 # Naming a feeling instead of causing it.
 NAMED_FEELINGS = re.compile(
     r"\b(felt|feel|feels|feeling) (so |very |truly |completely )?(scared|terrified|afraid|frightened|"
@@ -113,8 +115,8 @@ def tidy(script: dict[str, Any], kind: str | None = None) -> dict[str, Any]:
     episode's intro always opens with the Storyteller's ritual line.
     """
     intro = str(script.get("intro") or "").strip()
-    if kind == "long" and intro and not dedup.normalize(intro).startswith(dedup.normalize(RITUAL_OPENING)):
-        script["intro"] = f"{RITUAL_OPENING} {intro}"
+    if kind == "long" and intro and dedup.normalize(RITUAL_OPENING) not in dedup.normalize(intro):
+        script["intro"] = f"{RITUAL_OPENING} {intro}"  # the cold open should precede it; better late than missing
     outro = str(script.get("outro", "")).strip()
     question = str(script.get("comment_question", "")).strip()
     if outro and not outro.endswith("?") and question.endswith("?") and question not in outro:
@@ -207,6 +209,8 @@ def structure_issues(script: dict[str, Any], kind: str, cfg: dict) -> list[str]:
         issues.append("never claim the story is true or based on real events")
     for match in CLICHES.finditer(text):
         issues.append(f"replace the cliche '{match.group(0)}' with something specific")
+    for match in PROFANITY.finditer(text):
+        issues.append(f"remove the strong profanity '{match.group(0)}'; the channel stays advertiser-friendly")
     return issues
 
 
@@ -570,7 +574,8 @@ def make_bible(ctx: Context, story: Story) -> dict[str, Any]:
     writer = ctx.router.one("writers")
     bible = writer.generate_json("story_bible", prompts.SYSTEM_WRITER, prompts.story_bible(
         series=story.series, kind=kind, recipe=story.recipe, formats=FORMATS, endings=ENDINGS,
-        pitch=story.pitch, legend=story.legend, dossier=story.dossier, world=story.world), schemas.BIBLE)
+        pitch=story.pitch, legend=story.legend, dossier=story.dossier, world=story.world,
+        recent_heroes=db.recent_heroes(ctx.conn, ctx.cfg["quality"]["recent_heroes"])), schemas.BIBLE)
     problems = bible_issues(bible, kind)
     if not problems:
         reviews = ctx.router.panel(
@@ -833,6 +838,10 @@ def audience_test(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[d
     chunks = chunk_text(script["body"], q["audience_chunk_words"])
     if len(chunks) < 2:
         return script, {"skipped": "too short to chunk"}
+    # Viewers hear the Storyteller's intro first; it is rated as part 1 but only body parts are rewritten.
+    intro = str(script.get("intro") or "").strip()
+    shown = ([intro] if intro else []) + chunks
+    first_body = 2 if intro else 1
     readers = ctx.router.pool("audience")
     jobs = [(persona, readers[i % len(readers)]) for i, persona in enumerate(q["audience_personas"])]
 
@@ -840,7 +849,7 @@ def audience_test(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[d
         persona, reader = job
         try:
             return reader.generate_json("audience", prompts.system_audience(persona),
-                                        prompts.audience(kind, chunks), schemas.AUDIENCE)
+                                        prompts.audience(kind, shown), schemas.AUDIENCE)
         except LLMError as exc:
             log.warning("Audience reader failed: %s", exc)
             return None
@@ -854,8 +863,8 @@ def audience_test(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[d
     for report in reports:
         left = False
         for row in report.get("chunks", []):
-            n = int(row.get("chunk", 0))
-            if not 1 <= n <= len(chunks):
+            n = int(row.get("chunk", 0)) - (first_body - 1)  # body part number; 0 is the intro
+            if not (0 if intro else 1) <= n <= len(chunks):
                 continue
             interest.setdefault(n, []).append(int(row.get("interest", 0)))
             if row.get("note"):
@@ -864,10 +873,13 @@ def audience_test(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[d
                 leaves[n] = leaves.get(n, 0) + 1
                 left = True
     means = {n: round(statistics.mean(v), 2) for n, v in interest.items()}
+    intro_interest = means.pop(0, None)
     weak = sorted((n for n in means if means[n] < q["audience_min_interest"] or leaves.get(n, 0) >= 2),
                   key=lambda n: (means[n], -leaves.get(n, 0)))[: q["max_chunks_to_rewrite"]]
     report = {"chunk_interest": means, "exits": leaves, "weak_chunks": weak,
               "viewers": [r.get("overall", "") for r in reports]}
+    if intro_interest is not None:
+        report["intro_interest"] = intro_interest
     story.note("audience", viewers=len(reports), weak=weak)
     if not weak:
         return script, report
@@ -1012,12 +1024,59 @@ def hook_lab(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, An
     return script if script_issues(candidate, story.series.kind, ctx.cfg) else candidate
 
 
+def packaging_issues(result: dict[str, Any], cfg: dict) -> list[str]:
+    q = cfg["quality"]
+    issues = []
+    brief = len(str(result.get("thumbnail_brief", "")).split())
+    if brief > q["thumbnail_brief_max_words"]:
+        issues.append(f"thumbnail_brief is {brief} words; describe one simple image in at most 35 words, "
+                      "one or two figures and one red element")
+    if len(str(result.get("thumbnail_text", "")).split()) > q["thumbnail_text_max_words"] - 1:
+        issues.append("thumbnail_text must be at most three words")
+    if not str(result.get("end_screen_line", "")).strip():
+        issues.append("write the end_screen_line")
+    return issues
+
+
+def make_teaser(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, Any] | None:
+    """A 60-second Short cut from a long episode, ending on a cliffhanger that sends viewers to it.
+
+    Optional: a teaser that fails its checks is simply left out.
+    """
+    lo, hi = word_range(ctx.cfg, "short")
+    reviser = ctx.router.one("reviser")
+    for _ in range(2):
+        try:
+            result = reviser.generate_json("teaser_short", prompts.SYSTEM_WRITER,
+                                           prompts.teaser_short(script, lo, hi), schemas.TEASER)
+        except LLMError as exc:
+            log.warning("Teaser Short skipped: %s", exc)
+            return None
+        teaser = tidy({"intro": "", "body": str(result.get("body", "")).strip(),
+                       "outro": str(result.get("outro", "")).strip(), "comment_question": ""}, "short")
+        if not structure_issues(teaser, "short", ctx.cfg) and not machine_phrasing(narration_of(teaser)):
+            narration = narration_of(teaser)
+            scenes, cast, _ = plan_scenes(ctx, "short", narration, story.bible)
+            story.note("teaser_short", words=len(narration.split()), scenes=bool(scenes))
+            return {"narration": narration, "body": teaser["body"], "outro": teaser["outro"],
+                    "comment_question": teaser["comment_question"], "scenes": scenes, "cast": cast}
+    story.note("teaser_short", made=False)
+    return None
+
+
 def package(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, Any]:
     writer = ctx.router.one("reviser")
     credit = script.get("description_credit") or "This is an original work of fiction."
-    result = writer.generate_json("packaging", prompts.SYSTEM_WRITER,
-                                  prompts.packaging(story.series, script, story.pitch, credit, story.bible),
-                                  schemas.PACKAGING)
+    base = prompts.packaging(story.series, script, story.pitch, credit, story.bible)
+    result = writer.generate_json("packaging", prompts.SYSTEM_WRITER, base, schemas.PACKAGING)
+    problems = packaging_issues(result, ctx.cfg)
+    if problems:
+        retry = writer.generate_json("packaging", prompts.SYSTEM_WRITER,
+                                     base + "\n\nFIX THESE PROBLEMS:\n" + "\n".join(problems), schemas.PACKAGING)
+        if len(packaging_issues(retry, ctx.cfg)) < len(problems):
+            result = retry
+    q = ctx.cfg["quality"]
+    result["thumbnail_text"] = " ".join(str(result.get("thumbnail_text", "")).split()[: q["thumbnail_text_max_words"]])
     titles = list(dict.fromkeys(t.strip() for t in result.get("titles", []) if t.strip() and len(t.strip()) <= 70))
     if len(titles) > 1:
         def compare(judge: Any, a: str, b: str) -> str:
@@ -1186,6 +1245,8 @@ def develop(ctx: Context, story_id: int, story: Story) -> Outcome:
     if scenes is None:
         return _reject(ctx, story_id, series.name, "scene plan invalid: " + "; ".join(issues[:4]), review, story)
     packaging = package(ctx, story, script)
+    if kind == "long" and ctx.cfg["quality"]["teaser_shorts"]:
+        packaging["teaser_short"] = make_teaser(ctx, story, script)
 
     if series.uses_world:
         db.link_entities(ctx.conn, story_id, script.get("new_entities") or [],

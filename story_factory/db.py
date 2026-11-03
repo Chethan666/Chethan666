@@ -286,6 +286,17 @@ def live_stories(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     ).fetchall()
 
 
+def recent_heroes(conn: sqlite3.Connection, limit: int = 12) -> list[str]:
+    """'Name: who they are' for the heroes of recent stories that weren't rejected."""
+    heroes = []
+    for row in conn.execute("SELECT bible FROM stories WHERE bible IS NOT NULL AND status != 'rejected' "
+                            "ORDER BY id DESC LIMIT ?", (limit,)):
+        hero = (json.loads(row["bible"]) or {}).get("hero") or {}
+        if hero.get("name"):
+            heroes.append(f"{hero['name']}: {hero.get('who', '')}")
+    return heroes
+
+
 def recent_recipes(conn: sqlite3.Connection, limit: int = 50) -> list[dict]:
     rows = conn.execute(
         "SELECT setting, core_fear, twist FROM stories WHERE status != 'rejected' "

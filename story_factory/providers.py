@@ -237,9 +237,10 @@ class XAIClient:
         if temperature is not None and not getattr(self, "_no_temperature", False):
             extra["temperature"] = temperature
         try:
+            limit = (getattr(self, "temperatures", {}).get("task_max_tokens") or {}).get(task)
             response = self.client.chat.completions.create(
                 model=self.spec.model, messages=messages, response_format=response_format,
-                max_completion_tokens=self.max_tokens, **extra)
+                max_completion_tokens=min(self.max_tokens, limit or self.max_tokens), **extra)
         except self.openai.BadRequestError as exc:
             if not extra or "temperature" not in str(exc).lower():
                 raise

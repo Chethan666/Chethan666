@@ -190,7 +190,7 @@ class Brain:
 
     def _write_frame(self, prompt: str, spec: ModelSpec) -> dict:
         question = "Would you have opened the door?"
-        return {"intro": "The lantern is lit. I found this one in the hollow beside a quiet road.",
+        return {"intro": "The phone rings at 3:07 and the voice is his own. The lantern is lit. Listen closely.",
                 "outro": f"Some doors are better left closed. {question}", "comment_question": question,
                 "thumbnail_idea": "A red stop button", "description_credit": "This is an original work of fiction.",
                 "new_entities": [{"kind": "place", "name": f"Exit {self.counter}", "description": "A moving sign."}],
@@ -266,7 +266,13 @@ class Brain:
         return {"titles": ["The Extra Passenger", "Night Bus 9", "Seat Ten", "Do Not Board"],
                 "thumbnail_brief": "A red lantern", "thumbnail_text": "WHO?",
                 "description": "A story. This is an original work of fiction.",
-                "tags": ["horror"], "pinned_comment": "Would you get off the bus?"}
+                "tags": ["horror"], "pinned_comment": "Would you get off the bus?",
+                "end_screen_line": "There is another story waiting down the line."}
+
+    def _teaser_short(self, prompt: str, spec: ModelSpec) -> dict:
+        self.counter += 1
+        body = " ".join(" ".join(unique_words(f"t{self.counter}x{i}", 6)).capitalize() + "." for i in range(10))
+        return {"body": body, "outro": "The full story is on the channel. Would you have answered?"}
 
     def _learn(self, prompt: str, spec: ModelSpec) -> dict:
         return {"insights": ["Night-shift settings keep viewers longest."]}

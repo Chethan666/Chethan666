@@ -102,11 +102,13 @@ class WritersRoomTests(unittest.TestCase):
 
     def test_audience_weak_parts_are_rewritten(self):
         ctx, brain = make_context()
-        brain.audience_interest = lambda chunk: 4 if chunk == 2 else 9
+        # Viewers hear the intro as part 1, so story part 2 is shown as part 3.
+        brain.audience_interest = lambda chunk: 4 if chunk == 3 else 9
         outcome = pipeline.generate_story(ctx, "hollow_world")
         self.assertEqual(outcome.status, "approved", outcome.detail)
         report = json.loads(db.get_story(ctx.conn, outcome.story_id)["audience_report"])
         self.assertEqual(report["weak_chunks"], [2])
+        self.assertEqual(report["intro_interest"], 9)
         self.assertEqual(report["rewrite"], "kept")
         self.assertTrue(brain.tasks("rewrite_chunks"))
 

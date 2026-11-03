@@ -123,7 +123,8 @@ class StructureTests(unittest.TestCase):
         self.assertEqual(len(brain.tasks("write_frame")), writers)
         self.assertEqual(brain.tasks("write_draft"), [])
         intro = db.get_story(ctx.conn, outcome.story_id)["intro"]
-        self.assertTrue(intro.startswith(pipeline.RITUAL_OPENING))
+        self.assertTrue(intro.startswith("The phone rings"))  # cold open first
+        self.assertIn(pipeline.RITUAL_OPENING, intro)
 
     def test_later_parts_see_the_story_so_far(self):
         ctx, brain = make_context()
@@ -280,6 +281,70 @@ class ScenePlanRepairTests(unittest.TestCase):
         self.assertEqual(len(fixed), 45)
         self.assertEqual(sum(s["key_moment"] for s in fixed), 6)
         self.assertEqual(pipeline.scene_issues(narration, fixed, "long"), [])
+
+
+class ChannelGrowthTests(unittest.TestCase):
+    def test_long_episodes_get_a_teaser_short_with_scenes(self):
+        ctx, brain = make_context()
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        packaging = json.loads(db.get_story(ctx.conn, outcome.story_id)["packaging"])
+        teaser = packaging["teaser_short"]
+        self.assertTrue(teaser["narration"].endswith("Would you have answered?"))
+        self.assertEqual(teaser["comment_question"], "Would you have answered?")
+        self.assertTrue(teaser["scenes"])
+        self.assertEqual(packaging["end_screen_line"], "There is another story waiting down the line.")
+
+    def test_a_broken_teaser_is_left_out_without_blocking(self):
+        ctx, brain = make_context()
+        brain.overrides["teaser_short"] = lambda prompt, spec: {"body": "Too short.", "outro": "No question."}
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        self.assertEqual(outcome.status, "approved", outcome.detail)
+        self.assertIsNone(json.loads(db.get_story(ctx.conn, outcome.story_id)["packaging"])["teaser_short"])
+        self.assertEqual(len(brain.tasks("teaser_short")), 2)
+
+    def test_shorts_get_no_teaser(self):
+        ctx, brain = make_context()
+        pipeline.generate_story(ctx, "sixty_seconds")
+        self.assertEqual(brain.tasks("teaser_short"), [])
+
+    def test_busy_thumbnails_are_sent_back(self):
+        ctx, brain = make_context()
+        busy = brain._packaging("", None)
+        busy.update(thumbnail_brief=" ".join(["figure"] * 60), thumbnail_text="MUTE IT NOW BEFORE IT HEARS")
+        calls = []
+
+        def packaging(prompt, spec):
+            calls.append(prompt)
+            return busy if len(calls) == 1 else brain._packaging(prompt, spec)
+
+        brain.overrides["packaging"] = packaging
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        self.assertIn("FIX THESE PROBLEMS", calls[1])
+        result = json.loads(db.get_story(ctx.conn, outcome.story_id)["packaging"])
+        self.assertEqual(result["thumbnail_text"], "WHO?")
+
+    def test_recent_heroes_reach_the_next_bible(self):
+        ctx, brain = make_context()
+        seen = prompts_for(brain, ctx, "story_bible")
+        pipeline.generate_story(ctx, "hollow_world")
+        pipeline.generate_story(ctx, "hollow_world")
+        self.assertNotIn("Heroes of our recent episodes", seen[0])
+        self.assertIn("- Marisol: a bus driver, 52", seen[-1])
+
+    def test_strong_profanity_is_caught(self):
+        script = Brain().make_script(long=False)
+        script["body"] += " What the fuck was that."
+        self.assertTrue(any("advertiser-friendly" in i
+                            for i in pipeline.script_issues(script, "short", test_config())))
+
+    def test_intro_is_rated_but_never_rewritten(self):
+        ctx, brain = make_context()
+        brain.audience_interest = lambda chunk: 3 if chunk == 1 else 9
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        report = json.loads(db.get_story(ctx.conn, outcome.story_id)["audience_report"])
+        self.assertEqual(report["intro_interest"], 3)
+        self.assertEqual(report["weak_chunks"], [])
+        self.assertEqual(brain.tasks("rewrite_chunks"), [])
 
 
 class BenchmarkTests(unittest.TestCase):

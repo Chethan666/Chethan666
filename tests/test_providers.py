@@ -268,11 +268,12 @@ class AWSClientTests(unittest.TestCase):
             (200, ok, "application/json")] * 3))
         model.generate_json("write_section", "s", "p", {"type": "object"})
         model.generate_json("review", "s", "p", {"type": "object"})
-        model.generate_json("unlisted_task", "s", "p", {"type": "object"})
+        model.generate_json("compare_titles", "s", "p", {"type": "object"})
         sent = [json.loads(r.content) for r in self.requests]
+        self.assertEqual(sent[0]["max_completion_tokens"], self.cfg["providers"]["aws"]["max_tokens"])
         self.assertEqual(sent[0]["temperature"], 0.85)
         self.assertEqual(sent[1]["temperature"], 0.2)
-        self.assertNotIn("temperature", sent[2])
+        self.assertEqual(sent[2]["max_completion_tokens"], 4000)  # quick judgments fail fast
 
     def test_a_model_that_rejects_temperature_is_retried_without_it(self):
         import openai

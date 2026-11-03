@@ -3,6 +3,8 @@
 #   mode=check: tests + which models your keys can use (no paid generation)
 #   mode=story: also researches Wikipedia and generates one real story
 #   mode=bench: blind-compares the writing of `config` against `bench_against` on fixed pitches
+# The story database carries over between runs (saved as an artifact, restored at the
+# start of the next run), so stories never repeat and the shared world keeps growing.
 # This repository is public: run logs and the summary are public, and so are artifacts to
 # signed-in GitHub users. Secrets themselves are never shown.
 name: Story factory
@@ -42,6 +44,7 @@ on:
 
 permissions:
   contents: read
+  actions: read  # to find the story database saved by the previous run
 
 concurrency:
   group: story-factory
@@ -99,6 +102,23 @@ jobs:
             python -m story_factory --config "$CONFIG" ping
           fi
 
+      - name: Restore the story database from the last run
+        if: env.MODE == 'story'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          id=$(gh api "repos/$REPO/actions/artifacts?per_page=100" --jq \
+            '[.artifacts[] | select(.expired == false and (.name == "story-db" or (.name | startswith("stories-"))))][0].id // empty')
+          if [ -n "$id" ]; then
+            mkdir -p data
+            gh api "repos/$REPO/actions/artifacts/$id/zip" > "$RUNNER_TEMP/story-db.zip"
+            unzip -o "$RUNNER_TEMP/story-db.zip" -d data
+            echo "Restored the story database from artifact $id"
+          else
+            echo "No saved story database yet; starting a new one"
+          fi
+
       - name: Wikipedia research
         if: env.MODE == 'story'
         run: python -m story_factory --config "$CONFIG" research
@@ -125,7 +145,8 @@ jobs:
         if: always() && env.MODE == 'story'
         uses: actions/upload-artifact@v6
         with:
-          name: stories-${{ github.run_number }}
+          # The next run restores the newest one; each run re-saves it, so it never expires in use.
+          name: story-db
           path: data/
-          retention-days: 30
+          retention-days: 90
           if-no-files-found: ignore
