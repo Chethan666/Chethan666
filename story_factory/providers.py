@@ -271,8 +271,35 @@ def _aws_key() -> str:
     return key
 
 
+def _aws_openai_urls(cfg: dict) -> list[str]:
+    """The configured OpenAI-compatible Bedrock address first, then the alternative.
+
+    AWS documents both /openai/v1 and /v1 for this endpoint, so a 404 on one
+    is retried on the other.
+    """
+    region = _aws_region(cfg)
+    configured = cfg["providers"]["aws"]["openai_base_url"].format(region=region)
+    host = f"https://bedrock-mantle.{region}.api.aws"
+    return [configured] + [host + path for path in ("/openai/v1", "/v1") if host + path != configured]
+
+
 def _aws_openai_url(cfg: dict) -> str:
-    return cfg["providers"]["aws"]["openai_base_url"].format(region=_aws_region(cfg))
+    return _aws_openai_urls(cfg)[0]
+
+
+class _BedrockAddressFallback:
+    """Retries a 404 once on Bedrock's alternative OpenAI-compatible address, then keeps it."""
+
+    def generate_json(self, task: str, system: str, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return super().generate_json(task, system, prompt, schema)
+        except LLMError as exc:
+            alternatives = [u for u in _aws_openai_urls(self.cfg) if u.rstrip("/") != str(self.client.base_url).rstrip("/")]
+            if "HTTP 404" not in str(exc) or not alternatives or getattr(self, "_switched", False):
+                raise
+            self._switched = True
+            self.client = self.client.with_options(base_url=alternatives[0])
+            return super().generate_json(task, system, prompt, schema)
 
 
 class AWSClaudeClient(AnthropicClient):
@@ -299,7 +326,7 @@ class AWSClaudeClient(AnthropicClient):
         return aws_models(self.cfg)
 
 
-class AWSResponsesClient(OpenAIClient):
+class AWSResponsesClient(_BedrockAddressFallback, OpenAIClient):
     """OpenAI models on Amazon Bedrock through its OpenAI-compatible Responses API."""
 
     def __init__(self, spec: ModelSpec, cfg: dict, recorder: UsageRecorder):
@@ -319,7 +346,7 @@ class AWSResponsesClient(OpenAIClient):
         return aws_models(self.cfg)
 
 
-class AWSChatClient(XAIClient):
+class AWSChatClient(_BedrockAddressFallback, XAIClient):
     """Other companies' models on Amazon Bedrock (such as xAI Grok) through Chat Completions."""
 
     def __init__(self, spec: ModelSpec, cfg: dict, recorder: UsageRecorder):
@@ -375,11 +402,17 @@ class AWSEmbedClient:
 
 
 def aws_models(cfg: dict) -> list[str]:
-    """Model IDs listed by Bedrock's OpenAI-compatible endpoint."""
+    """Model IDs listed by Bedrock's OpenAI-compatible endpoint (whichever address answers)."""
     import openai
 
-    client = openai.OpenAI(api_key=_aws_key(), base_url=_aws_openai_url(cfg), timeout=60)
-    return sorted(m.id for m in client.models.list())
+    last: Exception | None = None
+    for url in _aws_openai_urls(cfg):
+        try:
+            client = openai.OpenAI(api_key=_aws_key(), base_url=url, timeout=60)
+            return sorted(m.id for m in client.models.list())
+        except openai.NotFoundError as exc:
+            last = exc
+    raise LLMError(f"Bedrock model list not found at {', '.join(_aws_openai_urls(cfg))}: {last}")
 
 
 PROVIDERS = {"anthropic": AnthropicClient, "openai": OpenAIClient, "google": GoogleClient, "xai": XAIClient}

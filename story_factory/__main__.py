@@ -28,6 +28,10 @@ def _story_json(row) -> dict:
     return story
 
 
+PING_SCHEMA = {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"],
+               "additionalProperties": False}
+
+
 def report(conn, row) -> str:
     """A short Markdown summary of one story: verdict, scores, audience, packaging, cost."""
     story = _story_json(row)
@@ -99,6 +103,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--comments", type=int)
     sub.add_parser("learn", help="turn real performance into lessons for future pitches")
     sub.add_parser("stats", help="cost per story, winning models and common rejection reasons")
+    sub.add_parser("ping", help="send a tiny real request to every configured model (costs a fraction of a cent)")
     p = sub.add_parser("report", help="Markdown summary of a story (default: the latest)")
     p.add_argument("id", type=int, nargs="?")
 
@@ -193,6 +198,22 @@ def main(argv: list[str] | None = None) -> int:
         row = db.get_story(conn, args.id) if args.id else conn.execute(
             "SELECT * FROM stories WHERE status != 'shelved' ORDER BY id DESC LIMIT 1").fetchone()
         print(report(conn, row) if row else "No stories yet.")
+    elif args.command == "ping":
+        router = Router(cfg, db.connect(cfg["database"]))
+        failed = 0
+        for text in dict.fromkeys(t for specs in cfg["roles"].values() for t in specs):
+            try:
+                client = router._client(text)
+                if hasattr(client, "embed") and text in cfg["roles"]["embedder"]:
+                    result = f"OK ({len(client.embed('A lantern in the fog.'))} dimensions)"
+                else:
+                    reply = client.generate_json("ping", "You answer with JSON only.", 'Reply {"ok": true}.', PING_SCHEMA)
+                    result = "OK" if reply.get("ok") is True else f"UNEXPECTED REPLY {reply}"
+            except Exception as exc:  # report every model, whatever goes wrong
+                result = f"FAILED: {str(exc)[:400]}"
+            failed += not result.startswith("OK")
+            print(f"{text:<45} {result}", flush=True)
+        return 1 if failed else 0
     elif args.command == "stats":
         print(json.dumps(db.stats(db.connect(cfg["database"])), indent=2))
     elif args.command == "learn":
