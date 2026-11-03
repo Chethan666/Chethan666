@@ -341,7 +341,8 @@ def story_bible(*, series: Any, kind: str, recipe: Any, formats: dict[str, str],
 def review_bible(kind: str, pitch: dict[str, Any], bible: dict[str, Any], dossier: dict | None = None) -> str:
     fidelity = ("This retells a traditional legend. Also require that the threat is the legend's being "
                 "exactly as these research notes describe it, with no invented appearance, powers, place "
-                f"or role, and that the frame story fits where the legend can happen:\n"
+                "or role (interpreting its motives or inner life is allowed), and that the frame story "
+                "fits where the legend can happen:\n"
                 f"{json.dumps(dossier, ensure_ascii=False)}\n\n" if dossier else "")
     return (f"Pitch:\n{_pitch(pitch)}\n\n{_bible(bible)}\n{fidelity}Review this story bible for a "
             f"{'long episode' if kind == 'long' else '60-second Short'}. Approve only if: the hero is "
@@ -372,8 +373,10 @@ def bible_check(bible: dict[str, Any], items: Sequence[tuple[str, str]], script:
                 dossier: dict | None = None) -> str:
     listed = "\n".join(f"- [{item_id}] {requirement}" for item_id, requirement in items)
     legend = ("\n\nThis retells a traditional legend. Also list, among the rule breaks, every place where "
-              "the script gives the legend's being an appearance, power or role these research notes do "
-              f"not support:\n{json.dumps(dossier, ensure_ascii=False)}" if dossier else "")
+              "the script gives the legend's being an appearance, power, place or role these research "
+              "notes do not support. Interpreting its motives, feelings or inner life is what a retelling "
+              "does and is allowed; do not list that. Research notes:\n"
+              f"{json.dumps(dossier, ensure_ascii=False)}" if dossier else "")
     return (f"STORY BIBLE:\n{json.dumps(bible, ensure_ascii=False)}\n\nSCRIPT:\n{_script(script)}\n\n"
             f"TASK: Check whether the script delivers each item below.\n{listed}\n\nFor each item "
             "give its id, whether it is clearly present on the page, and a short exact quote (5-15 "
@@ -390,8 +393,10 @@ def confirm_breaks(bible: dict[str, Any], script: dict[str, Any], claimed: Seque
             f"Another editor claims the script breaks the threat's own rules (or, for a legend, gives "
             f"its being traits the research does not support):\n{listed}\n\nFor each numbered claim, "
             "decide whether it is real: the script clearly shows the threat doing what its rules or the "
-            "research forbid. Mark it not real if it is a stretch, a matter of interpretation, or about "
-            "something the script never shows. Give its number, your verdict and a one-line reason.")
+            "research forbid, or gives a legend's being an appearance, power, place or role the research "
+            "does not support. Mark it not real if it is a stretch, about something the script never "
+            "shows, or about the being's motives, feelings or inner life (a retelling may interpret "
+            "those). Give its number, your verdict and a one-line reason.")
 
 
 # --- Outline and drafts ------------------------------------------------------
@@ -612,8 +617,8 @@ def final_check(script: dict[str, Any], dossier: dict | None) -> str:
             "offend, stereotype or misrepresent a culture; minor for missing context, nuance or a "
             "suggestion. A retelling may add an original modern frame and its own characters; that "
             "alone is not an error. Folklore varies by region and era: a detail that matches any "
-            "known version, or a small physical detail left out, is minor. Empty lists mean it is "
-            "clear.")
+            "known version, or a small physical detail left out, is minor, and interpreting a legendary "
+            "being's motives or inner life is not an error. Empty lists mean it is clear.")
 
 
 def scene_plan(narration: str, scene_range: tuple[int, int], key_range: tuple[int, int],

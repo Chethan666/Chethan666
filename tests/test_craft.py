@@ -469,6 +469,7 @@ class LegendFitTests(unittest.TestCase):
         seen = prompts_for(brain, ctx, "bible_check")
         pipeline.generate_story(ctx, "legends_retold")
         self.assertIn("research notes do not support", seen[0])
+        self.assertIn("Interpreting its motives, feelings or inner life", seen[0])
 
 
 class BenchmarkTests(unittest.TestCase):
