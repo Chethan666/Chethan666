@@ -87,8 +87,23 @@ def scene_ranges(kind: str) -> tuple[tuple[int, int], tuple[int, int]]:
     return ((18, 45), (3, 6)) if kind == "long" else ((4, 10), (1, 2))
 
 
+def tidy(script: dict[str, Any]) -> dict[str, Any]:
+    """Recompute the fields derived from the text, so a model's copying slip can't sink a story.
+
+    comment_question is the outro's final question; hook_line is the body's first sentence.
+    """
+    outro = str(script.get("outro", "")).strip()
+    if outro.endswith("?"):
+        script["comment_question"] = re.split(r"(?<=[.!?…])\s+", outro)[-1]
+    body = str(script.get("body", "")).strip()
+    if body:
+        script["hook_line"] = re.split(r"(?<=[.!?…])\s+", body)[0]
+    return script
+
+
 def script_issues(script: dict[str, Any], kind: str, cfg: dict) -> list[str]:
-    """Checks that need no model call."""
+    """Checks that need no model call (derived fields are tidied first)."""
+    tidy(script)
     issues: list[str] = []
     lo, hi = word_range(cfg, kind)
     words = len(narration_of(script).split())

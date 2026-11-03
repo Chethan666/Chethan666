@@ -435,6 +435,17 @@ class ScriptCheckTests(unittest.TestCase):
         self.assertTrue(any("never claim" in i for i in issues))
         self.assertTrue(any("cliche" in i for i in issues))
 
+    def test_derived_fields_are_recomputed_not_judged(self):
+        script = Brain().make_script(long=False)
+        script["outro"] = "Some rides never end. Would you have taken the fare?"
+        script["comment_question"] = "Would you take the fare??"  # a model's copying slip
+        self.assertEqual(pipeline.script_issues(script, "short", test_config()), [])
+        self.assertEqual(script["comment_question"], "Would you have taken the fare?")
+        self.assertEqual(script["hook_line"], script["body"].split(". ")[0] + ".")
+        script["outro"] = "Some rides never end."
+        self.assertTrue(any("must end with one question" in i
+                            for i in pipeline.script_issues(script, "short", test_config())))
+
     def test_aggregate_reviews_uses_median_and_any_flag(self):
         base = {c: 9 for c in ("hook", "tension", "emotional_payoff", "originality", "prose_for_the_ear",
                                "drawability", "follows_recipe")}

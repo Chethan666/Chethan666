@@ -103,7 +103,7 @@ jobs:
 
       - name: Save the story database
         if: always() && env.MODE == 'story'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: stories-${{ github.run_number }}
           path: data/
