@@ -7,15 +7,18 @@ models measurably favor text written by their own family.
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Iterable, TypeVar
 
 from . import providers
-from .llm import Client, ModelSpec, UsageRecorder
+from .llm import Client, LLMError, ModelSpec, UsageRecorder
 
 T = TypeVar("T")
 R = TypeVar("R")
+
+log = logging.getLogger(__name__)
 
 ROLES = ("pitchers", "judges", "writers", "reviser", "audience", "polisher", "researcher",
          "planner", "embedder")
@@ -64,3 +67,20 @@ class Router:
             return [fn(i) for i in items]
         with ThreadPoolExecutor(max_workers=self.workers) as pool:
             return list(pool.map(fn, items))
+
+    def panel(self, fn: Callable[[T], R], items: list[T], what: str = "judge panel") -> list[R]:
+        """Like `parallel`, but one failing model doesn't sink the panel.
+
+        Failed calls are logged and left out; raises only if every call fails.
+        """
+        def safe(item: T) -> R | None:
+            try:
+                return fn(item)
+            except LLMError as exc:
+                log.warning("%s: one panel member failed: %s", what, exc)
+                return None
+
+        results = [r for r in self.parallel(safe, items) if r is not None]
+        if items and not results:
+            raise LLMError(f"{what}: every panel member failed")
+        return results

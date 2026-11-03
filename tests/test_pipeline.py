@@ -146,6 +146,19 @@ class WritersRoomTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertIn("must end with one question", calls[1])
 
+    def test_one_failing_judge_does_not_sink_the_room(self):
+        ctx, brain = make_context()
+        brain.failing.add("google:judge-c")  # e.g. a model stuck until its output limit
+        outcome = pipeline.generate_story(ctx, "sixty_seconds")
+        self.assertEqual(outcome.status, "approved", outcome.detail)
+        self.assertIn("google:judge-c", brain.tasks("score_pitch"))
+
+    def test_panel_fails_only_when_every_judge_fails(self):
+        ctx, brain = make_context()
+        brain.failing.update({"anthropic:judge-a", "openai:judge-b", "google:judge-c", "xai:judge-d"})
+        with self.assertRaises(LLMError):
+            pipeline.generate_story(ctx, "sixty_seconds")
+
     def test_model_failure_mid_story_does_not_leave_it_stuck(self):
         ctx, brain = make_context()
 

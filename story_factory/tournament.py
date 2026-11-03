@@ -7,9 +7,14 @@ Items are ranked by wins (ties worth half), then by their prior score.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from itertools import combinations
 from typing import Any, Callable, Sequence
+
+from .llm import LLMError
+
+log = logging.getLogger(__name__)
 
 # compare(judge, first, second) -> "A" if `first` wins, "B" if `second` wins.
 Compare = Callable[[Any, Any, Any], str]
@@ -35,8 +40,12 @@ def rank(items: Sequence[Any], judges_for: Callable[[Any, Any], list[Any]], comp
 
     def judge_pair(job: tuple[int, int, Any]) -> tuple[int, int, float]:
         a, b, judge = job
-        forward = compare(judge, items[a], items[b])
-        backward = compare(judge, items[b], items[a])
+        try:
+            forward = compare(judge, items[a], items[b])
+            backward = compare(judge, items[b], items[a])
+        except LLMError as exc:  # a judge that can't answer abstains: a tie
+            log.warning("Comparison skipped: %s", exc)
+            return a, b, 0.5
         if forward == "A" and backward == "B":
             return a, b, 1.0
         if forward == "B" and backward == "A":

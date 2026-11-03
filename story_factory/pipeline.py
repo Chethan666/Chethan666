@@ -290,7 +290,7 @@ def score_pitches(ctx: Context, series: catalog.Series, pitches: list[dict[str, 
         return id(p), sum(values) / len(values)
 
     totals: dict[int, list[float]] = {}
-    for key, value in ctx.router.parallel(score, jobs):
+    for key, value in ctx.router.panel(score, jobs, "score pitches"):
         totals.setdefault(key, []).append(value)
     for p in pitches:
         p["_score"] = round(statistics.mean(totals.get(id(p), [0.0])), 2)
@@ -316,7 +316,7 @@ def make_outline(ctx: Context, story: Story) -> dict[str, Any]:
         pitch=story.pitch, legend=story.legend, dossier=story.dossier, world=story.world,
         target_seconds=target), schemas.BEAT_SHEET)
     for attempt in range(2):
-        reviews = ctx.router.parallel(
+        reviews = ctx.router.panel(
             lambda judge: judge.generate_json("review_outline", prompts.SYSTEM_EDITOR,
                                               prompts.review_outline(kind, story.pitch, outline),
                                               schemas.OUTLINE_REVIEW),
@@ -422,7 +422,7 @@ def editors_loop(ctx: Context, story: Story, script: dict[str, Any], author_fami
         if not copy.ok:
             issues.append(f"rewrite in original words: {copy.reason}")
         if not issues:
-            reviews = ctx.router.parallel(
+            reviews = ctx.router.panel(
                 lambda judge: judge.generate_json("review", prompts.SYSTEM_EDITOR, prompts.review(
                     kind, story.recipe, FORMATS, ENDINGS, script, story.dossier), schemas.REVIEW),
                 ctx.router.judges([author_family]))
@@ -527,7 +527,7 @@ def polish(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[dict[str
 
 
 def final_check(ctx: Context, story: Story, script: dict[str, Any]) -> list[str]:
-    results = ctx.router.parallel(
+    results = ctx.router.panel(
         lambda judge: judge.generate_json("final_check", prompts.SYSTEM_EDITOR,
                                           prompts.final_check(script, story.dossier), schemas.FINAL_CHECK),
         ctx.router.judges([ctx.router.one("polisher").spec.family]))
