@@ -255,6 +255,33 @@ class EditorTests(unittest.TestCase):
         self.assertEqual(pauses, [{"after": "Some doors are better left closed", "ms": 1200}])
 
 
+class ScenePlanRepairTests(unittest.TestCase):
+    NARRATION = ("The bell rang. Nobody was there. She checked the mirror.\n\nThe seats were empty. "
+                 "The bell rang again. She stopped the bus? Would you have opened the door?")
+
+    def scene(self, text, key=False):
+        return {"text": text, "visual": "v", "location": "l", "characters": ["Iris"], "mood": "m",
+                "delivery": "slow", "sfx": ["bell"], "key_moment": key}
+
+    def test_skipped_and_partial_text_is_snapped_to_full_coverage(self):
+        scenes = [self.scene("The bell rang.", True), self.scene("She checked the"),  # partial sentence
+                  self.scene("The bell rang again. She stopped"), self.scene("a line the planner invented")]
+        fixed = pipeline.snap_scenes(self.NARRATION, scenes, "short")
+        self.assertEqual([s["text"] for s in fixed], [
+            "The bell rang. Nobody was there.", "She checked the mirror. The seats were empty.",
+            "The bell rang again. She stopped the bus? Would you have opened the door?"])
+        self.assertEqual(pipeline.scene_issues(self.NARRATION, fixed, "short"), ["3 scenes; need 4-10"])
+
+    def test_too_many_scenes_and_key_moments_are_trimmed(self):
+        sentences = [f"Sentence number {i} is here." for i in range(60)]
+        narration = " ".join(sentences)
+        scenes = [self.scene(t, key=i % 5 == 0) for i, t in enumerate(sentences)]
+        fixed = pipeline.snap_scenes(narration, scenes, "long")
+        self.assertEqual(len(fixed), 45)
+        self.assertEqual(sum(s["key_moment"] for s in fixed), 6)
+        self.assertEqual(pipeline.scene_issues(narration, fixed, "long"), [])
+
+
 class BenchmarkTests(unittest.TestCase):
     def test_benchmark_compares_two_setups_blind(self):
         brain = Brain()

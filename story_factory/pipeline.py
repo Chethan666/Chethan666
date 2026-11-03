@@ -388,6 +388,60 @@ def split_beats(beats: list[dict[str, Any]], parts: int) -> list[list[dict[str, 
     return groups
 
 
+def _merge_scene(into: dict[str, Any], other: dict[str, Any]) -> None:
+    into["key_moment"] = into.get("key_moment") is True or other.get("key_moment") is True
+    for key in ("characters", "sfx"):
+        into[key] = list(dict.fromkeys([*(into.get(key) or []), *(other.get(key) or [])]))
+
+
+def snap_scenes(narration: str, scenes: Any, kind: str) -> Any:
+    """Fix a scene plan's bookkeeping instead of rejecting a finished story.
+
+    Scenes are snapped to whole sentences of the narration so together they cover
+    all of it (a skipped passage joins the scene before it); a scene whose text
+    can't be found joins its neighbor; too many scenes are merged and too many key
+    moments are thinned, evenly. Visual choices are left as the planner made them.
+    """
+    if not isinstance(scenes, list):
+        return scenes
+    scenes = [dict(s) for s in scenes if isinstance(s, dict) and str(s.get("text", "")).strip()]
+    sentences = [x for x in SENTENCE_END.split(narration.strip()) if x.strip()]
+    if not scenes or not sentences:
+        return scenes
+    starts, offset = [], 0
+    for sentence in sentences:
+        starts.append(offset)
+        offset += len(dedup.normalize(sentence)) + 1
+    full = " ".join(dedup.normalize(x) for x in sentences)
+
+    kept: list[tuple[int, dict[str, Any]]] = []
+    for scene in scenes:
+        words = dedup.normalize(scene["text"]).split()
+        at = full.find(" ".join(words[:6]), starts[kept[-1][0]] if kept else 0) if words else -1
+        index = max(i for i, start in enumerate(starts) if start <= at) if at >= 0 else -1
+        if kept and index <= kept[-1][0]:
+            _merge_scene(kept[-1][1], scene)  # unfound, or starts in the same sentence
+        else:
+            kept.append((0 if not kept else index, scene))
+    bounds = [i for i, _ in kept] + [len(sentences)]
+    fixed = []
+    for n, (_, scene) in enumerate(kept):
+        scene["text"] = " ".join(sentences[bounds[n]:bounds[n + 1]])
+        fixed.append(scene)
+
+    (_, hi), (_, key_hi) = scene_ranges(kind)
+    while len(fixed) > hi:  # merge the shortest neighboring pair
+        n = min(range(1, len(fixed)), key=lambda i: len(fixed[i - 1]["text"]) + len(fixed[i]["text"]))
+        fixed[n - 1]["text"] = f"{fixed[n - 1]['text']} {fixed[n]['text']}"
+        _merge_scene(fixed[n - 1], fixed.pop(n))
+    keys = [i for i, scene in enumerate(fixed) if scene.get("key_moment") is True]
+    if len(keys) > key_hi:
+        chosen = {keys[round(i * (len(keys) - 1) / (key_hi - 1))] for i in range(key_hi)} if key_hi > 1 else {keys[-1]}
+        for i in keys:
+            fixed[i]["key_moment"] = i in chosen
+    return fixed
+
+
 def chunk_text(text: str, target_words: int) -> list[str]:
     """Group whole sentences into chunks of roughly `target_words` words."""
     sentences = [s for s in re.split(r"(?<=[.!?…])\s+", text.strip()) if s]
@@ -913,7 +967,7 @@ def plan_scenes(ctx: Context, kind: str, narration: str,
     for _ in range(2):
         prompt = base if not issues else base + "\nFIX THESE PROBLEMS:\n" + "\n".join(issues)
         plan = planner.generate_json("scene_plan", prompts.SYSTEM_EDITOR, prompt, schemas.SCENES)
-        scenes, cast = plan.get("scenes"), plan.get("cast") or []
+        scenes, cast = snap_scenes(narration, plan.get("scenes"), kind), plan.get("cast") or []
         issues = scene_issues(narration, scenes, kind, cast)
         if not issues:
             by_norm = {dedup.normalize(name): look for name, look in canon.items()}
