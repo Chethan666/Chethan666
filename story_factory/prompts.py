@@ -245,7 +245,9 @@ def pitches(*, series: Any, recipe: Any, formats: dict[str, str], endings: dict[
             world: Sequence[sqlite3.Row], avoid: Sequence[sqlite3.Row], trends: Sequence[sqlite3.Row],
             learnings: Sequence[str]) -> str:
     parts = [f"Series: {series.title}. {series.description}",
-             "Recipe for this episode (use every ingredient):\n" + _recipe(recipe, formats, endings),
+             ("Suggested ingredients for the modern frame story (drop or adapt any that would change "
+              "the legend's nature, place or role; the legend comes first):\n" if legend else
+              "Recipe for this episode (use every ingredient):\n") + _recipe(recipe, formats, endings),
              _legend(legend, dossier), _world(world)]
     if sparks:
         parts.append("Folklore motifs you may borrow one abstract element from (a creature's nature, "
@@ -271,8 +273,15 @@ def pitches(*, series: Any, recipe: Any, formats: dict[str, str], endings: dict[
     return "\n\n".join(p for p in parts if p)
 
 
-def score_pitch(series: Any, pitch: dict[str, Any]) -> str:
-    return (f"Series: {series.title}. {series.description}\n\nPitch:\n{_pitch(pitch)}\n\n{PITCH_GUIDE}\n"
+def score_pitch(series: Any, pitch: dict[str, Any], legend: sqlite3.Row | None = None,
+                dossier: dict | None = None) -> str:
+    fidelity = ""
+    if legend is not None:
+        notes = json.dumps(dossier, ensure_ascii=False) if dossier else (legend["summary"] or "")
+        fidelity = (f"This retells the legend {legend['title']} ({legend['region']}). Research notes: {notes}\n"
+                    "series_fit: score 1-3 if the pitch changes the being's nature, appearance, powers, "
+                    "place or role from these notes.\n\n")
+    return (f"Series: {series.title}. {series.description}\n\nPitch:\n{_pitch(pitch)}\n\n{fidelity}{PITCH_GUIDE}\n"
             "Score 1-10 on: click_appeal (would a viewer stop scrolling for this title and thumbnail), "
             "hook, originality (have you seen this before?), emotional_core, series_fit and "
             "talkability (will viewers debate it in the comments). Then give a one-line verdict.")
@@ -329,8 +338,12 @@ def story_bible(*, series: Any, kind: str, recipe: Any, formats: dict[str, str],
         "clues: 2-4 early details, each with the later payoff it sets up." + size] if p)
 
 
-def review_bible(kind: str, pitch: dict[str, Any], bible: dict[str, Any]) -> str:
-    return (f"Pitch:\n{_pitch(pitch)}\n\n{_bible(bible)}\nReview this story bible for a "
+def review_bible(kind: str, pitch: dict[str, Any], bible: dict[str, Any], dossier: dict | None = None) -> str:
+    fidelity = ("This retells a traditional legend. Also require that the threat is the legend's being "
+                "exactly as these research notes describe it, with no invented appearance, powers, place "
+                f"or role, and that the frame story fits where the legend can happen:\n"
+                f"{json.dumps(dossier, ensure_ascii=False)}\n\n" if dossier else "")
+    return (f"Pitch:\n{_pitch(pitch)}\n\n{_bible(bible)}\n{fidelity}Review this story bible for a "
             f"{'long episode' if kind == 'long' else '60-second Short'}. Approve only if: the hero is "
             "a specific person we would care about (not a type), with a want, wound and human detail "
             "that matter to the plot; the threat's rules are consistent and its limits create "
@@ -506,7 +519,8 @@ def review(kind: str, recipe: Any, formats: dict[str, str], endings: dict[str, s
                 if dossier else "")
     return (f"Recipe:\n{_recipe(recipe, formats, endings)}{accuracy}\n{_bible(bible)}\nScript:\n{_script(script)}\n\n"
             f"{REVIEW_GUIDE}\nScore 1-10 on each criterion using the guide: hook, tension, character, "
-            "emotional_payoff, originality, prose_for_the_ear, drawability and follows_recipe. Flag "
+            "emotional_payoff, originality, prose_for_the_ear, drawability and follows_recipe (for a "
+            "retold legend, faithfulness to the legend counts more than the suggested ingredients). Flag "
             "every rule violation. Then give up to six notes on the changes that would most raise the "
             "lowest scores: for each, quote the exact passage (copied from the script), say what is "
             "wrong with it, and give the fix (ideally the rewritten line).")

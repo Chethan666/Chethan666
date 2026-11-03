@@ -403,6 +403,22 @@ class LegendFitTests(unittest.TestCase):
         self.assertIn("no suitable unused legend", outcome.detail)
         self.assertEqual(db.unused_legends(ctx.conn), [])  # never offered again
 
+    def test_legend_fidelity_steers_pitches_and_the_bible(self):
+        ctx, brain = make_context()
+        self.add(ctx, 1)
+        pitch_prompts = prompts_for(brain, ctx, "pitches")
+        score_prompts = prompts_for(brain, ctx, "score_pitch")
+        review_prompts = prompts_for(brain, ctx, "review_bible")
+        pipeline.generate_story(ctx, "legends_retold")
+        self.assertIn("Suggested ingredients", pitch_prompts[0])
+        self.assertIn("score 1-3 if the pitch changes the being", score_prompts[0])
+        self.assertIn("exactly as these research notes describe it", review_prompts[0])
+
+    def test_ritual_line_cannot_be_the_refrain(self):
+        bible = Brain()._story_bible("", None)
+        bible["refrain"] = "The lantern is lit."
+        self.assertTrue(any("not the Storyteller's ritual" in i for i in pipeline.bible_issues(bible, "long")))
+
     def test_bible_check_asks_about_invented_traits(self):
         ctx, brain = make_context()
         self.add(ctx, 1)

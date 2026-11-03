@@ -311,6 +311,8 @@ def bible_issues(bible: dict[str, Any], kind: str) -> list[str]:
     issues += [f"{k} is empty" for k in required if blank(bible.get(k))]
     if len(str(bible.get("refrain") or "").split()) > 12:
         issues.append("the refrain must be at most 12 words")
+    if dedup.normalize(RITUAL_OPENING) in dedup.normalize(str(bible.get("refrain") or "")):
+        issues.append("the refrain must be this story's own line, not the Storyteller's ritual")
     clues = [c for c in bible.get("clues") or [] if isinstance(c, dict)
              and not blank(c.get("plant")) and not blank(c.get("payoff"))]
     if len(clues) < (2 if long else 1):
@@ -575,14 +577,15 @@ def gather_pitches(ctx: Context, series: catalog.Series, legend: sqlite3.Row | N
     return accepted
 
 
-def score_pitches(ctx: Context, series: catalog.Series, pitches: list[dict[str, Any]]) -> None:
+def score_pitches(ctx: Context, series: catalog.Series, pitches: list[dict[str, Any]],
+                  legend: sqlite3.Row | None = None, dossier: dict | None = None) -> None:
     limit = ctx.cfg["quality"]["judges_per_comparison"]
     jobs = [(p, judge) for p in pitches for judge in ctx.router.judges([p["_family"]], limit)]
 
     def score(job: tuple[dict, Any]) -> tuple[int, float]:
         p, judge = job
-        result = judge.generate_json("score_pitch", prompts.SYSTEM_EDITOR, prompts.score_pitch(series, p),
-                                     schemas.PITCH_SCORE)
+        result = judge.generate_json("score_pitch", prompts.SYSTEM_EDITOR,
+                                     prompts.score_pitch(series, p, legend, dossier), schemas.PITCH_SCORE)
         values = [int(result["scores"].get(c, 0)) for c in schemas.PITCH_CRITERIA]
         return id(p), sum(values) / len(values)
 
@@ -617,7 +620,7 @@ def make_bible(ctx: Context, story: Story) -> dict[str, Any]:
     if not problems:
         reviews = ctx.router.panel(
             lambda judge: judge.generate_json("review_bible", prompts.SYSTEM_EDITOR,
-                                              prompts.review_bible(kind, story.pitch, bible),
+                                              prompts.review_bible(kind, story.pitch, bible, story.dossier),
                                               schemas.OUTLINE_REVIEW),
             ctx.router.judges([writer.spec.family], ctx.cfg["quality"]["quick_judges"]))
         problems = list(dict.fromkeys(p for r in reviews if not r.get("approved") for p in r.get("problems", [])))
@@ -1214,7 +1217,7 @@ def generate_story(ctx: Context, series_name: str) -> Outcome:
         if not pitches:
             log.info("Attempt %d for %s produced no original pitch", attempt, series_name)
             continue
-        score_pitches(ctx, series, pitches)
+        score_pitches(ctx, series, pitches, legend, dossier)
         ranked = pitch_contest(ctx, series, pitches)
         winner = ranked[0].item
         story = Story(series=series, recipe=winner["_recipe"], pitch=winner, legend=legend, dossier=dossier,
