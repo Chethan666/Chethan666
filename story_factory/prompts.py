@@ -611,7 +611,9 @@ def final_check(script: dict[str, Any], dossier: dict | None) -> str:
             "must_fix for a factual error about the legend's traditional core, or anything that would "
             "offend, stereotype or misrepresent a culture; minor for missing context, nuance or a "
             "suggestion. A retelling may add an original modern frame and its own characters; that "
-            "alone is not an error. Empty lists mean it is clear.")
+            "alone is not an error. Folklore varies by region and era: a detail that matches any "
+            "known version, or a small physical detail left out, is minor. Empty lists mean it is "
+            "clear.")
 
 
 def scene_plan(narration: str, scene_range: tuple[int, int], key_range: tuple[int, int],

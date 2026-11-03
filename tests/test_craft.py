@@ -387,6 +387,32 @@ class FinalCheckTests(unittest.TestCase):
         self.assertIn("a stereotype in part two", outcome.detail)
         self.assertEqual(len(brain.tasks("revise")), ctx.cfg["quality"]["final_check_repairs"])
 
+    def test_one_judge_alone_cannot_veto_on_accuracy_or_culture(self):
+        ctx, brain = make_context()
+        first = []
+
+        def one_strict_judge(prompt, spec):
+            strict = spec.label == "openai:judge-b"
+            first.append(spec.label)
+            issues = [{"issue": "the bill should be a proboscis", "severity": "must_fix"}] if strict else []
+            return {"flags": {"gore": False}, "accuracy_issues": [], "cultural_issues": issues}
+
+        brain.overrides["final_check"] = one_strict_judge
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        self.assertEqual(outcome.status, "approved", outcome.detail)
+        self.assertEqual(brain.tasks("revise"), [])
+
+    def test_a_safety_flag_from_one_judge_still_blocks(self):
+        ctx, brain = make_context()
+
+        def one_flag(prompt, spec):
+            return {"flags": {"gore": spec.label == "openai:judge-b"}, "accuracy_issues": [], "cultural_issues": []}
+
+        brain.overrides["final_check"] = one_flag
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        self.assertEqual(outcome.status, "rejected")
+        self.assertIn("rule violation: gore", outcome.detail)
+
     def test_legend_core_is_a_promise_checked_while_editing(self):
         bible = Brain()._story_bible("", None)
         dossier = {"core_elements": ["punishes those who work the fields at noon", "carries a scythe"]}

@@ -45,7 +45,8 @@ Its goal is the best possible story, not the cheapest. Every step either creates
  8. POLISH          read-aloud line edit for one narrator voice, a pronunciation guide and up to 12
                     DRAMATIC PAUSES for the voice engine (discarded if it changes the story)
  9. FINAL CHECK     rule violations, legend accuracy against the dossier, cultural sensitivity; judges
-                    grade each issue must-fix or minor, only must-fix blocks (two repair rounds).
+                    grade each issue must-fix or minor; accuracy and cultural issues block only when
+                    most judges raise one, safety flags on any one judge (two repair rounds).
                     A retold legend's core elements are story-bible promises, checked while editing,
                     and traits the research doesn't support count as broken rules. Before pitching,
                     judges skip legends that can't frighten without invented traits (a harmless rain

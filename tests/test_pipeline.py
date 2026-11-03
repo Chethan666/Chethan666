@@ -132,7 +132,7 @@ class WritersRoomTests(unittest.TestCase):
 
     def test_final_check_fix_that_breaks_structure_is_repaired(self):
         ctx, brain = make_context()
-        brain.final_issues.extend([["the legend's region is wrong"]])
+        brain.final_issues.extend([["the legend's region is wrong"]] * 3)  # a majority of judges
         calls = []
 
         def revise(prompt, spec):

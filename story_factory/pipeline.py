@@ -1014,7 +1014,12 @@ def polish(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[dict[str
 
 
 def final_check(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[list[str], list[str]]:
-    """Returns (must-fix issues, minor suggestions). Rule violations always must be fixed."""
+    """Returns (must-fix issues, minor suggestions).
+
+    Safety flags block on any one judge. Accuracy and cultural issues block only when
+    most judges raise a must-fix issue of that kind: single judges contradict each
+    other on fine detail, and one of them shouldn't veto what the rest find sound.
+    """
     results = ctx.router.panel(
         lambda judge: judge.generate_json("final_check", prompts.SYSTEM_EDITOR,
                                           prompts.final_check(script, story.dossier), schemas.FINAL_CHECK),
@@ -1022,18 +1027,26 @@ def final_check(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[lis
     blocking = sorted({f"rule violation: {f.replace('_', ' ')}" for r in results
                        for f, raised in r.get("flags", {}).items() if raised is True})
     minor: list[str] = []
-    for r in results:
-        groups = [("cultural", r.get("cultural_issues", []))]
-        if story.dossier:  # original stories have no legend to be inaccurate about
-            groups.insert(0, ("accuracy", r.get("accuracy_issues", [])))
-        for label, items in groups:
-            for item in items:
+    labels = (["accuracy"] if story.dossier else []) + ["cultural"]  # originals have no legend to get wrong
+    for label in labels:
+        severe_by_judge: list[list[str]] = []
+        for r in results:
+            severe: list[str] = []
+            for item in r.get(f"{label}_issues", []):
                 # A plain string (from a model that ignored the schema) counts as must-fix.
-                text = item.get("issue", "") if isinstance(item, dict) else item
+                text = str(item.get("issue", "") if isinstance(item, dict) else item).strip()
                 if not _real_issue(text):
                     continue
-                severe = not isinstance(item, dict) or item.get("severity") != "minor"
-                (blocking if severe else minor).append(f"{label}: {str(text).strip()}")
+                if not isinstance(item, dict) or item.get("severity") != "minor":
+                    severe.append(f"{label}: {text}")
+                else:
+                    minor.append(f"{label}: {text}")
+            severe_by_judge.append(severe)
+        raised = [s for s in severe_by_judge if s]
+        if len(raised) * 2 > len(results):  # a majority of judges
+            blocking += [i for s in raised for i in s]
+        else:
+            minor += [i for s in raised for i in s]
     return list(dict.fromkeys(blocking)), list(dict.fromkeys(minor))
 
 
