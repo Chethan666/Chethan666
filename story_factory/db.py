@@ -147,14 +147,14 @@ MIGRATIONS = {
     "stories": {
         "pitch": "TEXT", "pitch_score": "REAL", "author_models": "TEXT", "beat_sheet": "TEXT",
         "audience_report": "TEXT", "pronunciations": "TEXT", "packaging": "TEXT",
-        "production_log": "TEXT", "cast": "TEXT",
+        "production_log": "TEXT", "cast": "TEXT", "bible": "TEXT", "pauses": "TEXT",
     },
     "inspirations": {"dossier": "TEXT"},
     "world_entities": {"look": "TEXT"},
     "costs": {"story_id": "INTEGER"},
 }
 JSON_COLUMNS = ("scenes", "review", "pitch", "author_models", "beat_sheet", "audience_report",
-                "pronunciations", "packaging", "production_log", "cast")
+                "pronunciations", "packaging", "production_log", "cast", "bible", "pauses")
 
 
 def now() -> str:

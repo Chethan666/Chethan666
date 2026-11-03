@@ -49,16 +49,17 @@ class Router:
         pool = self.pool(role)
         return pool[0] if len(pool) == 1 else FailoverClient(pool)
 
-    def judges(self, authors: Iterable[str] = ()) -> list[Client]:
+    def judges(self, authors: Iterable[str] = (), limit: int | None = None) -> list[Client]:
         """Judges from families that wrote none of the items being judged.
 
         Falls back to the whole panel when every family is an author, so a
-        verdict is always possible.
+        verdict is always possible. `limit` keeps the first few (list your best
+        judges first).
         """
         authors = set(authors)
         panel = self.pool("judges")
-        independent = [j for j in panel if j.spec.family not in authors]
-        return independent or panel
+        independent = [j for j in panel if j.spec.family not in authors] or panel
+        return independent[:limit] if limit else independent
 
     def embed(self, text: str) -> list[float]:
         return self.one("embedder").embed(text)

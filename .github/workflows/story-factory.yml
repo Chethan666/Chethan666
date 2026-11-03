@@ -2,6 +2,7 @@
 # Start it from the Actions tab ("Run workflow").
 #   mode=check: tests + which models your keys can use (no paid generation)
 #   mode=story: also researches Wikipedia and generates one real story
+#   mode=bench: blind-compares the writing of `config` against `bench_against` on fixed pitches
 # This repository is public: run logs and the summary are public, and so are artifacts to
 # signed-in GitHub users. Secrets themselves are never shown.
 name: Story factory
@@ -10,9 +11,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "check = tests and model access only; story = also generate one story"
+        description: "check = tests and model access only; story = also generate one story; bench = compare two model setups"
         type: choice
-        options: [check, story]
+        options: [check, story, bench]
         default: check
       series:
         description: Series to generate in story mode
@@ -28,6 +29,16 @@ on:
         type: choice
         options: [config.aws-open.toml, config.aws-only.toml, config.example.toml]
         default: config.aws-open.toml
+      bench_against:
+        description: "bench mode: the model setup to compare against (B)"
+        type: choice
+        options: [config.aws-open.toml, config.aws-only.toml, config.example.toml]
+        default: config.example.toml
+      bench_pitches:
+        description: "bench mode: how many fixed pitches (1-3)"
+        type: choice
+        options: ["1", "2", "3"]
+        default: "2"
 
 permissions:
   contents: read
@@ -50,6 +61,8 @@ jobs:
       SERIES: ${{ inputs.series }}
       CONFIG: ${{ inputs.config }}
       PING_MODELS: ${{ inputs.ping_models }}
+      BENCH_AGAINST: ${{ inputs.bench_against }}
+      BENCH_PITCHES: ${{ inputs.bench_pitches }}
     steps:
       - uses: actions/checkout@v5
 
@@ -93,6 +106,12 @@ jobs:
       - name: Generate one story
         if: env.MODE == 'story'
         run: python -m story_factory --config "$CONFIG" generate "$SERIES"
+
+      - name: Benchmark two model setups
+        if: env.MODE == 'bench'
+        run: |
+          python -m story_factory --config "$CONFIG" bench --against "$BENCH_AGAINST" \
+            --pitches "$BENCH_PITCHES" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Report
         if: always() && env.MODE == 'story'

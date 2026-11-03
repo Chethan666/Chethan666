@@ -104,7 +104,22 @@ DEFAULTS: dict[str, Any] = {
         # Dedicated edits to bring a script inside the word range before each editor round.
         "length_fix_attempts": 3,
         # Alternative openings the hook lab writes and pits against the original.
-        "hook_alternatives": 4,
+        "hook_alternatives": 2,
+        # Titles that go through the pairwise title contest.
+        "title_finalists": 3,
+        # Judges per pairwise comparison: full contests (pitches, drafts) and quick ones
+        # (openings, titles, audience rewrites). Earlier judges in [roles] are used first.
+        "judges_per_comparison": 3,
+        "quick_judges": 2,
+        # Long drafts are written in this many parts (one call each), then framed.
+        "draft_sections": 3,
+        # Share of story-bible promises the script must visibly deliver.
+        "bible_min_coverage": 0.75,
+        # Dedicated line edits for machine-sounding phrasing before each editor round.
+        "style_fix_attempts": 2,
+        # Dramatic pauses the polish step may mark for the narrator.
+        "max_pauses_long": 12,
+        "max_pauses_short": 3,
         "audience_personas": [
             "a 24-year-old horror fan who plays story channels at night and is bored by cliches",
             "a 17-year-old Shorts scroller who leaves within seconds unless something grabs them",
@@ -112,6 +127,27 @@ DEFAULTS: dict[str, Any] = {
             "a 30-year-old skeptic who notices plot holes, contrivances and cheap twists",
             "a 28-year-old Brazilian who understands English well but needs clear spoken language",
         ],
+    },
+    "style": {
+        # Free checks on the narration (no model call); thresholds suit spoken English
+        # for a global audience.
+        "max_avg_sentence_words": 17,
+        "long_sentence_words": 32,
+        "max_long_sentences": 3,
+        "max_named_feelings": 2,
+        "max_same_openings_in_a_row": 2,
+        "words_per_dash": 60,
+        "max_hard_word_share": 0.05,
+    },
+    # Sampling temperature per task, where the model accepts one (open models on
+    # Bedrock, Grok, Gemini). Creative tasks run hot, judging runs cool.
+    "temperature": {
+        "pitches": 1.0, "story_bible": 0.9, "revise_bible": 0.8, "write_section": 0.85,
+        "write_draft": 0.85, "write_frame": 0.8, "alternative_openings": 0.95, "packaging": 0.8,
+        "rewrite_chunks": 0.8, "revise": 0.7, "line_edit": 0.6, "audience": 0.8,
+        "score_pitch": 0.2, "compare_pitches": 0.2, "compare_drafts": 0.2, "compare_openings": 0.2,
+        "compare_titles": 0.2, "review": 0.2, "review_outline": 0.2, "review_bible": 0.2,
+        "bible_check": 0.1, "final_check": 0.1, "judge_duplicate": 0.1, "scene_plan": 0.3,
     },
     "dedup": {
         "title_similarity": 0.85,

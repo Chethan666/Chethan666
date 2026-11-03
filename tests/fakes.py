@@ -10,7 +10,7 @@ import re
 from collections import deque
 from typing import Any, Callable
 
-from story_factory import config, db, dedup, pipeline
+from story_factory import config, db, dedup, pipeline, schemas
 from story_factory.llm import LLMError, ModelSpec
 from story_factory.router import Router
 
@@ -72,6 +72,9 @@ class Brain:
         self.prefer_opening: str | None = None  # text the hook-lab judges prefer
         self.prefer_title: str | None = None
         self.cast_override: Callable[[list[str]], list[dict]] | None = None
+        self.bible_present: Callable[[str], bool] = lambda item_id: True
+        self.threat_breaks: list[str] = []
+        self.pauses: list[dict] = [{"after": "Some doors are better left closed", "ms": 1200}]
 
     def tasks(self, name: str) -> list[str]:
         return [label for task, label in self.calls if task == name]
@@ -137,9 +140,64 @@ class Brain:
                 "regional_variants": [], "cultural_notes": [], "avoid": [], "sources": ["https://example.org"]}
 
     def _beat_sheet(self, prompt: str, spec: ModelSpec) -> dict:
+        names = ["hook", "ordinary life", "first wrong detail", "escalation", "midpoint", "breath",
+                 "choice", "climax"]
         return {"central_question": "Who is the extra passenger?", "emotional_core": "loneliness",
-                "beats": [{"name": "hook", "purpose": "question", "summary": "x", "target_seconds": 10,
-                           "tension": 3, "plants": ["ticket"], "payoffs": []}]}
+                "rehooks": [{"at_seconds": 25, "question": "Who rang?"}, {"at_seconds": 120, "question": "Why her?"},
+                            {"at_seconds": 260, "question": "What is it?"}],
+                "midpoint_reversal": "The passenger is her brother", "peak_moment": "The mirror",
+                "beats": [{"name": n, "purpose": "question", "summary": "x", "target_seconds": 60,
+                           "tension": i + 2, "turn": "it gets worse", "open_loop": "" if i == 7 else "why?",
+                           "plants": ["ticket"], "payoffs": []} for i, n in enumerate(names)]}
+
+    def _story_bible(self, prompt: str, spec: ModelSpec) -> dict:
+        return {"hero": {"name": "Marisol", "who": "a bus driver, 52", "want": "to finish her last shift",
+                         "wound": "her brother vanished on this route", "flaw": "stubborn",
+                         "false_belief": "the road took him", "human_detail": "she hums three notes",
+                         "voice": "dry, kind"},
+                "threat": {"what_it_is": "a passenger who never boards", "what_it_wants": "a seat",
+                           "rules": ["rings the bell at 12:06", "cannot cross a lit door"],
+                           "limits": ["cannot speak"], "tell": "the bell"},
+                "theme": "grief", "theme_question": "can you let someone go?",
+                "hero_choice": "she stops the bus", "dramatic_irony": "the viewer sees the handprint",
+                "breath_moment": "a joke with the dispatcher", "refrain": "Next stop, nowhere.",
+                "refrain_turn": "it means her stop", "sound_motif": "the stop bell",
+                "red_accent": "the stop button", "open_detail": "whose handprint?",
+                "aftertaste": "the stop bell on your bus home",
+                "clues": [{"plant": "the timetable", "payoff": "the date"},
+                          {"plant": "the cold seat", "payoff": "her brother's seat"}]}
+
+    _revise_bible = _story_bible
+
+    def _review_bible(self, prompt: str, spec: ModelSpec) -> dict:
+        return {"problems": [], "approved": True}
+
+    def _bible_check(self, prompt: str, spec: ModelSpec) -> dict:
+        script = json.loads(_between(prompt, "SCRIPT:\n", "\n\nTASK:"))
+        quote = " ".join(script["body"].split()[:5])
+        ids = re.findall(r"^- \[(\w+)\]", prompt, re.MULTILINE)
+        return {"items": [{"id": i, "present": self.bible_present(i), "quote": quote} for i in ids],
+                "threat_rule_breaks": list(self.threat_breaks)}
+
+    def _write_section(self, prompt: str, spec: ModelSpec) -> dict:
+        self.counter += 1
+        words = int(re.search(r"About (\d+) words", prompt).group(1))
+        text = " ".join(" ".join(unique_words(f"p{self.counter}x{i}", 6)).capitalize() + "."
+                        for i in range(max(words // 6, 1)))
+        if spec.model == "writer-b" and "part 1 of" in prompt:
+            text = text.replace(".", " PREFERRED.", 1)
+        return {"text": text}
+
+    def _write_frame(self, prompt: str, spec: ModelSpec) -> dict:
+        question = "Would you have opened the door?"
+        return {"intro": "The lantern is lit. I found this one in the hollow beside a quiet road.",
+                "outro": f"Some doors are better left closed. {question}", "comment_question": question,
+                "thumbnail_idea": "A red stop button", "description_credit": "This is an original work of fiction.",
+                "new_entities": [{"kind": "place", "name": f"Exit {self.counter}", "description": "A moving sign."}],
+                "referenced_entities": ["The red lantern"]}
+
+    def _line_edit(self, prompt: str, spec: ModelSpec) -> dict:
+        return json.loads(_between(prompt, "Script:\n", "\n\nA line editor"))
 
     _revise_outline = _beat_sheet
 
@@ -153,10 +211,8 @@ class Brain:
         return self.make_script("150-320" in prompt)
 
     def _review(self, prompt: str, spec: ModelSpec) -> dict:
-        names = ("hook", "tension", "emotional_payoff", "originality", "prose_for_the_ear", "drawability",
-                 "follows_recipe")
-        return {"scores": {k: self.review_scores for k in names}, "flags": {"gore": False},
-                "notes": ["raise the tension in the middle"]}
+        return {"scores": {k: self.review_scores for k in schemas.REVIEW_CRITERIA}, "flags": {"gore": False},
+                "notes": [{"quote": "the door", "problem": "the middle sags", "fix": "raise the tension"}]}
 
     def _audience(self, prompt: str, spec: ModelSpec) -> dict:
         count = len(re.findall(r"^\[(\d+)\] ", prompt, re.MULTILINE))
@@ -170,7 +226,7 @@ class Brain:
 
     def _polish(self, prompt: str, spec: ModelSpec) -> dict:
         script = json.loads(_between(prompt, "Script:\n", "\n\nDo a final"))
-        return dict(script, pronunciations=[{"word": "Llorona", "say_as": "yoh-ROH-nah"}])
+        return dict(script, pronunciations=[{"word": "Llorona", "say_as": "yoh-ROH-nah"}], pauses=self.pauses)
 
     def _final_check(self, prompt: str, spec: ModelSpec) -> dict:
         issues = self.final_issues.popleft() if self.final_issues else []

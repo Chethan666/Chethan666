@@ -19,7 +19,7 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
-from .llm import LLMError, ModelSpec, UsageRecorder, parse_json
+from .llm import LLMError, ModelSpec, UsageRecorder, parse_json, temperature_for
 
 # Claude models that take the server-side refusal fallback.
 FALLBACK_MODELS = ("claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5")
@@ -143,6 +143,7 @@ class GoogleClient:
         self.spec = spec
         self.recorder = recorder
         self.cfg = cfg["providers"]["google"]
+        self.temperatures = cfg
         self.api_key = os.environ.get("GEMINI_API_KEY")
         if not self.api_key:
             raise LLMError("Set GEMINI_API_KEY in the environment")
@@ -172,6 +173,9 @@ class GoogleClient:
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"responseMimeType": "application/json", "responseJsonSchema": schema},
         }
+        temperature = temperature_for(self.temperatures, task)
+        if temperature is not None:
+            body["generationConfig"]["temperature"] = temperature
         try:
             data = self._post(f"/models/{self.spec.model}:generateContent", body)
         except LLMError as exc:
@@ -220,6 +224,7 @@ class XAIClient:
         self.recorder = recorder
         settings = cfg["providers"]["xai"]
         self.max_tokens = settings["max_tokens"]
+        self.temperatures = cfg
         api_key = os.environ.get("XAI_API_KEY")
         if not api_key:
             raise LLMError("Set XAI_API_KEY in the environment")
@@ -227,10 +232,19 @@ class XAIClient:
                                     timeout=settings["timeout_s"], max_retries=4)
 
     def _complete(self, task: str, messages: list[dict], response_format: dict) -> Any:
+        extra: dict[str, Any] = {}
+        temperature = temperature_for(getattr(self, "temperatures", {}), task)
+        if temperature is not None and not getattr(self, "_no_temperature", False):
+            extra["temperature"] = temperature
         try:
             response = self.client.chat.completions.create(
                 model=self.spec.model, messages=messages, response_format=response_format,
-                max_completion_tokens=self.max_tokens)
+                max_completion_tokens=self.max_tokens, **extra)
+        except self.openai.BadRequestError as exc:
+            if not extra or "temperature" not in str(exc).lower():
+                raise
+            self._no_temperature = True  # this model fixes its own temperature
+            return self._complete(task, messages, response_format)
         except self.openai.APIConnectionError as exc:
             raise LLMError(f"{self.spec.label} connection failed: {exc}") from exc
         if response.usage:
@@ -366,6 +380,7 @@ class AWSChatClient(_BedrockAddressFallback, XAIClient):
         self.recorder = recorder
         settings = cfg["providers"]["aws"]
         self.max_tokens = settings["max_tokens"]
+        self.temperatures = cfg
         self.cfg = cfg
         self.client = openai.OpenAI(api_key=_aws_key(), base_url=_aws_openai_url(cfg),
                                     timeout=settings["timeout_s"], max_retries=4)

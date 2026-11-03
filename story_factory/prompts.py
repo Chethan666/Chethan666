@@ -28,36 +28,101 @@ Rules that are never broken:
 """
 
 AUDIENCE_NEEDS = """\
-What a great Hollow Lines story gives its viewer:
-1. Curiosity: a concrete, unanswered question within the first ten seconds, answered at the end.
-2. A safe thrill: fear that climbs in steps, each worse than the last.
-3. "That could be me": an ordinary person in a place the viewer knows.
-4. Attachment: we care about the protagonist before anything goes wrong.
-5. Fair clues: two or three early details that the ending pays off.
-6. An earned ending: the twist or emotion follows from what came before.
-7. An emotional core: love, guilt, loneliness or loyalty beneath the fear.
-8. Something to argue about in the comments afterwards.
+What a great Hollow Lines story gives its viewer (the psychology we write for):
+1. Curiosity: a concrete, unanswered question within the first ten seconds, and new questions
+   every minute or so. Answer an old question only after a new one is open.
+2. A person, not a job: we care before anything goes wrong because the hero wants something,
+   carries a wound, and has one small human detail we recognize.
+3. Agency: the hero makes choices, including one understandable mistake the viewer wants to
+   shout at. Things happen because of the hero, not only to them.
+4. Dread over surprise: the viewer knows or suspects more than the hero, and waits for it.
+5. Anticipation: the moment before the reveal is the scariest. Linger there; keep the threat
+   mostly unseen and let the listener's imagination do the work.
+6. Rhythm: fear climbs, but breathes. A moment of warmth or quiet humor makes the next
+   scare land harder.
+7. Fair play: the threat obeys its own rules, every planted clue pays off, and the twist
+   recolors what came before so the story rewards a second watch.
+8. Peak and end: viewers remember the worst moment and the last line most; spend the best
+   writing there.
+9. Meaning: beneath the fear lies something true about people (grief, guilt, loneliness,
+   love), and the ending answers it without stating it.
+10. Aftertaste: the fear follows them home, attached to something ordinary they will notice
+   tonight.
+11. Something to argue about: one deliberate, fair ambiguity for the comments.
+12. "That could be me": an ordinary person in a place the viewer knows.
 """
 
 CRAFT = """\
 Writing for the ear:
-- This is narration heard once, at speaking pace, over simple drawings. Write sentences a
-  listener can follow without rereading. Vary rhythm: longer sentences to settle in, short
-  ones as dread tightens.
-- Make it concrete: specific sounds, smells, objects and numbers rather than abstract fear.
-  One precise detail beats three adjectives.
+- This is narration heard once, at speaking pace, over simple drawings, by a global audience
+  for whom English is often a second language. Write sentences a listener can follow without
+  rereading: mostly plain words, an average sentence under about 16 words, no tangled clauses.
+  Vary rhythm: longer sentences to settle in, very short ones as dread tightens.
+- Make it concrete: specific sounds, smells, objects, times and numbers. One precise detail
+  beats three adjectives. Show fear through the body and actions; never name the feeling
+  ("she felt terrified").
+- Write for sound: a recurring sound can be a clue, and silence is a sound.
+- Use a refrain: a short line or image that returns and means something worse the second time.
 - Keep dialogue sparse and always clear about who is speaking.
 - Every image must be drawable: few figures, clear silhouettes, darkness, one red accent.
-- Never explain the twist twice. Trust the listener.
+- Never explain the twist or the theme. Trust the listener.
 - Avoid worn horror phrasing: "a chill ran down", "blood ran cold", "little did they know",
   "suddenly", "out of nowhere", "it was all a dream", "heart pounding in my chest",
   "something was off", "eerie silence".
+- Avoid machine-sounding phrasing: "a sense of dread", "the air grew thick", "a testament to",
+  "tapestry", "palpable", "sent shivers down", "couldn't shake the feeling", "deafening
+  silence", "in that moment", "time seemed to stop", "every fiber of", "hung in the air",
+  "for what felt like an eternity". No lists of three adjectives. Few dashes.
+"""
+
+STORYTELLER = """\
+The Storyteller (the voice of every intro and outro):
+- An old, warm, unhurried voice; never shouts, never hypes, never asks viewers to subscribe.
+- Speaks to the viewer as "you", like someone sharing a fire. Faintly amused by the dark,
+  tender toward the people in the stories. Short sentences.
+- Never explains what a story meant.
+- Ritual: every long episode's intro begins with exactly "The lantern is lit." The intro
+  then sets the mood in a few lines without summarizing. The outro lets the story's fear
+  follow the viewer home, and ends with exactly one question to the viewer.
+"""
+
+STYLE_SAMPLES = """\
+House style, by example (original samples: match their qualities, never copy their words).
+
+GOOD (a hook that raises a concrete question):
+"Marisol had driven the 11:40 bus for nine years, and in nine years nobody had ever pressed
+the stop bell between Calder Road and the reservoir. There is nothing out there. No houses.
+No shelter. Just a pole with a timetable nobody updates. Tonight, at six minutes past
+midnight, the bell rang. She checked the mirror. Every seat was empty. The bell rang again."
+
+GOOD (a person, and dread the viewer sees before the hero does):
+"He hums when he is nervous, always the same three notes of a song his mother sang, and he is
+humming now as he locks the back door. Check, then check again. That is his rule. What he
+does not see, what you can see if you look at the kitchen window, is the handprint in the
+mist on the glass. On the inside."
+
+GOOD (an ending that answers the emotional core and leaves an aftertaste):
+"The voicemail was still saved under Don't Delete. She played it one last time. Hi, love.
+I'm on my way. And after the beep, very close to the phone, a second voice none of them
+had ever noticed: So am I. She keeps her phone in the kitchen now, face down. You might
+want to listen to your old voicemails tonight. Or you might not."
+
+NEVER LIKE THIS:
+"A sense of dread washed over her as the air grew thick with an eerie silence. Her heart
+pounded in her chest. Suddenly, out of nowhere, a shadowy figure appeared, sending shivers
+down her spine. She felt terrified."
+Why: it names feelings instead of causing them, every phrase is borrowed, and there is
+nothing a listener can picture.
+Instead: "The fridge stopped humming. In the quiet she heard a second breath, slower than
+hers, coming from the hallway she had just walked down."
 """
 
 SYSTEM_WRITER = (
-    "You are the head writer of Hollow Lines, a world-class horror storyteller whose work is "
-    "known for originality, dread that builds, and endings people still think about days later.\n\n"
-    + CHANNEL + "\n" + AUDIENCE_NEEDS + "\n" + CRAFT
+    "You are the head writer of Hollow Lines, a world-class horror storyteller and TV writer "
+    "known for characters people love, dread that builds, and endings people still think about "
+    "days later. You understand what audiences need psychologically and you write to give it "
+    "to them.\n\n"
+    + CHANNEL + "\n" + AUDIENCE_NEEDS + "\n" + CRAFT + "\n" + STORYTELLER + "\n" + STYLE_SAMPLES
 )
 
 SYSTEM_EDITOR = (
@@ -72,6 +137,35 @@ SYSTEM_RESEARCHER = (
     "scholarly and cultural sources over entertainment sites, separate the traditional legend "
     "from modern pop-culture versions, and note anything that would be disrespectful to get wrong."
 )
+
+# What each editor score means, so different judges score on the same scale.
+REVIEW_GUIDE = """\
+Scoring guide (a competent, publishable story is 6-7; an 8 needs a reason you can quote):
+- hook: 4 opens on weather or setting; 6 something odd but no real question; 8 a concrete
+  question within two sentences that you need answered; 10 impossible to leave.
+- tension: 4 flat or repetitive; 6 escalates predictably or stops raising new questions; 8 each
+  escalation worse than the last, new open loops keep pulling, dread through what the viewer
+  knows; 10 relentless, yet it breathes.
+- character: 4 a job title; 6 sympathetic but passive or generic; 8 a specific want, wound and
+  human detail, and choices that drive the story; 10 a person you will not forget.
+- emotional_payoff: 4 arbitrary or explained ending; 6 makes sense but does not land; 8 earned,
+  recolors the story, answers its emotional core and leaves an aftertaste; 10 haunts for days.
+- originality: 4 familiar internet-horror beats; 6 familiar premise with a fresh detail; 8 a
+  central image or turn you have not seen; 10 a new idea.
+- prose_for_the_ear: 4 cliches, named feelings, tangled sentences; 6 clean but generic; 8
+  specific sensory detail, varied rhythm, easy to follow in one hearing; 10 every line lands aloud.
+- drawability: 4 needs crowds, faces or complex action; 6 mostly drawable; 8 strong simple
+  silhouettes and one iconic image; 10 an unforgettable red-accent image.
+- follows_recipe: 4 ignores the ingredients; 6 uses them on the surface; 8 all used naturally;
+  10 the recipe feels inevitable.
+"""
+
+PITCH_GUIDE = """\
+Scoring guide (a competent pitch is 6; 8 needs a reason you can name): 8+ on click_appeal and hook
+means a specific, strange image or question a stranger would stop for; 8+ on emotional_core
+means a real human need or wound, not just fear; 8+ on originality means you have not seen this
+central image or turn before.
+"""
 
 
 def system_audience(persona: str) -> str:
@@ -108,6 +202,13 @@ def _legend(legend: sqlite3.Row | None, dossier: dict | None) -> str:
     return (f"\nLegend to retell: {legend['title']} ({legend['region']}).\nResearch notes: {notes}\n"
             "Keep the legend's traditional core accurate and respectful; the framing story about the "
             "protagonist is original. Use your own words, never the notes' wording.\n")
+
+
+def _bible(bible: dict | None) -> str:
+    if not bible:
+        return ""
+    return ("Story bible (the decisions every draft must honor):\n"
+            + json.dumps(bible, ensure_ascii=False) + "\n")
 
 
 def _script(script: dict[str, Any]) -> str:
@@ -153,7 +254,9 @@ def pitches(*, series: Any, recipe: Any, formats: dict[str, str], endings: dict[
                      "these:\n" + "\n".join(f"- {s['title']}: {s['logline'] or ''}" for s in avoid))
     parts.append(
         f"Pitch {count} genuinely different episodes built from the recipe: different central images, "
-        "different hooks, different emotional cores. Before writing each, ask whether a viewer "
+        "different hooks, different emotional cores. Give each a hero with a want and a wound, a "
+        "threat with its own logic, and an ending that answers something human beneath the fear. "
+        "Before writing each, ask whether a viewer "
         "scrolling past would stop for its title and thumbnail. Titles: at most 60 characters, "
         "intriguing, honest about the story. Synopsis: 80-120 words including the ending. "
         "Thumbnail concept: one simple drawable image with no text.")
@@ -161,7 +264,7 @@ def pitches(*, series: Any, recipe: Any, formats: dict[str, str], endings: dict[
 
 
 def score_pitch(series: Any, pitch: dict[str, Any]) -> str:
-    return (f"Series: {series.title}. {series.description}\n\nPitch:\n{_pitch(pitch)}\n\n"
+    return (f"Series: {series.title}. {series.description}\n\nPitch:\n{_pitch(pitch)}\n\n{PITCH_GUIDE}\n"
             "Score 1-10 on: click_appeal (would a viewer stop scrolling for this title and thumbnail), "
             "hook, originality (have you seen this before?), emotional_core, series_fit and "
             "talkability (will viewers debate it in the comments). Then give a one-line verdict.")
@@ -181,33 +284,108 @@ def judge_duplicate(premise: dict[str, Any], existing: sqlite3.Row) -> str:
             f"STORY B: {premise['title']}. {premise['logline']} {premise['synopsis']}")
 
 
-# --- Outline and drafts ------------------------------------------------------
+# --- Story bible -------------------------------------------------------------
 
-def beat_sheet(*, series: Any, kind: str, recipe: Any, formats: dict[str, str], endings: dict[str, str],
-               pitch: dict[str, Any], legend: sqlite3.Row | None, dossier: dict | None,
-               world: Sequence[sqlite3.Row], target_seconds: int) -> str:
-    shape = ("a Storyteller intro, a hook in the first sentence, ordinary life and why we care, the "
-             "first wrong detail, three escalations each worse than the last, a false relief, the "
-             "climax, the ending, and a Storyteller outro ending in one question to the viewer"
-             if kind == "long" else
-             "a hook in the first sentence, one fast escalation, a sting in the final line, and a "
-             "one-line Storyteller question")
+def story_bible(*, series: Any, kind: str, recipe: Any, formats: dict[str, str], endings: dict[str, str],
+                pitch: dict[str, Any], legend: sqlite3.Row | None, dossier: dict | None,
+                world: Sequence[sqlite3.Row]) -> str:
+    size = ("" if kind == "long" else
+            " This is a 60-second Short: keep every field to one short line, give one or two clues, "
+            "and leave breath_moment, refrain and refrain_turn empty if there is no room.")
     return "\n\n".join(p for p in [
         f"Series: {series.title}. {series.description}",
         "Recipe:\n" + _recipe(recipe, formats, endings),
         "Approved pitch:\n" + _pitch(pitch), _legend(legend, dossier), _world(world),
+        "Before any plotting, make the storyteller's decisions for this episode, as a story bible.\n"
+        "hero: a specific person, not a job. name; who (age, life, in one line); want (what they are "
+        "trying to get tonight); wound (the past hurt that shapes them); flaw (what will lead them "
+        "into a mistake); false_belief (what they wrongly believe, which the ending tests); "
+        "human_detail (one small, specific habit or object that makes us love them); voice (how "
+        "they talk, in a few words).\n"
+        "threat: what_it_is; what_it_wants; rules (2-4 laws it always obeys); limits (what it cannot "
+        "do); tell (the sign that it is near, ideally a sound or small detail).\n"
+        "theme: what the story is really about, in a few words. theme_question: the human question "
+        "the ending answers without stating it.\n"
+        "hero_choice: the key decision the hero makes, ideally an understandable mistake viewers "
+        "will shout at. dramatic_irony: what the viewer will know or suspect before the hero. "
+        "breath_moment: a moment of warmth or quiet humor before the worst.\n"
+        "refrain: a short line or image (at most 12 words) that returns; refrain_turn: how its "
+        "meaning darkens when it returns. sound_motif: the recurring sound. red_accent: the one "
+        "thing drawn in red and why it matters to this story.\n"
+        "open_detail: one deliberate, fair ambiguity viewers will argue about. aftertaste: the "
+        "ordinary thing in the viewer's own life the fear will attach to tonight.\n"
+        "clues: 2-4 early details, each with the later payoff it sets up." + size] if p)
+
+
+def review_bible(kind: str, pitch: dict[str, Any], bible: dict[str, Any]) -> str:
+    return (f"Pitch:\n{_pitch(pitch)}\n\n{_bible(bible)}\nReview this story bible for a "
+            f"{'long episode' if kind == 'long' else '60-second Short'}. Approve only if: the hero is "
+            "a specific person we would care about (not a type), with a want, wound and human detail "
+            "that matter to the plot; the threat's rules are consistent and its limits create "
+            "suspense; the theme and the ending's answer feel true; the hero's choice is active and "
+            "understandable; the clues are fair and their payoffs surprising; and nothing is generic "
+            "or cliched. List each specific problem otherwise.")
+
+
+def revise_bible(bible: dict[str, Any], problems: list[str]) -> str:
+    return (f"{_bible(bible)}\nEditor's problems:\n" + "\n".join(f"- {p}" for p in problems)
+            + "\n\nRevise the story bible to solve every problem while keeping what works.")
+
+
+def bible_check(bible: dict[str, Any], items: Sequence[tuple[str, str]], script: dict[str, Any]) -> str:
+    listed = "\n".join(f"- [{item_id}] {requirement}" for item_id, requirement in items)
+    return (f"STORY BIBLE:\n{json.dumps(bible, ensure_ascii=False)}\n\nSCRIPT:\n{_script(script)}\n\n"
+            f"TASK: Check whether the script delivers each item below.\n{listed}\n\nFor each item "
+            "give its id, whether it is clearly present on the page, and a short exact quote (5-15 "
+            "words, copied character for character from the script) that shows it; use an empty "
+            "quote when it is missing. Then list every place where the threat breaks one of its own "
+            "rules or limits (empty if none).")
+
+
+# --- Outline and drafts ------------------------------------------------------
+
+def beat_sheet(*, series: Any, kind: str, recipe: Any, formats: dict[str, str], endings: dict[str, str],
+               pitch: dict[str, Any], legend: sqlite3.Row | None, dossier: dict | None,
+               world: Sequence[sqlite3.Row], target_seconds: int, bible: dict | None = None) -> str:
+    if kind == "long":
+        shape = ("a Storyteller intro; a hook in the first sentence; ordinary life where we come to "
+                 "care about the hero (show the want, the wound and the human detail); the first "
+                 "wrong detail; three escalations each worse than the last, with a reversal at the "
+                 "midpoint that changes what the hero is fighting; the breath moment; the hero's "
+                 "choice; a false relief; the climax, lingering on the moment before the reveal; the "
+                 "ending that answers the theme question; and a Storyteller outro that lets the fear "
+                 "follow the viewer home and ends in one question")
+        retention = ("rehooks: at least three new questions the story raises to stop viewers leaving, "
+                     "one by about 30 seconds, one by about 2 minutes and one near the midpoint, each "
+                     "with its time in seconds. midpoint_reversal: the turn halfway through. "
+                     "peak_moment: the single most frightening moment.")
+    else:
+        shape = ("a hook in the first sentence; one fast escalation; the hero's choice if there is "
+                 "room; a sting in the final line; and a one-line Storyteller question")
+        retention = ("rehooks: one question that lands by about 15 seconds. midpoint_reversal: "
+                     "empty unless there is one. peak_moment: the sting.")
+    return "\n\n".join(p for p in [
+        f"Series: {series.title}. {series.description}",
+        "Recipe:\n" + _recipe(recipe, formats, endings),
+        "Approved pitch:\n" + _pitch(pitch), _bible(bible), _legend(legend, dossier), _world(world),
         f"Outline this episode beat by beat for about {target_seconds} seconds of narration: {shape}. "
         "For each beat give its purpose, what happens, its target length in seconds, its tension "
-        "from 1 to 10, the clues it plants and the earlier clues it pays off. Tension should "
-        "climb overall, dipping only at the false relief. State the central question and the "
-        "emotional core."] if p)
+        "from 1 to 10, its turn (what is different at the end of the beat; a beat where nothing "
+        "changes is cut), its open_loop (the question it leaves the viewer holding; empty only for "
+        "the final beat), the clues it plants and the earlier clues it pays off. Tension climbs "
+        "overall but breathes: it dips at the breath moment and the false relief. Place every "
+        "story-bible clue, the refrain and its return, and the dramatic irony. State the central "
+        f"question and the emotional core. {retention}"] if p)
 
 
-def review_outline(kind: str, pitch: dict[str, Any], outline: dict[str, Any]) -> str:
-    return (f"Pitch:\n{_pitch(pitch)}\n\nOutline:\n{json.dumps(outline, ensure_ascii=False)}\n\n"
-            "Approve only if: the hook raises a concrete question at once; tension climbs; every "
-            "payoff was planted earlier and every plant pays off; the ending is earned and surprising; "
-            "the emotional core is felt, not stated; and no beat is filler. List each specific "
+def review_outline(kind: str, pitch: dict[str, Any], outline: dict[str, Any], bible: dict | None = None) -> str:
+    return (f"Pitch:\n{_pitch(pitch)}\n\n{_bible(bible)}\nOutline:\n{json.dumps(outline, ensure_ascii=False)}\n\n"
+            "Approve only if: the hook raises a concrete question at once; new questions open before "
+            "old ones close, so there is never a natural moment to leave; tension climbs but "
+            "breathes; the hero drives events through choices; the viewer is made to dread what the "
+            "hero does not know; every payoff was planted earlier and every plant pays off; the "
+            "threat obeys its rules; the ending is earned, surprising and answers the theme; the "
+            "emotional core is felt, not stated; and no beat is filler. List each specific "
             "problem otherwise.")
 
 
@@ -219,7 +397,8 @@ def revise_outline(outline: dict[str, Any], problems: list[str]) -> str:
 
 def write_draft(*, series: Any, kind: str, recipe: Any, formats: dict[str, str], endings: dict[str, str],
                 pitch: dict[str, Any], outline: dict[str, Any], min_words: int, max_words: int,
-                legend: sqlite3.Row | None, dossier: dict | None, world: Sequence[sqlite3.Row]) -> str:
+                legend: sqlite3.Row | None, dossier: dict | None, world: Sequence[sqlite3.Row],
+                bible: dict | None = None) -> str:
     structure = ("intro: The Storyteller, 25-60 words, sets the mood without summarizing. body: the "
                  "story. outro: The Storyteller, 25-60 words, ending with exactly one question to "
                  "the viewer." if kind == "long" else
@@ -229,6 +408,7 @@ def write_draft(*, series: Any, kind: str, recipe: Any, formats: dict[str, str],
         f"Series: {series.title}. {series.description}",
         "Recipe:\n" + _recipe(recipe, formats, endings),
         "Approved pitch:\n" + _pitch(pitch),
+        _bible(bible),
         "Approved outline (follow its beats, plants and payoffs):\n" + json.dumps(outline, ensure_ascii=False),
         _legend(legend, dossier), _world(world),
         f"Write the full narration. {structure} intro + body + outro together: {min_words}-{max_words} "
@@ -236,6 +416,49 @@ def write_draft(*, series: Any, kind: str, recipe: Any, formats: dict[str, str],
         "first sentence. description_credit: for a legend, one sentence crediting the tradition and "
         "region; otherwise \"This is an original work of fiction.\" List new shared-world entities "
         "you introduced and existing ones you referenced."] if p)
+
+
+def write_section(*, series: Any, recipe: Any, formats: dict[str, str], endings: dict[str, str],
+                  pitch: dict[str, Any], outline: dict[str, Any], bible: dict | None, beats: list[dict],
+                  part: int, parts: int, so_far: str, words: int, legend: sqlite3.Row | None,
+                  dossier: dict | None, world: Sequence[sqlite3.Row]) -> str:
+    if part == 1:
+        place = "This is the opening part: its first sentence is the hook."
+    elif part == parts:
+        place = "This is the final part: bring the story to its ending; the Storyteller outro comes later."
+    else:
+        place = "This is a middle part."
+    previous = (f"The story so far (continue seamlessly from its last line; never repeat or recap it):\n{so_far}"
+                if so_far else "")
+    ending = ("End this part on an open question or a turn that makes leaving impossible."
+              if part < parts else "End on the story's final line.")
+    return "\n\n".join(p for p in [
+        f"Series: {series.title}. {series.description}",
+        "Recipe:\n" + _recipe(recipe, formats, endings),
+        "Approved pitch:\n" + _pitch(pitch), _bible(bible),
+        "Full outline, for orientation:\n" + json.dumps(outline, ensure_ascii=False),
+        _legend(legend, dossier), _world(world), previous,
+        f"Write part {part} of {parts} of the story body (no Storyteller intro or outro), covering "
+        "only these beats, in order, with their plants and payoffs:\n"
+        + json.dumps(beats, ensure_ascii=False)
+        + f"\n\n{place} About {words} words. Write the full prose of these beats, for the ear, in the "
+        f"house style. {ending}"] if p)
+
+
+def write_frame(*, series: Any, kind: str, pitch: dict[str, Any], bible: dict | None, body: str,
+                legend: sqlite3.Row | None, world: Sequence[sqlite3.Row]) -> str:
+    return "\n\n".join(p for p in [
+        f"Series: {series.title}. {series.description}", "Approved pitch:\n" + _pitch(pitch),
+        _bible(bible), _world(world), f"The finished story body:\n{body}",
+        "Write The Storyteller's frame for this story. intro: 25-60 words, beginning with exactly "
+        "\"The lantern is lit.\", setting the mood without summarizing or spoiling. outro: 25-60 "
+        "words that let the fear follow the viewer home (use the story bible's aftertaste) and end "
+        "with exactly one question to the viewer, ideally about the open detail or the hero's "
+        "choice. comment_question repeats that final question exactly. thumbnail_idea: one simple "
+        "drawable image built around the red accent. description_credit: "
+        + (f"one sentence crediting the tradition of {legend['title']} ({legend['region']})."
+           if legend else "\"This is an original work of fiction.\"")
+        + " List new shared-world entities the body introduced and existing ones it referenced."] if p)
 
 
 def compare_drafts(kind: str, pitch: dict[str, Any], a: dict[str, Any], b: dict[str, Any]) -> str:
@@ -246,14 +469,15 @@ def compare_drafts(kind: str, pitch: dict[str, Any], a: dict[str, Any], b: dict[
 
 
 def review(kind: str, recipe: Any, formats: dict[str, str], endings: dict[str, str],
-           script: dict[str, Any], dossier: dict | None) -> str:
+           script: dict[str, Any], dossier: dict | None, bible: dict | None = None) -> str:
     accuracy = (f"\nLegend dossier for accuracy:\n{json.dumps(dossier, ensure_ascii=False)}\n"
                 if dossier else "")
-    return (f"Recipe:\n{_recipe(recipe, formats, endings)}{accuracy}\nScript:\n{_script(script)}\n\n"
-            "Score 1-10 (8 means a standout we would be proud to publish): hook, tension, "
+    return (f"Recipe:\n{_recipe(recipe, formats, endings)}{accuracy}\n{_bible(bible)}\nScript:\n{_script(script)}\n\n"
+            f"{REVIEW_GUIDE}\nScore 1-10 on each criterion using the guide: hook, tension, character, "
             "emotional_payoff, originality, prose_for_the_ear, drawability and follows_recipe. Flag "
-            "every rule violation. In notes, give specific, line-level changes that would raise the "
-            "lowest scores; quote the passage each note is about.")
+            "every rule violation. Then give up to six notes on the changes that would most raise the "
+            "lowest scores: for each, quote the exact passage (copied from the script), say what is "
+            "wrong with it, and give the fix (ideally the rewritten line).")
 
 
 def fit_length(script: dict[str, Any], current: int, min_words: int, max_words: int) -> str:
@@ -266,9 +490,18 @@ def fit_length(script: dict[str, Any], current: int, min_words: int, max_words: 
             "question. Return every field.")
 
 
-def revise(kind: str, script: dict[str, Any], notes: list[str], min_words: int, max_words: int) -> str:
+def line_edit(script: dict[str, Any], problems: list[str]) -> str:
+    return (f"Script:\n{json.dumps(script, ensure_ascii=False)}\n\nA line editor found these problems:\n"
+            + "\n".join(f"- {p}" for p in problems)
+            + "\n\nRewrite only the sentences involved, in the house style: concrete, plain, for the "
+            "ear. Keep every event, clue, the ending, the outro's final question and about the same "
+            "length. Return every field.")
+
+
+def revise(kind: str, script: dict[str, Any], notes: list[str], min_words: int, max_words: int,
+           bible: dict | None = None) -> str:
     current = len(" ".join(str(script.get(k, "")) for k in ("intro", "body", "outro")).split())
-    return (f"Current script ({current} words; it must stay {min_words}-{max_words}):\n"
+    return (f"{_bible(bible)}Current script ({current} words; it must stay {min_words}-{max_words}):\n"
             f"{json.dumps(script, ensure_ascii=False)}\n\nEditors' notes:\n"
             + "\n".join(f"- {n}" for n in notes)
             + f"\n\nRevise the script to address every note while keeping what already works. "
@@ -296,12 +529,16 @@ def rewrite_chunks(script: dict[str, Any], chunks: list[str], weak: dict[int, li
             "parts with their numbers.")
 
 
-def polish(kind: str, script: dict[str, Any], min_words: int, max_words: int) -> str:
+def polish(kind: str, script: dict[str, Any], min_words: int, max_words: int, max_pauses: int = 10) -> str:
     return (f"Script:\n{_script(script)}\n\nDo a final read-aloud line edit for a single narrator voice: "
-            "smooth any sentence that is hard to say or easy to mishear, tune rhythm and pauses with "
-            "punctuation, and remove anything that only works on the page. Do not change events, "
-            f"clues, the ending or the final question. Keep {min_words}-{max_words} words. List names "
-            "or foreign words a voice engine might mispronounce, with a simple respelling.")
+            "smooth any sentence that is hard to say or easy to mishear, tune rhythm with punctuation, "
+            "and remove anything that only works on the page. Do not change events, clues, the "
+            f"refrain, the ending or the final question. Keep {min_words}-{max_words} words. List names "
+            "or foreign words a voice engine might mispronounce, with a simple respelling. Horror "
+            f"narration lives in its silences: mark up to {max_pauses} dramatic pauses, each as the exact "
+            "phrase (3-8 words, copied from your edited text) after which the narrator stops, and the "
+            "pause length in milliseconds (400-2500), before reveals, after the worst lines and "
+            "before the final question.")
 
 
 def final_check(script: dict[str, Any], dossier: dict | None) -> str:
@@ -317,10 +554,14 @@ def final_check(script: dict[str, Any], dossier: dict | None) -> str:
 
 
 def scene_plan(narration: str, scene_range: tuple[int, int], key_range: tuple[int, int],
-               known_looks: Sequence[tuple[str, str]] = ()) -> str:
+               known_looks: Sequence[tuple[str, str]] = (), bible: dict | None = None) -> str:
     canon = ""
+    if bible:
+        canon += (f"This story's red accent: {bible.get('red_accent', '')}. Use red only for it. "
+                  f"Its recurring sound: {bible.get('sound_motif', '')}; put it in the sound effects "
+                  "wherever the narration implies it.\n")
     if known_looks:
-        canon = ("Recurring characters already have fixed looks; reuse them word for word if they "
+        canon += ("Recurring characters already have fixed looks; reuse them word for word if they "
                  "appear:\n" + "\n".join(f"- {name}: {look}" for name, look in known_looks) + "\n")
     return (f"NARRATION:\n{narration}\nTASK: Split the narration into {scene_range[0]}-{scene_range[1]} "
             "visual scenes for the animator. Each scene's `text` is copied exactly from the narration; "
@@ -358,8 +599,11 @@ def compare_titles(a: str, b: str, thumbnail: str, synopsis: str) -> str:
             "a crowded home page, while still being honest about the story? Reason briefly, then choose.")
 
 
-def packaging(series: Any, script: dict[str, Any], pitch: dict[str, Any], credit: str) -> str:
-    return (f"Series: {series.title}.\nPitch:\n{_pitch(pitch)}\n\nFinal script:\n{_script(script)}\n\n"
+def packaging(series: Any, script: dict[str, Any], pitch: dict[str, Any], credit: str,
+              bible: dict | None = None) -> str:
+    red = (f"The story's red accent is {bible.get('red_accent', '')}; the thumbnail should show it at "
+           "the story's key moment, without spoiling the twist.\n\n" if bible else "")
+    return (f"Series: {series.title}.\nPitch:\n{_pitch(pitch)}\n\nFinal script:\n{_script(script)}\n\n{red}"
             "Package this video for YouTube. titles: five options, best first, at most 60 characters, "
             "curiosity without lying. thumbnail_brief: one simple, striking drawable image in our "
             "style. thumbnail_text: two to four words, or empty if the image works alone. description: "

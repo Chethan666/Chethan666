@@ -364,7 +364,10 @@ class LegendTests(unittest.TestCase):
             script["body"] = text.capitalize() + ". " + script["body"]
             return script
 
-        brain.overrides["write_draft"] = copying
+        def copying_part(prompt, spec):
+            return {"text": text.capitalize() + ". " + brain._write_section(prompt, spec)["text"]}
+
+        brain.overrides["write_section"] = copying_part
         brain.overrides["revise"] = copying
         outcome = pipeline.generate_story(ctx, "legends_retold")
         self.assertEqual(outcome.status, "rejected")

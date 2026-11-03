@@ -8,7 +8,7 @@ import logging
 import random
 import sys
 
-from . import catalog, db, learning, pipeline, research
+from . import bench, catalog, db, learning, pipeline, research
 from .config import load_config
 from .llm import BudgetExceeded, LLMError, ModelSpec
 from .router import Router
@@ -43,6 +43,13 @@ def report(conn, row) -> str:
              f"- **Estimated cost of this story:** ${cost:.2f}"]
     if story.get("author_models"):
         lines.append("- **Models:** " + ", ".join(f"{k}: {v}" for k, v in story["author_models"].items()))
+    bible = story.get("bible") or {}
+    if bible.get("hero"):
+        hero = bible["hero"]
+        lines.append(f"- **Hero:** {hero.get('name', '')}, {hero.get('who', '')}; wants {hero.get('want', '')}; "
+                     f"wound: {hero.get('wound', '')}")
+        lines.append(f"- **Theme:** {bible.get('theme', '')} ({bible.get('theme_question', '')}); "
+                     f"refrain: \"{bible.get('refrain', '')}\"; red accent: {bible.get('red_accent', '')}")
     review = story.get("review") or {}
     if review.get("scores"):
         lines.append("- **Editors' median scores:** " + ", ".join(f"{k} {v}" for k, v in review["scores"].items()))
@@ -54,6 +61,8 @@ def report(conn, row) -> str:
     if packaging.get("titles"):
         lines.append("- **Titles (best first):** " + " | ".join(packaging["titles"]))
         lines.append(f"- **Thumbnail:** {packaging.get('thumbnail_brief', '')} [{packaging.get('thumbnail_text', '')}]")
+    if story.get("pauses"):
+        lines.append(f"- **Narrator pauses marked:** {len(story['pauses'])}")
     if story.get("scenes"):
         lines.append(f"- **Scenes:** {len(story['scenes'])}, cast: "
                      + ", ".join(m["name"] for m in story.get("cast") or []))
@@ -107,6 +116,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--models", help="comma-separated provider:model specs to test instead of the configured roles")
     p = sub.add_parser("report", help="Markdown summary of a story (default: the latest)")
     p.add_argument("id", type=int, nargs="?")
+    p = sub.add_parser("bench", help="blind-compare this config's writing against another config on fixed pitches")
+    p.add_argument("--against", required=True, help="the other TOML config (setup B)")
+    p.add_argument("--pitches", type=int, default=2, help=f"how many fixed pitches (1-{len(bench.PITCHES)})")
 
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -220,6 +232,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1 if failed else 0
     elif args.command == "stats":
         print(json.dumps(db.stats(db.connect(cfg["database"])), indent=2))
+    elif args.command == "bench":
+        summary = bench.run(cfg, load_config(args.against), max(1, min(args.pitches, len(bench.PITCHES))))
+        print(bench.markdown(summary, args.config or "default config", args.against))
     elif args.command == "learn":
         ctx = _context(cfg)
         insights = learning.learn(ctx.conn, ctx.router)

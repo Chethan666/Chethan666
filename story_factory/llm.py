@@ -16,6 +16,12 @@ class LLMError(RuntimeError):
     pass
 
 
+def temperature_for(cfg: dict, task: str) -> float | None:
+    """The configured sampling temperature for a task, or None to use the model's default."""
+    value = (cfg.get("temperature") or {}).get(task)
+    return float(value) if value is not None else None
+
+
 class BudgetExceeded(RuntimeError):
     pass
 

@@ -15,22 +15,36 @@ Its goal is the best possible story, not the cheapest. Every step either creates
                     → 9-layer repeat check → judges from OTHER companies score every pitch
                     → top 4 go head-to-head, each pair judged in both orders → winner
                     → strong runners-up are SHELVED for a later run
- 2. OUTLINE         head writer builds a beat sheet: hook, escalations, false relief, clue plants/payoffs
-                    → independent editors approve it or send it back
- 3. DRAFT CONTEST   2 writers (Claude, Grok) draft the full script → head-to-head judging
- 4. EDITORS' LOOP   independent editors score 7 qualities; median of every one must reach 8/10
-                    → head writer revises against their line notes (up to 2 rounds) or the story is rejected
- 5. HOOK LAB        4 alternative openings compete with the original for the first ten seconds;
+ 2. STORY BIBLE     before any plotting, the head writer decides what a storyteller decides first:
+                    a HERO (want, wound, flaw, false belief, one human detail), the THREAT's rules and
+                    limits, the THEME and the question the ending answers, the hero's CHOICE, what the
+                    viewer knows before the hero (dramatic irony), a breath moment, a REFRAIN that
+                    returns darker, a sound motif, the meaning of the red accent, a deliberate
+                    ambiguity, the AFTERTASTE that follows viewers home, and clues with payoffs
+                    → free completeness check → independent editors approve it or it is revised
+ 3. OUTLINE         beat sheet built from the bible: every beat has a turn and leaves an open question;
+                    planned REHOOKS (~30 s, ~2 min, midpoint), a midpoint reversal and a peak moment
+                    → free structure check → independent editors approve it or send it back
+ 4. DRAFT CONTEST   2 writers draft the script; long episodes are written in 3 PARTS (each part sees the
+                    story so far), then The Storyteller's intro and outro are written around them
+                    → head-to-head judging
+ 5. EDITORS' LOOP   each round: fit the length → FREE STYLE CHECKS (machine-sounding phrases, named
+                    feelings, long sentences, repeated openings, dashes, hard words) with a dedicated
+                    line edit → STORY-BIBLE CHECK (a judge must quote where each promise is delivered;
+                    quotes are verified in code; broken threat rules block) → editors score 8 qualities
+                    against a written scoring guide; the median of every one must reach the bar
+                    → revisions use the editors' quoted line notes with fixes, or the story is rejected
+ 6. HOOK LAB        2 alternative openings compete with the original for the first ten seconds;
                     the original stays unless judges prefer a new one
- 6. AUDIENCE TEST   5 simulated viewers rate every ~30 seconds and say where they'd leave
+ 7. AUDIENCE TEST   5 simulated viewers rate every ~30 seconds and say where they'd leave
                     → weak parts are rewritten, kept only if judges agree the new version is better
- 7. POLISH          read-aloud line edit for one narrator voice + pronunciation guide for the voice engine
-                    (discarded if it changes the story)
- 8. FINAL CHECK     rule violations, legend accuracy against the dossier, cultural sensitivity
- 9. SCENE PLAN      exact narration spans, visuals, sound cues, a delivery cue for the narrator,
-                    key moments that need new images, and a CAST with one fixed look per character
-                    (recurring world characters always keep their first look)
-10. PACKAGING       5 titles ranked head-to-head for click appeal, thumbnail brief and text,
+ 8. POLISH          read-aloud line edit for one narrator voice, a pronunciation guide and up to 12
+                    DRAMATIC PAUSES for the voice engine (discarded if it changes the story)
+ 9. FINAL CHECK     rule violations, legend accuracy against the dossier, cultural sensitivity
+10. SCENE PLAN      exact narration spans, visuals (red only for the story's red accent), sound cues
+                    including the story's sound motif, a delivery cue for the narrator, key moments,
+                    and a CAST with one fixed look per character (recurring characters keep their look)
+11. PACKAGING       5 titles, the top 3 ranked head-to-head, a thumbnail built on the red accent,
                     description with credit, tags, pinned comment
                     → APPROVED, waiting for pipeline 2
 ```
@@ -55,6 +69,47 @@ The default is a **balanced** setup on three accounts: **Amazon Bedrock** runs m
 Providers: `aws` (Amazon Bedrock; write the model's maker in its ID, e.g. `aws:anthropic.claude-opus-5-5`), `anthropic`, `google`, `openai` and `xai`. Every role is set as `provider:model@effort`, so any model can be swapped. `config.example.toml` also has a **direct-API** preset (no AWS) and a **premium** preset.
 
 On Bedrock, Claude doesn't get Anthropic's automatic refusal fallback; a declined request fails that one step and the pipeline carries on with the next story. Claude prices are Anthropic's list prices (Bedrock's in-Region prices can be about 10% higher); the other prices and the Bedrock model IDs come from AWS announcements and third-party trackers, so confirm them with `python -m story_factory models`.
+
+## The storyteller's craft, written down
+
+Weaker models write well when the craft is spelled out instead of assumed, and stronger
+models write even better from the same instructions. Every writer prompt carries:
+
+- **What the audience needs**, in psychological terms: curiosity with new questions before old
+  ones close, a hero we care about who makes choices, dread over surprise, lingering before the
+  reveal, fear that breathes, fair play, the peak and the ending, a human meaning under the fear,
+  an aftertaste that follows the viewer home, and one deliberate ambiguity to argue about.
+- **A house style with examples**: three short original passages showing a hook, dramatic irony
+  and an ending with an aftertaste, plus a "never like this" passage with its fix.
+- **The Storyteller's voice and ritual**: warm, unhurried, speaks to "you", never explains;
+  every long episode opens with "The lantern is lit." (added automatically if missing).
+- **Writing for the ear and a global audience**: plain words, short sentences, a refrain,
+  writing for sound.
+
+Judges get a **scoring guide** that says what a 4, 6, 8 and 10 look like for each quality
+(hook, tension, character, emotional payoff, originality, prose for the ear, drawability,
+following the recipe), so different models score on the same scale.
+
+**Creativity per task**: where a model accepts it (the open models on Bedrock, Grok, Gemini),
+creative tasks run at a higher temperature and judging at a low one (`[temperature]` in the
+config). A model that rejects the setting is retried without it.
+
+**Fewer judge calls, more writing**: quick comparisons (openings, titles, audience rewrites)
+use 2 judges, full contests 3 (`quick_judges`, `judges_per_comparison`). The savings pay for
+the story bible, writing in parts and the bible check.
+
+## Benchmarking model setups
+
+Before switching models, prove the upgrade:
+
+```bash
+python -m story_factory --config config.aws-open.toml bench --against config.example.toml --pitches 2
+```
+
+Both setups write the same fixed pitches (story bible → outline → drafts → line edit →
+polish). Judges from both setups compare the two scripts blind, in both orders. The table
+shows wins, word counts and cost per setup. In GitHub Actions, run the workflow with
+`mode = bench`.
 
 ## How repeats are prevented
 
@@ -143,6 +198,8 @@ python -m story_factory status
 | `record-performance ID ...` | (Pipeline 2) save a video's YouTube metrics |
 | `learn` | Turn measured performance into lessons for future pitches |
 | `stats` | Cost per approved story, spend by model, which models win the draft contest, and the most common rejection reasons |
+| `report [ID]` | Markdown summary of a story: verdict, hero and theme, scores, audience, titles, cost |
+| `bench --against FILE` | Blind-compare this config's writing against another config on fixed pitches |
 
 ## Cost
 
@@ -153,6 +210,8 @@ Rough estimates for the balanced default, not yet measured on real runs:
 | Long episode | ~$3–6 | ~$40–80 |
 | Short | ~$0.50–1 | ~$10–17 |
 | **Total** | | **~$50–100** |
+
+The open models on Bedrock (`config.aws-open.toml`) cost roughly a tenth of the balanced setup. The story bible, writing in parts and the bible check add roughly 10–15 calls per long story; capping quick comparisons at 2 judges, contests at 3, the hook lab at 2 alternatives and the title contest at 3 finalists removes roughly 100, so a long story now takes fewer calls than before.
 
 The premium preset is roughly $100–250 a month. There is no spending cap by default; set `monthly_cap_usd` for a hard stop. Every call's tokens and estimated price are logged in the `costs` table, so `status` shows the real spend after the first runs.
 

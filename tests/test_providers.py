@@ -259,6 +259,37 @@ class AWSClientTests(unittest.TestCase):
         self.assertEqual(model.generate_json("t", "s", "p", {"type": "object"}), {"ok": True})
         self.assertEqual(json.loads(self.requests[1].content)["response_format"], {"type": "json_object"})
 
+    def test_creative_and_judging_tasks_get_their_temperature(self):
+        import openai
+
+        model = providers.build(ModelSpec.parse("aws:moonshotai.kimi-k2.5"), self.cfg, self.recorder)
+        ok = json.dumps(XAIClientTests.completion('{"ok": true}')).encode()
+        model.client = openai.OpenAI(api_key="k", base_url=str(model.client.base_url), http_client=self.transport([
+            (200, ok, "application/json")] * 3))
+        model.generate_json("write_section", "s", "p", {"type": "object"})
+        model.generate_json("review", "s", "p", {"type": "object"})
+        model.generate_json("unlisted_task", "s", "p", {"type": "object"})
+        sent = [json.loads(r.content) for r in self.requests]
+        self.assertEqual(sent[0]["temperature"], 0.85)
+        self.assertEqual(sent[1]["temperature"], 0.2)
+        self.assertNotIn("temperature", sent[2])
+
+    def test_a_model_that_rejects_temperature_is_retried_without_it(self):
+        import openai
+
+        model = providers.build(ModelSpec.parse("aws:deepseek.v3.2"), self.cfg, self.recorder)
+        ok = json.dumps(XAIClientTests.completion('{"ok": true}')).encode()
+        model.client = openai.OpenAI(api_key="k", base_url=str(model.client.base_url), http_client=self.transport([
+            (400, b'{"error": {"message": "temperature is not supported"}}', "application/json"),
+            (200, ok, "application/json"), (200, ok, "application/json")]))
+        self.assertEqual(model.generate_json("pitches", "s", "p", {"type": "object"}), {"ok": True})
+        model.generate_json("pitches", "s", "p", {"type": "object"})
+        sent = [json.loads(r.content) for r in self.requests]
+        self.assertIn("temperature", sent[0])
+        self.assertNotIn("temperature", sent[1])
+        self.assertNotIn("temperature", sent[2])  # remembered for this model
+        self.assertEqual(sent[1]["response_format"]["type"], "json_schema")
+
     def test_missing_bedrock_key_is_reported(self):
         del os.environ["AWS_BEARER_TOKEN_BEDROCK"]
         with self.assertRaises(LLMError):

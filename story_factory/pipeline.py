@@ -1,8 +1,10 @@
 """The writers' room: how one story is made.
 
-    research legend (web) -> pitch contest -> beat outline -> competing drafts
-    -> editors' loop -> hook lab -> simulated audience -> read-aloud polish
-    -> final checks -> scene plan with cast -> packaging with title contest -> approved
+    research legend (web) -> pitch contest -> story bible -> beat outline
+    -> competing drafts (long ones written part by part) -> editors' loop (free style
+    checks, story-bible check, scored review) -> hook lab -> simulated audience
+    -> read-aloud polish with pauses -> final checks -> scene plan with cast
+    -> packaging with title contest -> approved
 
 Different companies' models fill different roles, and work is always judged by
 models from a different family than its author.
@@ -21,7 +23,7 @@ from typing import Any
 
 from . import catalog, db, dedup, learning, prompts, schemas, tournament
 from .llm import BudgetExceeded, LLMError
-from .router import Router
+from .router import FailoverClient as FailoverJudge, Router
 
 log = logging.getLogger(__name__)
 
@@ -31,6 +33,21 @@ CLICHES = re.compile(
     r"\b(chills? ran down|blood ran cold|little did (he|she|they|i|we) know|out of nowhere|"
     r"it was all a dream|heart pounding in (my|his|her|their) chest|eerie silence|something was off)\b",
     re.IGNORECASE)
+# Phrasing that marks text as machine-written; each one is easy to replace.
+AI_ISMS = re.compile(
+    r"\b(a sense of (dread|unease|foreboding|doom)|the air (was|grew|hung|felt) (thick|heavy)|"
+    r"a testament to|tapestry|palpable|sen(t|ding) (a )?shivers? down|shivers? down (my|his|her|their) spine|"
+    r"couldn'?t shake the feeling|deafening silence|in that moment|time seemed to (stop|slow|freeze)|"
+    r"every fib(er|re) of|hung in the air|for what felt like (an eternity|hours|forever)|"
+    r"(a|the) weight of (it all|the world)|as if on cue|a chill (crept|settled)|"
+    r"breath (he|she|they|i) didn'?t know)", re.IGNORECASE)
+# Naming a feeling instead of causing it.
+NAMED_FEELINGS = re.compile(
+    r"\b(felt|feel|feels|feeling) (so |very |truly |completely )?(scared|terrified|afraid|frightened|"
+    r"uneasy|nervous|anxious|horrified|fear|dread|panic(ked)?)\b", re.IGNORECASE)
+# The Storyteller's ritual: every long episode's intro opens with it.
+RITUAL_OPENING = "The lantern is lit."
+SENTENCE_END = re.compile(r"(?<=[.!?…])\s+")
 SCRIPT_FIELDS = ("intro", "body", "outro", "comment_question", "hook_line", "thumbnail_idea",
                  "description_credit", "new_entities", "referenced_entities")
 FORMATS, ENDINGS = catalog.FORMATS, catalog.ENDINGS
@@ -64,6 +81,7 @@ class Story:
     sparks: list[sqlite3.Row]
     world: list[sqlite3.Row]
     authors: dict[str, str] = field(default_factory=dict)
+    bible: dict[str, Any] | None = None
     log: list[dict[str, Any]] = field(default_factory=list)
 
     def note(self, stage: str, **info: Any) -> None:
@@ -87,12 +105,16 @@ def scene_ranges(kind: str) -> tuple[tuple[int, int], tuple[int, int]]:
     return ((18, 45), (3, 6)) if kind == "long" else ((4, 10), (1, 2))
 
 
-def tidy(script: dict[str, Any]) -> dict[str, Any]:
+def tidy(script: dict[str, Any], kind: str | None = None) -> dict[str, Any]:
     """Recompute the fields derived from the text, so a model's copying slip can't sink a story.
 
     comment_question is the outro's final question (appended to the outro if the model
-    only returned it separately); hook_line is the body's first sentence.
+    only returned it separately); hook_line is the body's first sentence. A long
+    episode's intro always opens with the Storyteller's ritual line.
     """
+    intro = str(script.get("intro") or "").strip()
+    if kind == "long" and intro and not dedup.normalize(intro).startswith(dedup.normalize(RITUAL_OPENING)):
+        script["intro"] = f"{RITUAL_OPENING} {intro}"
     outro = str(script.get("outro", "")).strip()
     question = str(script.get("comment_question", "")).strip()
     if outro and not outro.endswith("?") and question.endswith("?") and question not in outro:
@@ -106,9 +128,55 @@ def tidy(script: dict[str, Any]) -> dict[str, Any]:
     return script
 
 
-def script_issues(script: dict[str, Any], kind: str, cfg: dict) -> list[str]:
-    """Checks that need no model call (derived fields are tidied first)."""
-    tidy(script)
+def syllables(word: str) -> int:
+    """A rough syllable count (vowel groups, minus a silent final e)."""
+    word = word.lower()
+    groups = len(re.findall(r"[aeiouy]+", word))
+    if word.endswith("e") and not word.endswith(("le", "ee")) and groups > 1:
+        groups -= 1
+    return max(groups, 1)
+
+
+def style_issues(text: str, cfg: dict, kind: str) -> list[str]:
+    """Free checks for prose that sounds machine-written or is hard to follow by ear."""
+    rules = cfg["style"]
+    issues = [f"replace the overused phrase '{m.group(0)}' with something specific to this story"
+              for m in AI_ISMS.finditer(text)]
+    feelings = [m.group(0) for m in NAMED_FEELINGS.finditer(text)]
+    if len(feelings) > (rules["max_named_feelings"] if kind == "long" else 1):
+        issues.append(f"show fear through the body and actions instead of naming it ({', '.join(feelings[:4])})")
+    sentences = [s for s in SENTENCE_END.split(text.replace("\n", " ").strip()) if s.split()]
+    if sentences:
+        lengths = [len(s.split()) for s in sentences]
+        average = sum(lengths) / len(lengths)
+        if average > rules["max_avg_sentence_words"]:
+            issues.append(f"sentences average {average:.0f} words; shorten them for listeners "
+                          f"(under {rules['max_avg_sentence_words']})")
+        long_ones = [s for s, n in zip(sentences, lengths) if n > rules["long_sentence_words"]]
+        if len(long_ones) > (rules["max_long_sentences"] if kind == "long" else 0):
+            issues.append(f"split long sentences, such as: '{' '.join(long_ones[0].split()[:12])}...'")
+        firsts = [dedup.normalize(s).split()[0] if dedup.normalize(s) else "" for s in sentences]
+        run, limit = 1, rules["max_same_openings_in_a_row"]
+        for i in range(1, len(firsts)):
+            run = run + 1 if firsts[i] and firsts[i] == firsts[i - 1] else 1
+            if run > limit:
+                issues.append(f"{run} sentences in a row start with '{firsts[i]}'; vary the openings")
+                break
+    words = text.split()
+    dashes = len(re.findall(r"—|–|\s-\s|--", text))
+    if words and dashes > max(1, len(words) // rules["words_per_dash"]):
+        issues.append(f"use fewer dashes ({dashes}); the narrator reads them as awkward breaks")
+    plain = [w for w in dedup.normalize(text).split() if w.isalpha()]
+    hard = [w for w in plain if syllables(w) >= 4]
+    if plain and len(hard) / len(plain) > rules["max_hard_word_share"]:
+        issues.append("use plainer words for a global audience, for example instead of: "
+                      + ", ".join(dict.fromkeys(hard[:5])))
+    return issues
+
+
+def structure_issues(script: dict[str, Any], kind: str, cfg: dict) -> list[str]:
+    """Length, frame and rule checks that need no model call (derived fields are tidied first)."""
+    tidy(script, kind)
     issues: list[str] = []
     lo, hi = word_range(cfg, kind)
     words = len(narration_of(script).split())
@@ -132,12 +200,26 @@ def script_issues(script: dict[str, Any], kind: str, cfg: dict) -> list[str]:
     return issues
 
 
+def script_issues(script: dict[str, Any], kind: str, cfg: dict) -> list[str]:
+    """Every check that needs no model call."""
+    issues = structure_issues(script, kind, cfg)
+    return issues + style_issues(narration_of(script), cfg, kind)
+
+
+def _note_text(note: Any) -> str:
+    if not isinstance(note, dict):
+        return str(note).strip()
+    quote, problem, fix = (str(note.get(k, "")).strip() for k in ("quote", "problem", "fix"))
+    text = f'At "{quote}": {problem}' if quote else problem
+    return f"{text} Fix: {fix}" if fix else text
+
+
 def aggregate_reviews(reviews: list[dict[str, Any]]) -> dict[str, Any]:
     """Median score per criterion; a flag counts if any editor raised it."""
     scores = {c: statistics.median(int(r["scores"].get(c, 0)) for r in reviews)
               for c in schemas.REVIEW_CRITERIA}
     flags = sorted({f for r in reviews for f, raised in r.get("flags", {}).items() if raised is True})
-    notes = list(dict.fromkeys(n for r in reviews for n in r.get("notes", []) if str(n).strip()))
+    notes = list(dict.fromkeys(t for r in reviews for t in map(_note_text, r.get("notes", [])) if t))
     return {"scores": scores, "flags": flags, "notes": notes}
 
 
@@ -190,6 +272,110 @@ def scene_issues(narration: str, scenes: Any, kind: str, cast: Any = None) -> li
     if total and covered / total < 0.95:
         issues.append(f"scenes cover {covered}/{total} narration words; they must cover all of it")
     return issues
+
+
+def bible_issues(bible: dict[str, Any], kind: str) -> list[str]:
+    """Missing decisions in a story bible."""
+    long = kind == "long"
+    hero, threat = bible.get("hero") or {}, bible.get("threat") or {}
+    blank = lambda value: not str(value or "").strip()  # noqa: E731
+    issues = [f"hero.{k} is empty" for k in (("name", "want", "wound", "flaw", "human_detail") if long
+                                            else ("name", "want", "human_detail")) if blank(hero.get(k))]
+    issues += [f"threat.{k} is empty" for k in ("what_it_is", "what_it_wants") if blank(threat.get(k))]
+    rules = [r for r in threat.get("rules") or [] if not blank(r)]
+    if len(rules) < (2 if long else 1):
+        issues.append(f"give the threat at least {2 if long else 1} rules it always obeys")
+    if long and not [x for x in threat.get("limits") or [] if not blank(x)]:
+        issues.append("give the threat at least one limit (something it cannot do)")
+    required = (("theme_question", "hero_choice", "dramatic_irony", "breath_moment", "refrain",
+                 "refrain_turn", "sound_motif", "red_accent", "open_detail", "aftertaste") if long
+                else ("red_accent", "aftertaste"))
+    issues += [f"{k} is empty" for k in required if blank(bible.get(k))]
+    if len(str(bible.get("refrain") or "").split()) > 12:
+        issues.append("the refrain must be at most 12 words")
+    clues = [c for c in bible.get("clues") or [] if isinstance(c, dict)
+             and not blank(c.get("plant")) and not blank(c.get("payoff"))]
+    if len(clues) < (2 if long else 1):
+        issues.append(f"plant at least {2 if long else 1} clues, each with its payoff")
+    return issues
+
+
+def bible_promises(bible: dict[str, Any], kind: str) -> list[tuple[str, str]]:
+    """What the finished script must visibly deliver, as (id, requirement) pairs."""
+    hero, threat = bible.get("hero") or {}, bible.get("threat") or {}
+    items = [("human_detail", f"the hero's human detail appears: {hero.get('human_detail', '')}"),
+             ("want", f"we learn what the hero wants: {hero.get('want', '')}")]
+    if kind == "long":
+        items += [
+            ("wound", f"the hero's wound is revealed: {hero.get('wound', '')}"),
+            ("choice", f"the hero makes this choice: {bible.get('hero_choice', '')}"),
+            ("irony", f"the viewer knows or suspects this before the hero: {bible.get('dramatic_irony', '')}"),
+            ("breath", f"a moment of warmth or quiet humor: {bible.get('breath_moment', '')}"),
+            ("tell", f"the threat's tell appears: {threat.get('tell', '')}"),
+            ("refrain", f"the refrain appears early: {bible.get('refrain', '')}"),
+            ("refrain_return", f"the refrain returns later with a darker meaning: {bible.get('refrain_turn', '')}"),
+            ("open_detail", f"the deliberate ambiguity is on the page: {bible.get('open_detail', '')}"),
+            ("aftertaste", f"the ending or outro ties the fear to: {bible.get('aftertaste', '')}"),
+        ]
+    for i, clue in enumerate(bible.get("clues") or [], 1):
+        if isinstance(clue, dict):
+            items += [(f"clue{i}_plant", f"clue planted early: {clue.get('plant', '')}"),
+                      (f"clue{i}_payoff", f"clue paid off later: {clue.get('payoff', '')}")]
+    return [(i, r) for i, r in items if r.split(":", 1)[1].strip()]
+
+
+def quote_found(quote: str, narration: str) -> bool:
+    """Whether a judge's quote really is on the page (allowing small copying slips)."""
+    words = dedup.normalize(quote).split()
+    if len(words) < 3:
+        return False
+    full = dedup.normalize(narration)
+    if " ".join(words) in full:
+        return True
+    mine = dedup.shingles(words, 3)
+    return len(mine & dedup.shingles(full.split(), 3)) >= 0.6 * len(mine)
+
+
+def outline_issues(outline: dict[str, Any], kind: str) -> list[str]:
+    """Structure every outline needs: retention hooks, turns, a midpoint and a peak."""
+    beats = [b for b in outline.get("beats") or [] if isinstance(b, dict)]
+    issues: list[str] = []
+    if len(beats) < (7 if kind == "long" else 3):
+        issues.append(f"{len(beats)} beats is too few; break the story into at least {7 if kind == 'long' else 3}")
+    no_turn = [str(b.get("name", i + 1)) for i, b in enumerate(beats) if not str(b.get("turn", "")).strip()]
+    if no_turn:
+        issues.append("every beat needs a turn (what changes); missing in: " + ", ".join(no_turn[:5]))
+    if not str(outline.get("peak_moment", "")).strip():
+        issues.append("name the peak moment")
+    if kind == "long":
+        rehooks = [r for r in outline.get("rehooks") or [] if isinstance(r, dict) and str(r.get("question", "")).strip()]
+        if len(rehooks) < 3:
+            issues.append("plan at least three rehooks: by about 30 seconds, about 2 minutes and the midpoint")
+        elif not any(int(r.get("at_seconds") or 999) <= 45 for r in rehooks):
+            issues.append("the first rehook must land within about 30 seconds")
+        if not str(outline.get("midpoint_reversal", "")).strip():
+            issues.append("add a midpoint reversal that changes what the hero is fighting")
+        no_loop = [str(b.get("name", i + 1)) for i, b in enumerate(beats[:-1]) if not str(b.get("open_loop", "")).strip()]
+        if len(no_loop) > len(beats) // 4:
+            issues.append("most beats must leave an open question; missing in: " + ", ".join(no_loop[:5]))
+    return issues
+
+
+def split_beats(beats: list[dict[str, Any]], parts: int) -> list[list[dict[str, Any]]]:
+    """Contiguous groups of beats with roughly equal running time."""
+    parts = max(1, min(parts, len(beats)))
+    seconds = [max(int(b.get("target_seconds") or 0), 1) for b in beats]
+    total, groups, current, done = sum(seconds), [], [], 0
+    for i, (beat, secs) in enumerate(zip(beats, seconds)):
+        current.append(beat)
+        done += secs
+        remaining_beats, remaining_groups = len(beats) - i - 1, parts - len(groups) - 1
+        if remaining_groups and (done >= total * (len(groups) + 1) / parts or remaining_beats == remaining_groups):
+            groups.append(current)
+            current = []
+    if current:
+        groups.append(current)
+    return groups
 
 
 def chunk_text(text: str, target_words: int) -> list[str]:
@@ -285,7 +471,8 @@ def gather_pitches(ctx: Context, series: catalog.Series, legend: sqlite3.Row | N
 
 
 def score_pitches(ctx: Context, series: catalog.Series, pitches: list[dict[str, Any]]) -> None:
-    jobs = [(p, judge) for p in pitches for judge in ctx.router.judges([p["_family"]])]
+    limit = ctx.cfg["quality"]["judges_per_comparison"]
+    jobs = [(p, judge) for p in pitches for judge in ctx.router.judges([p["_family"]], limit)]
 
     def score(job: tuple[dict, Any]) -> tuple[int, float]:
         p, judge = job
@@ -308,8 +495,35 @@ def pitch_contest(ctx: Context, series: catalog.Series, pitches: list[dict[str, 
         return judge.generate_json("compare_pitches", prompts.SYSTEM_EDITOR,
                                    prompts.compare_pitches(series, a, b), schemas.PAIRWISE)["winner"]
 
-    return tournament.rank(finalists, lambda a, b: ctx.router.judges([a["_family"], b["_family"]]),
+    limit = ctx.cfg["quality"]["judges_per_comparison"]
+    return tournament.rank(finalists, lambda a, b: ctx.router.judges([a["_family"], b["_family"]], limit),
                            compare, ctx.router.parallel, prior=lambda p: p["_score"])
+
+
+def make_bible(ctx: Context, story: Story) -> dict[str, Any]:
+    """The storyteller's decisions before plotting: hero, threat, theme, devices, clues."""
+    kind = story.series.kind
+    writer = ctx.router.one("writers")
+    bible = writer.generate_json("story_bible", prompts.SYSTEM_WRITER, prompts.story_bible(
+        series=story.series, kind=kind, recipe=story.recipe, formats=FORMATS, endings=ENDINGS,
+        pitch=story.pitch, legend=story.legend, dossier=story.dossier, world=story.world), schemas.BIBLE)
+    problems = bible_issues(bible, kind)
+    if not problems:
+        reviews = ctx.router.panel(
+            lambda judge: judge.generate_json("review_bible", prompts.SYSTEM_EDITOR,
+                                              prompts.review_bible(kind, story.pitch, bible),
+                                              schemas.OUTLINE_REVIEW),
+            ctx.router.judges([writer.spec.family], ctx.cfg["quality"]["quick_judges"]))
+        problems = list(dict.fromkeys(p for r in reviews if not r.get("approved") for p in r.get("problems", [])))
+    story.note("story_bible", problems=len(problems))
+    if problems:
+        revised = writer.generate_json("revise_bible", prompts.SYSTEM_WRITER,
+                                       prompts.revise_bible(bible, problems), schemas.BIBLE)
+        # Keep the revision unless it lost decisions the first version had.
+        if len(bible_issues(revised, kind)) <= len(bible_issues(bible, kind)):
+            bible = revised
+    story.authors["bible"] = writer.spec.label
+    return bible
 
 
 def make_outline(ctx: Context, story: Story) -> dict[str, Any]:
@@ -319,14 +533,16 @@ def make_outline(ctx: Context, story: Story) -> dict[str, Any]:
     outline = writer.generate_json("beat_sheet", prompts.SYSTEM_WRITER, prompts.beat_sheet(
         series=story.series, kind=kind, recipe=story.recipe, formats=FORMATS, endings=ENDINGS,
         pitch=story.pitch, legend=story.legend, dossier=story.dossier, world=story.world,
-        target_seconds=target), schemas.BEAT_SHEET)
+        target_seconds=target, bible=story.bible), schemas.BEAT_SHEET)
     for attempt in range(2):
-        reviews = ctx.router.panel(
-            lambda judge: judge.generate_json("review_outline", prompts.SYSTEM_EDITOR,
-                                              prompts.review_outline(kind, story.pitch, outline),
-                                              schemas.OUTLINE_REVIEW),
-            ctx.router.judges([writer.spec.family]))
-        problems = list(dict.fromkeys(p for r in reviews if not r.get("approved") for p in r.get("problems", [])))
+        problems = outline_issues(outline, kind)
+        if not problems:  # structure first; editors only read outlines that have it
+            reviews = ctx.router.panel(
+                lambda judge: judge.generate_json("review_outline", prompts.SYSTEM_EDITOR,
+                                                  prompts.review_outline(kind, story.pitch, outline, story.bible),
+                                                  schemas.OUTLINE_REVIEW),
+                ctx.router.judges([writer.spec.family], ctx.cfg["quality"]["judges_per_comparison"]))
+            problems = list(dict.fromkeys(p for r in reviews if not r.get("approved") for p in r.get("problems", [])))
         story.note("outline_review", round=attempt + 1, problems=len(problems))
         if not problems:
             break
@@ -338,16 +554,49 @@ def make_outline(ctx: Context, story: Story) -> dict[str, Any]:
     return outline
 
 
+def write_in_parts(ctx: Context, story: Story, writer: Any, outline: dict[str, Any]) -> dict[str, Any]:
+    """Write a long body part by part (each part sees everything before it), then frame it.
+
+    Long single outputs are where models lose the thread or loop; parts keep each
+    call short and focused.
+    """
+    lo, hi = word_range(ctx.cfg, "long")
+    groups = split_beats(outline["beats"], ctx.cfg["quality"]["draft_sections"])
+    seconds = [sum(max(int(b.get("target_seconds") or 0), 1) for b in g) for g in groups]
+    body_words = (lo + hi) // 2 - 80  # intro and outro take about 80 words
+    parts: list[str] = []
+    for i, group in enumerate(groups):
+        part = writer.generate_json("write_section", prompts.SYSTEM_WRITER, prompts.write_section(
+            series=story.series, recipe=story.recipe, formats=FORMATS, endings=ENDINGS, pitch=story.pitch,
+            outline=outline, bible=story.bible, beats=group, part=i + 1, parts=len(groups),
+            so_far="\n\n".join(parts), words=round(body_words * seconds[i] / sum(seconds)),
+            legend=story.legend, dossier=story.dossier, world=story.world), schemas.SECTION)
+        text = str(part.get("text", "")).strip()
+        if not text:
+            raise LLMError(f"{writer.spec.label} wrote an empty part {i + 1}")
+        parts.append(text)
+    body = "\n\n".join(parts)
+    frame = writer.generate_json("write_frame", prompts.SYSTEM_WRITER, prompts.write_frame(
+        series=story.series, kind="long", pitch=story.pitch, bible=story.bible, body=body,
+        legend=story.legend, world=story.world), schemas.FRAME)
+    return tidy(dict(frame, body=body), "long")
+
+
 def draft_contest(ctx: Context, story: Story, outline: dict[str, Any]) -> tuple[dict[str, Any], str]:
     kind = story.series.kind
     lo, hi = word_range(ctx.cfg, kind)
 
+    in_parts = kind == "long" and ctx.cfg["quality"]["draft_sections"] > 1 and len(outline["beats"]) > 1
+
     def write(writer: Any) -> dict[str, Any] | None:
         try:
-            script = writer.generate_json("write_draft", prompts.SYSTEM_WRITER, prompts.write_draft(
-                series=story.series, kind=kind, recipe=story.recipe, formats=FORMATS, endings=ENDINGS,
-                pitch=story.pitch, outline=outline, min_words=lo, max_words=hi, legend=story.legend,
-                dossier=story.dossier, world=story.world), schemas.SCRIPT)
+            if in_parts:
+                script = write_in_parts(ctx, story, writer, outline)
+            else:
+                script = writer.generate_json("write_draft", prompts.SYSTEM_WRITER, prompts.write_draft(
+                    series=story.series, kind=kind, recipe=story.recipe, formats=FORMATS, endings=ENDINGS,
+                    pitch=story.pitch, outline=outline, min_words=lo, max_words=hi, legend=story.legend,
+                    dossier=story.dossier, world=story.world, bible=story.bible), schemas.SCRIPT)
         except LLMError as exc:
             log.warning("Writer %s failed: %s", writer.spec.label, exc)
             return None
@@ -361,7 +610,8 @@ def draft_contest(ctx: Context, story: Story, outline: dict[str, Any]) -> tuple[
         return judge.generate_json("compare_drafts", prompts.SYSTEM_EDITOR,
                                    prompts.compare_drafts(kind, story.pitch, a, b), schemas.PAIRWISE)["winner"]
 
-    ranked = tournament.rank(drafts, lambda a, b: ctx.router.judges([a["_family"], b["_family"]]), compare,
+    limit = ctx.cfg["quality"]["judges_per_comparison"]
+    ranked = tournament.rank(drafts, lambda a, b: ctx.router.judges([a["_family"], b["_family"]], limit), compare,
                              ctx.router.parallel, prior=lambda d: -len(script_issues(d, kind, ctx.cfg)))
     best = ranked[0].item
     story.note("draft_contest", drafts=len(drafts), winner=best["_author"],
@@ -407,15 +657,71 @@ def repair(ctx: Context, story: Story, script: dict[str, Any], notes: list[str])
     reviser = ctx.router.one("reviser")
     keep = ("Keep the structure: the outro must still end with exactly one question to the viewer, "
             "and change only what these notes require.")
-    fixed = tidy(reviser.generate_json("revise", prompts.SYSTEM_WRITER,
-                                       prompts.revise(kind, script, [*notes, keep], lo, hi), schemas.SCRIPT))
+    fixed = tidy(reviser.generate_json("revise", prompts.SYSTEM_WRITER, prompts.revise(
+        kind, script, [*notes, keep], lo, hi, story.bible), schemas.SCRIPT), kind)
     fixed = fit_length(ctx, story, fixed)
-    structural = script_issues(fixed, kind, ctx.cfg)
+    structural = structure_issues(fixed, kind, ctx.cfg)
     if structural:
-        fixed = tidy(reviser.generate_json("revise", prompts.SYSTEM_WRITER,
-                                           prompts.revise(kind, fixed, [*structural, keep], lo, hi), schemas.SCRIPT))
+        fixed = tidy(reviser.generate_json("revise", prompts.SYSTEM_WRITER, prompts.revise(
+            kind, fixed, [*structural, keep], lo, hi, story.bible), schemas.SCRIPT), kind)
         fixed = fit_length(ctx, story, fixed)
     return fixed
+
+
+def clean_style(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, Any]:
+    """Line-edit away machine-sounding or hard-to-follow prose that the free checks found.
+
+    Keeps the version with the fewest style problems that didn't break the structure.
+    """
+    kind = story.series.kind
+    problems = style_issues(narration_of(script), ctx.cfg, kind)
+    if not problems:
+        return script
+    reviser = ctx.router.one("reviser")
+    best, best_count = script, len(problems)
+    structure = len(structure_issues(script, kind, ctx.cfg))
+    candidate = script
+    for _ in range(ctx.cfg["quality"]["style_fix_attempts"]):
+        candidate = tidy(reviser.generate_json("line_edit", prompts.SYSTEM_WRITER,
+                                               prompts.line_edit(candidate, problems), schemas.SCRIPT), kind)
+        problems = style_issues(narration_of(candidate), ctx.cfg, kind)
+        if len(problems) < best_count and len(structure_issues(candidate, kind, ctx.cfg)) <= structure:
+            best, best_count = candidate, len(problems)
+        if not problems:
+            break
+    story.note("line_edit", style_problems_left=best_count)
+    return best
+
+
+def check_bible(ctx: Context, story: Story, script: dict[str, Any],
+                author_family: str) -> tuple[list[str], list[str]]:
+    """Does the script deliver the story bible? Returns (blocking issues, advisory notes).
+
+    A promise only counts when the judge's quote is really in the script. Missing
+    promises block when coverage falls below the bar; broken threat rules always do.
+    """
+    if not story.bible:
+        return [], []
+    promises = bible_promises(story.bible, story.series.kind)
+    if not promises:
+        return [], []
+    judge = FailoverJudge(ctx.router.judges([author_family]))
+    try:
+        result = judge.generate_json("bible_check", prompts.SYSTEM_EDITOR,
+                                     prompts.bible_check(story.bible, promises, script), schemas.BIBLE_CHECK)
+    except LLMError as exc:
+        log.warning("Story-bible check skipped: %s", exc)
+        return [], []
+    narration = narration_of(script)
+    shown = {str(r.get("id")) for r in result.get("items", [])
+             if isinstance(r, dict) and r.get("present") is True and quote_found(str(r.get("quote", "")), narration)}
+    missing = [f"deliver the story bible: {requirement}" for item_id, requirement in promises if item_id not in shown]
+    breaks = [f"the threat breaks its own rules: {b}" for b in result.get("threat_rule_breaks", []) if _real_issue(b)]
+    coverage = 1 - len(missing) / len(promises)
+    story.note("bible_check", coverage=round(coverage, 2), missing=len(missing), rule_breaks=len(breaks))
+    if coverage < ctx.cfg["quality"]["bible_min_coverage"]:
+        return breaks + missing, []
+    return breaks, missing
 
 
 def editors_loop(ctx: Context, story: Story, script: dict[str, Any], author_family: str,
@@ -428,17 +734,23 @@ def editors_loop(ctx: Context, story: Story, script: dict[str, Any], author_fami
     agg: dict[str, Any] = {}
     for round_ in range(cfg["quality"]["max_revisions"] + 1):
         script = fit_length(ctx, story, script)
+        script = fit_length(ctx, story, clean_style(ctx, story, script))
         issues = script_issues(script, kind, cfg)
         copy = dedup.check_script(ctx.conn, cfg, story_id, narration_of(script), sources)
         if not copy.ok:
             issues.append(f"rewrite in original words: {copy.reason}")
+        advice: list[str] = []
+        if not issues:
+            issues, advice = check_bible(ctx, story, script, author_family)
         if not issues:
             reviews = ctx.router.panel(
                 lambda judge: judge.generate_json("review", prompts.SYSTEM_EDITOR, prompts.review(
-                    kind, story.recipe, FORMATS, ENDINGS, script, story.dossier), schemas.REVIEW),
-                ctx.router.judges([author_family]))
+                    kind, story.recipe, FORMATS, ENDINGS, script, story.dossier, story.bible), schemas.REVIEW),
+                ctx.router.judges([author_family], cfg["quality"]["judges_per_comparison"]))
             agg = aggregate_reviews(reviews)
             issues = review_issues(agg, cfg["quality"]["min_score"])
+            if issues:
+                issues += advice  # unmet story-bible promises help the revision
         story.note("editors", round=round_ + 1, issues=len(issues), scores=agg.get("scores"))
         if not issues:
             return script, agg, ""
@@ -512,28 +824,46 @@ def audience_test(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[d
         return judge.generate_json("compare_drafts", prompts.SYSTEM_EDITOR,
                                    prompts.compare_drafts(kind, story.pitch, a, b), schemas.PAIRWISE)["winner"]
 
-    ranked = tournament.rank([script, candidate], lambda a, b: ctx.router.judges([reviser.spec.family]),
+    quick = ctx.cfg["quality"]["quick_judges"]
+    ranked = tournament.rank([script, candidate], lambda a, b: ctx.router.judges([reviser.spec.family], quick),
                              compare, ctx.router.parallel)
     improved = ranked[0].item is candidate or ranked[0].points == ranked[1].points
     report["rewrite"] = "kept" if improved else "discarded: judges preferred the original"
     return (candidate if improved else script), report
 
 
-def polish(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[dict[str, Any], list[dict]]:
+def valid_pauses(pauses: Any, narration: str, limit: int) -> list[dict[str, Any]]:
+    """Pauses whose phrase is really in the narration, in reading order, with sane lengths."""
+    full = dedup.normalize(narration)
+    found: list[tuple[int, dict[str, Any]]] = []
+    for pause in pauses if isinstance(pauses, list) else []:
+        if not isinstance(pause, dict):
+            continue
+        phrase = str(pause.get("after", "")).strip()
+        at = full.find(dedup.normalize(phrase)) if len(phrase.split()) >= 2 else -1
+        if at >= 0 and all(at != f[0] for f in found):
+            found.append((at, {"after": phrase, "ms": min(max(int(pause.get("ms") or 800), 300), 3000)}))
+    return [p for _, p in sorted(found, key=lambda f: f[0])][:limit]
+
+
+def polish(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[dict[str, Any], list[dict], list[dict]]:
+    """Read-aloud line edit. Returns (script, pronunciations, pauses)."""
     kind = story.series.kind
     lo, hi = word_range(ctx.cfg, kind)
+    limit = ctx.cfg["quality"]["max_pauses_long" if kind == "long" else "max_pauses_short"]
     polisher = ctx.router.one("polisher")
-    result = polisher.generate_json("polish", prompts.SYSTEM_WRITER, prompts.polish(kind, script, lo, hi),
+    result = polisher.generate_json("polish", prompts.SYSTEM_WRITER, prompts.polish(kind, script, lo, hi, limit),
                                     schemas.POLISH)
     candidate = dict(script, intro=result.get("intro", ""), body=result.get("body", ""),
                      outro=result.get("outro", ""))
     unchanged_meaning = dedup.lexical_similarity(narration_of(script), narration_of(candidate), size=1) >= 0.6
     if script_issues(candidate, kind, ctx.cfg) or not unchanged_meaning:
         story.note("polish", kept=False)
-        return script, []
-    story.note("polish", kept=True)
+        return script, [], []
+    pauses = valid_pauses(result.get("pauses"), narration_of(candidate), limit)
+    story.note("polish", kept=True, pauses=len(pauses))
     story.authors["polisher"] = polisher.spec.label
-    return candidate, [p for p in result.get("pronunciations", []) if p.get("word")]
+    return candidate, [p for p in result.get("pronunciations", []) if p.get("word")], pauses
 
 
 def final_check(ctx: Context, story: Story, script: dict[str, Any]) -> list[str]:
@@ -561,12 +891,13 @@ def _real_issue(text: Any) -> bool:
     return bool(text) and not NOT_AN_ISSUE.match(text)
 
 
-def plan_scenes(ctx: Context, kind: str, narration: str) -> tuple[list | None, list[dict], list[str]]:
+def plan_scenes(ctx: Context, kind: str, narration: str,
+                bible: dict | None = None) -> tuple[list | None, list[dict], list[str]]:
     """Returns (scenes, cast, problems). Recurring characters keep their canon look."""
     scene_range, key_range = scene_ranges(kind)
     planner = ctx.router.one("planner")
     canon = dict(db.known_looks(ctx.conn))
-    base = prompts.scene_plan(narration, scene_range, key_range, list(canon.items()))
+    base = prompts.scene_plan(narration, scene_range, key_range, list(canon.items()), bible)
     issues: list[str] = []
     for _ in range(2):
         prompt = base if not issues else base + "\nFIX THESE PROBLEMS:\n" + "\n".join(issues)
@@ -604,7 +935,8 @@ def hook_lab(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, An
         return judge.generate_json("compare_openings", prompts.SYSTEM_EDITOR,
                                    prompts.compare_openings(a, b, continuation), schemas.PAIRWISE)["winner"]
 
-    ranked = tournament.rank(candidates, lambda a, b: ctx.router.judges([reviser.spec.family]), compare,
+    quick = ctx.cfg["quality"]["quick_judges"]
+    ranked = tournament.rank(candidates, lambda a, b: ctx.router.judges([reviser.spec.family], quick), compare,
                              ctx.router.parallel, prior=lambda o: 1.0 if o is opening else 0.0)
     best = ranked[0].item
     story.note("hook_lab", candidates=len(candidates), replaced=best is not opening)
@@ -619,17 +951,19 @@ def package(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, Any
     writer = ctx.router.one("reviser")
     credit = script.get("description_credit") or "This is an original work of fiction."
     result = writer.generate_json("packaging", prompts.SYSTEM_WRITER,
-                                  prompts.packaging(story.series, script, story.pitch, credit), schemas.PACKAGING)
+                                  prompts.packaging(story.series, script, story.pitch, credit, story.bible),
+                                  schemas.PACKAGING)
     titles = list(dict.fromkeys(t.strip() for t in result.get("titles", []) if t.strip() and len(t.strip()) <= 70))
     if len(titles) > 1:
         def compare(judge: Any, a: str, b: str) -> str:
             return judge.generate_json("compare_titles", prompts.SYSTEM_EDITOR, prompts.compare_titles(
                 a, b, result.get("thumbnail_brief", ""), story.pitch["synopsis"]), schemas.PAIRWISE)["winner"]
 
-        finalists = titles[:4]
-        ranked = tournament.rank(finalists, lambda a, b: ctx.router.judges([writer.spec.family]), compare,
-                                 ctx.router.parallel)
-        titles = [r.item for r in ranked] + titles[4:]
+        top = ctx.cfg["quality"]["title_finalists"]
+        quick = ctx.cfg["quality"]["quick_judges"]
+        ranked = tournament.rank(titles[:top], lambda a, b: ctx.router.judges([writer.spec.family], quick),
+                                 compare, ctx.router.parallel)
+        titles = [r.item for r in ranked] + titles[top:]
         story.note("title_contest", winner=titles[0])
     result["titles"] = titles or [story.pitch["title"]]
     return result
@@ -744,6 +1078,8 @@ def _guarded_develop(ctx: Context, story_id: int, story: Story) -> Outcome:
 
 def develop(ctx: Context, story_id: int, story: Story) -> Outcome:
     series, kind = story.series, story.series.kind
+    story.bible = make_bible(ctx, story)
+    db.update_story(ctx.conn, story_id, bible=story.bible)
     outline = make_outline(ctx, story)
     db.update_story(ctx.conn, story_id, beat_sheet=outline)
 
@@ -754,7 +1090,7 @@ def develop(ctx: Context, story_id: int, story: Story) -> Outcome:
 
     script = hook_lab(ctx, story, script)
     script, audience_report = audience_test(ctx, story, script)
-    script, pronunciations = polish(ctx, story, script)
+    script, pronunciations, pauses = polish(ctx, story, script)
 
     problems = final_check(ctx, story, script)
     if problems:
@@ -779,9 +1115,9 @@ def develop(ctx: Context, story_id: int, story: Story) -> Outcome:
         hook_line=str(script.get("hook_line", "")).strip(),
         thumbnail_idea=str(script.get("thumbnail_idea", "")).strip(),
         description_credit=str(script.get("description_credit", "")).strip(),
-        review=review, audience_report=audience_report, pronunciations=pronunciations)
+        review=review, audience_report=audience_report, pronunciations=pronunciations, pauses=pauses)
 
-    scenes, cast, issues = plan_scenes(ctx, kind, narration)
+    scenes, cast, issues = plan_scenes(ctx, kind, narration, story.bible)
     if scenes is None:
         return _reject(ctx, story_id, series.name, "scene plan invalid: " + "; ".join(issues[:4]), review, story)
     packaging = package(ctx, story, script)
