@@ -378,6 +378,39 @@ class FinalCheckTests(unittest.TestCase):
         self.assertNotIn("legend1", dict(pipeline.bible_promises(bible, "long")))
 
 
+class LegendFitTests(unittest.TestCase):
+    def add(self, ctx, n):
+        return db.upsert_inspiration(ctx.conn, source="wikipedia", source_id=str(n), kind="folklore",
+                                     title=f"Legend {n}", url="", summary="A spirit of the roads.",
+                                     region="Japan", license="CC BY-SA")
+
+    def test_unfit_legends_are_skipped_for_good(self):
+        ctx, brain = make_context()
+        for n in (1, 2):
+            self.add(ctx, n)
+        brain.unfit_legends = {"Legend 1"}
+        outcome = pipeline.generate_story(ctx, "legends_retold")
+        self.assertEqual(outcome.status, "approved", outcome.detail)
+        row = db.get_story(ctx.conn, outcome.story_id)
+        self.assertEqual(row["legend_key"], "wikipedia:2")
+
+    def test_no_fit_legend_skips_the_run(self):
+        ctx, brain = make_context()
+        self.add(ctx, 1)
+        brain.unfit_legends = {"Legend 1"}
+        outcome = pipeline.generate_story(ctx, "legends_retold")
+        self.assertEqual(outcome.status, "skipped")
+        self.assertIn("no suitable unused legend", outcome.detail)
+        self.assertEqual(db.unused_legends(ctx.conn), [])  # never offered again
+
+    def test_bible_check_asks_about_invented_traits(self):
+        ctx, brain = make_context()
+        self.add(ctx, 1)
+        seen = prompts_for(brain, ctx, "bible_check")
+        pipeline.generate_story(ctx, "legends_retold")
+        self.assertIn("research notes do not support", seen[0])
+
+
 class BenchmarkTests(unittest.TestCase):
     def test_benchmark_compares_two_setups_blind(self):
         brain = Brain()

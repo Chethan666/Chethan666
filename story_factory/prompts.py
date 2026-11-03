@@ -205,7 +205,11 @@ def _legend(legend: sqlite3.Row | None, dossier: dict | None) -> str:
     notes = json.dumps(dossier, ensure_ascii=False) if dossier else (legend["summary"] or "")
     return (f"\nLegend to retell: {legend['title']} ({legend['region']}).\nResearch notes: {notes}\n"
             "Keep the legend's traditional core accurate and respectful; the framing story about the "
-            "protagonist is original. Use your own words, never the notes' wording.\n")
+            "protagonist is original. The legend's being keeps exactly its traditional nature, "
+            "appearance, powers and role: never invent new ones (in a story bible, the threat is the "
+            "being as tradition describes it). The episode's recipe (setting, twist, ending) shapes "
+            "only the modern frame story; reinterpret any ingredient that would bend the legend. Use "
+            "your own words, never the notes' wording.\n")
 
 
 def _bible(bible: dict | None) -> str:
@@ -341,14 +345,28 @@ def revise_bible(bible: dict[str, Any], problems: list[str]) -> str:
             + "\n\nRevise the story bible to solve every problem while keeping what works.")
 
 
-def bible_check(bible: dict[str, Any], items: Sequence[tuple[str, str]], script: dict[str, Any]) -> str:
+def legend_fit(legend: sqlite3.Row, dossier: dict | None, kind: str) -> str:
+    notes = json.dumps(dossier, ensure_ascii=False) if dossier else (legend["summary"] or "")
+    length = "an 8-minute episode" if kind == "long" else "a 60-second Short"
+    return (f"Legend: {legend['title']} ({legend['region']}).\nResearch notes: {notes}\n\nCould this "
+            f"legend carry {length} of genuine horror on our channel while its being keeps exactly its "
+            "traditional nature, appearance and role? Answer fit false if the being is harmless or "
+            "comic, too thinly documented to frighten without inventing traits it does not have, or if "
+            "retelling it as horror would disrespect a sacred figure or living religious practice.")
+
+
+def bible_check(bible: dict[str, Any], items: Sequence[tuple[str, str]], script: dict[str, Any],
+                dossier: dict | None = None) -> str:
     listed = "\n".join(f"- [{item_id}] {requirement}" for item_id, requirement in items)
+    legend = ("\n\nThis retells a traditional legend. Also list, among the rule breaks, every place where "
+              "the script gives the legend's being an appearance, power or role these research notes do "
+              f"not support:\n{json.dumps(dossier, ensure_ascii=False)}" if dossier else "")
     return (f"STORY BIBLE:\n{json.dumps(bible, ensure_ascii=False)}\n\nSCRIPT:\n{_script(script)}\n\n"
             f"TASK: Check whether the script delivers each item below.\n{listed}\n\nFor each item "
             "give its id, whether it is clearly present on the page, and a short exact quote (5-15 "
             "words, copied character for character from the script) that shows it; use an empty "
             "quote when it is missing. Then list every place where the threat breaks one of its own "
-            "rules or limits (empty if none).")
+            f"rules or limits (empty if none).{legend}")
 
 
 # --- Outline and drafts ------------------------------------------------------

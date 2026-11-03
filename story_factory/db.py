@@ -149,7 +149,7 @@ MIGRATIONS = {
         "audience_report": "TEXT", "pronunciations": "TEXT", "packaging": "TEXT",
         "production_log": "TEXT", "cast": "TEXT", "bible": "TEXT", "pauses": "TEXT",
     },
-    "inspirations": {"dossier": "TEXT"},
+    "inspirations": {"dossier": "TEXT", "unsuitable": "TEXT"},
     "world_entities": {"look": "TEXT"},
     "costs": {"story_id": "INTEGER"},
 }
@@ -220,10 +220,15 @@ def upsert_inspiration(conn: sqlite3.Connection, **fields: Any) -> int:
 
 def unused_legends(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     return conn.execute(
-        "SELECT * FROM inspirations i WHERE kind = 'folklore' AND NOT EXISTS ("
+        "SELECT * FROM inspirations i WHERE kind = 'folklore' AND unsuitable IS NULL AND NOT EXISTS ("
         "  SELECT 1 FROM stories s WHERE s.legend_key = i.source || ':' || i.source_id"
         "  AND s.status != 'rejected')"
     ).fetchall()
+
+
+def mark_unsuitable(conn: sqlite3.Connection, inspiration_id: int, reason: str) -> None:
+    """A legend judged unable to carry a faithful horror retelling is never offered again."""
+    conn.execute("UPDATE inspirations SET unsuitable = ? WHERE id = ?", (reason[:500] or "unsuitable", inspiration_id))
 
 
 def folklore_sparks(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:

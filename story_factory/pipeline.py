@@ -494,6 +494,32 @@ def ensure_dossier(ctx: Context, legend: sqlite3.Row) -> dict | None:
     return dossier
 
 
+def choose_legend(ctx: Context, kind: str) -> tuple[sqlite3.Row, dict | None] | None:
+    """An unused legend that judges think can carry a faithful horror story.
+
+    A harmless or comic being (a rain spirit, a household helper) would have to be
+    given invented traits to frighten, which a faithful retelling can't do; such
+    legends are marked and never offered again.
+    """
+    for _ in range(ctx.cfg["quality"]["legend_fit_tries"]):
+        legends = db.unused_legends(ctx.conn)
+        if not legends:
+            return None
+        legend = ctx.rng.choice(legends)
+        dossier = ensure_dossier(ctx, legend)
+        try:
+            verdict = ctx.router.one("judges").generate_json(
+                "legend_fit", prompts.SYSTEM_EDITOR, prompts.legend_fit(legend, dossier, kind), schemas.LEGEND_FIT)
+        except LLMError as exc:
+            log.warning("Legend fit check skipped: %s", exc)
+            return legend, dossier
+        if verdict.get("fit") is not False:
+            return legend, dossier
+        log.info("Legend '%s' is unfit for horror: %s", legend["title"], verdict.get("reason", ""))
+        db.mark_unsuitable(ctx.conn, legend["id"], str(verdict.get("reason", "")))
+    return None
+
+
 def _same_story(ctx: Context):
     def ask(premise: dict[str, Any], row: sqlite3.Row) -> tuple[bool, str]:
         judge = ctx.router.one("judges")
@@ -788,7 +814,8 @@ def check_bible(ctx: Context, story: Story, script: dict[str, Any],
     judge = FailoverJudge(ctx.router.judges([author_family]))
     try:
         result = judge.generate_json("bible_check", prompts.SYSTEM_EDITOR,
-                                     prompts.bible_check(story.bible, promises, script), schemas.BIBLE_CHECK)
+                                     prompts.bible_check(story.bible, promises, script, story.dossier),
+                                     schemas.BIBLE_CHECK)
     except LLMError as exc:
         log.warning("Story-bible check skipped: %s", exc)
         return [], []
@@ -1176,11 +1203,10 @@ def generate_story(ctx: Context, series_name: str) -> Outcome:
     for attempt in range(1, ctx.cfg["quality"]["max_attempts_per_story"] + 1):
         legend = dossier = None
         if series.uses_legend:
-            legends = db.unused_legends(ctx.conn)
-            if not legends:
-                return Outcome(series_name, "skipped", detail="no unused legends; run `research` first")
-            legend = ctx.rng.choice(legends)
-            dossier = ensure_dossier(ctx, legend)
+            chosen = choose_legend(ctx, series.kind)
+            if chosen is None:
+                return Outcome(series_name, "skipped", detail="no suitable unused legend; run `research` first")
+            legend, dossier = chosen
         sparks = db.folklore_sparks(ctx.conn, 2) if series.uses_world else []
         world = db.world_entities(ctx.conn) if series.uses_world else []
 

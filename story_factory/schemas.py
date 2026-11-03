@@ -42,6 +42,8 @@ PAIRWISE = obj(reason=S, winner=enum("A", "B"))
 
 DUPLICATE = obj(reason=S, same_story=B)
 
+LEGEND_FIT = obj(reason=S, fit=B)
+
 DOSSIER = obj(summary=S, core_elements=arr(S), regional_variants=arr(S), cultural_notes=arr(S),
               avoid=arr(S), sources=arr(S))
 

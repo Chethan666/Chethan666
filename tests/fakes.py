@@ -74,6 +74,7 @@ class Brain:
         self.cast_override: Callable[[list[str]], list[dict]] | None = None
         self.bible_present: Callable[[str], bool] = lambda item_id: True
         self.threat_breaks: list[str] = []
+        self.unfit_legends: set[str] = set()
         self.pauses: list[dict] = [{"after": "Some doors are better left closed", "ms": 1200}]
 
     def tasks(self, name: str) -> list[str]:
@@ -131,6 +132,10 @@ class Brain:
         a = _between(prompt, "DRAFT A:\n", "\n\nDRAFT B:")
         winner = "A" if "PREFERRED" in a else "B" if "PREFERRED" in prompt else "A"
         return {"reason": "grips harder", "winner": winner}
+
+    def _legend_fit(self, prompt: str, spec: ModelSpec) -> dict:
+        title = _between(prompt, "Legend: ", " (")
+        return {"reason": "harmless", "fit": title not in self.unfit_legends}
 
     def _judge_duplicate(self, prompt: str, spec: ModelSpec) -> dict:
         return {"reason": "fake judge", "same_story": self.judge_same}

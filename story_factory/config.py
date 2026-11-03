@@ -119,6 +119,8 @@ DEFAULTS: dict[str, Any] = {
         "style_fix_attempts": 2,
         # Repair rounds when the final check finds must-fix issues.
         "final_check_repairs": 2,
+        # Legends tried per attempt before giving up when judges find them unfit for horror.
+        "legend_fit_tries": 4,
         # Dramatic pauses the polish step may mark for the narrator.
         "max_pauses_long": 12,
         "max_pauses_short": 3,
