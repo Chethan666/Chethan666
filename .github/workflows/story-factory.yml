@@ -1,0 +1,96 @@
+# Runs the story factory on GitHub's servers with keys from encrypted repository secrets.
+# Start it from the Actions tab ("Run workflow").
+#   mode=check: tests + which models your keys can use (no paid generation)
+#   mode=story: also researches Wikipedia and generates one real story
+# This repository is public: run logs and the summary are public, and so are artifacts to
+# signed-in GitHub users. Secrets themselves are never shown.
+name: Story factory
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "check = tests and model access only; story = also generate one story"
+        type: choice
+        options: [check, story]
+        default: check
+      series:
+        description: Series to generate in story mode
+        type: choice
+        options: [sixty_seconds, hollow_world, legends_retold]
+        default: sixty_seconds
+      config:
+        description: Model setup
+        type: choice
+        options: [config.aws-only.toml, config.example.toml]
+        default: config.aws-only.toml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: story-factory
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      MODE: ${{ inputs.mode }}
+      SERIES: ${{ inputs.series }}
+      CONFIG: ${{ inputs.config }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Unit tests
+        run: python -m unittest discover -s tests -t .
+
+      - name: Check the AWS key is configured
+        run: |
+          if [ -z "$AWS_BEARER_TOKEN_BEDROCK" ]; then
+            echo "::error::Add the AWS_BEARER_TOKEN_BEDROCK repository secret (Settings > Secrets and variables > Actions)"
+            exit 1
+          fi
+
+      - name: Model access
+        # Lists every model ID the keys can use, so configured IDs can be corrected.
+        run: python -m story_factory --config "$CONFIG" models --list || true
+
+      - name: Wikipedia research
+        if: env.MODE == 'story'
+        run: python -m story_factory --config "$CONFIG" research
+
+      - name: Generate one story
+        if: env.MODE == 'story'
+        run: python -m story_factory --config "$CONFIG" generate "$SERIES"
+
+      - name: Report
+        if: always() && env.MODE == 'story'
+        run: |
+          python -m story_factory --config "$CONFIG" report | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          python -m story_factory --config "$CONFIG" stats | tee -a "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Save the story database
+        if: always() && env.MODE == 'story'
+        uses: actions/upload-artifact@v4
+        with:
+          name: stories-${{ github.run_number }}
+          path: data/
+          retention-days: 30
+          if-no-files-found: ignore

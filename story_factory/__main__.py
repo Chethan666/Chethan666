@@ -28,6 +28,40 @@ def _story_json(row) -> dict:
     return story
 
 
+def report(conn, row) -> str:
+    """A short Markdown summary of one story: verdict, scores, audience, packaging, cost."""
+    story = _story_json(row)
+    cost = conn.execute("SELECT COALESCE(SUM(usd), 0) FROM costs WHERE story_id = ?", (row["id"],)).fetchone()[0]
+    lines = [f"## Story #{row['id']}: {row['title']}", "",
+             f"- **Status:** {row['status']}" + (f" ({row['reject_reason']})" if row["reject_reason"] else ""),
+             f"- **Series:** {row['series']} ({row['kind']}), {row['word_count'] or 0} words",
+             f"- **Recipe:** {row['setting']} / {row['core_fear']} / {row['twist']} / {row['ending']}",
+             f"- **Estimated cost of this story:** ${cost:.2f}"]
+    if story.get("author_models"):
+        lines.append("- **Models:** " + ", ".join(f"{k}: {v}" for k, v in story["author_models"].items()))
+    review = story.get("review") or {}
+    if review.get("scores"):
+        lines.append("- **Editors' median scores:** " + ", ".join(f"{k} {v}" for k, v in review["scores"].items()))
+    audience = story.get("audience_report") or {}
+    if audience.get("chunk_interest"):
+        lines.append(f"- **Simulated viewers:** interest by part {audience['chunk_interest']}; "
+                     f"weak parts {audience.get('weak_chunks')}; rewrite {audience.get('rewrite', 'not needed')}")
+    packaging = story.get("packaging") or {}
+    if packaging.get("titles"):
+        lines.append("- **Titles (best first):** " + " | ".join(packaging["titles"]))
+        lines.append(f"- **Thumbnail:** {packaging.get('thumbnail_brief', '')} [{packaging.get('thumbnail_text', '')}]")
+    if story.get("scenes"):
+        lines.append(f"- **Scenes:** {len(story['scenes'])}, cast: "
+                     + ", ".join(m["name"] for m in story.get("cast") or []))
+    if row["narration"]:
+        opening = " ".join(row["narration"].split()[:80])
+        lines += ["", "**Opening:**", "", f"> {opening}..."]
+    stages = [entry.get("stage") for entry in story.get("production_log") or []]
+    if stages:
+        lines += ["", "**Stages run:** " + " → ".join(stages)]
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="story_factory", description="Hollow Lines story pipeline")
     parser.add_argument("--config", help="TOML config file (default: ./config.toml if present)")
@@ -35,7 +69,8 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("init", help="create the database and seed the story world")
-    sub.add_parser("models", help="check every configured model against what your API keys can use")
+    p = sub.add_parser("models", help="check every configured model against what your API keys can use")
+    p.add_argument("--list", action="store_true", help="also print every model ID each provider offers")
     p = sub.add_parser("research", help="collect folklore and audience-demand signals")
     p.add_argument("--skip-wikipedia", action="store_true")
     p.add_argument("--skip-youtube", action="store_true")
@@ -64,6 +99,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--comments", type=int)
     sub.add_parser("learn", help="turn real performance into lessons for future pitches")
     sub.add_parser("stats", help="cost per story, winning models and common rejection reasons")
+    p = sub.add_parser("report", help="Markdown summary of a story (default: the latest)")
+    p.add_argument("id", type=int, nargs="?")
 
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -88,6 +125,11 @@ def main(argv: list[str] | None = None) -> int:
                 models = available[spec.provider]
                 state = "UNVERIFIED" if models is None else "OK" if spec.model in models else "NOT FOUND"
                 print(f"{role:<11} {text:<45} {state}")
+        if args.list:
+            for provider, models in available.items():
+                print(f"\n{provider} offers {len(models or [])} models:")
+                for model in models or []:
+                    print(f"  {model}")
     elif args.command == "research":
         conn = db.connect(cfg["database"])
         if not args.skip_wikipedia:
@@ -146,6 +188,11 @@ def main(argv: list[str] | None = None) -> int:
                               avg_view_percentage=args.avg_view_percentage, ctr=args.ctr,
                               likes=args.likes, comments=args.comments)
         print(f"Metrics saved for story #{args.id}")
+    elif args.command == "report":
+        conn = db.connect(cfg["database"])
+        row = db.get_story(conn, args.id) if args.id else conn.execute(
+            "SELECT * FROM stories WHERE status != 'shelved' ORDER BY id DESC LIMIT 1").fetchone()
+        print(report(conn, row) if row else "No stories yet.")
     elif args.command == "stats":
         print(json.dumps(db.stats(db.connect(cfg["database"])), indent=2))
     elif args.command == "learn":

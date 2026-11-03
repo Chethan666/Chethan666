@@ -206,6 +206,57 @@ class EnhancementTests(unittest.TestCase):
         self.assertTrue(report["spend_by_model"])
 
 
+class AWSEmbedAndReportTests(unittest.TestCase):
+    def test_titan_embeddings_request(self):
+        import io
+        import os
+        from unittest import mock
+
+        from story_factory import providers
+
+        captured = {}
+
+        def fake_urlopen(request, timeout):
+            captured.update(url=request.full_url, auth=request.get_header("Authorization"),
+                            body=json.loads(request.data))
+            return io.BytesIO(json.dumps({"embedding": [0.1, 0.2], "inputTextTokenCount": 3}).encode())
+
+        cfg = test_config()
+        with mock.patch.dict(os.environ, {"AWS_BEARER_TOKEN_BEDROCK": "k", "AWS_REGION": "us-west-2"}), \
+                mock.patch("urllib.request.urlopen", fake_urlopen):
+            spec = ModelSpec.parse("aws:amazon.titan-embed-text-v2:0")
+            client = providers.build(spec, cfg, UsageRecorder(db.connect(":memory:"), cfg))
+            self.assertIsInstance(client, providers.AWSEmbedClient)
+            self.assertEqual(client.embed("hello there"), [0.1, 0.2])
+        self.assertEqual(spec.family, "amazon")
+        self.assertEqual(captured["url"], "https://bedrock-runtime.us-west-2.amazonaws.com/model/"
+                                          "amazon.titan-embed-text-v2%3A0/invoke")
+        self.assertEqual(captured["auth"], "Bearer k")
+        self.assertEqual(captured["body"]["inputText"], "hello there")
+
+    def test_report_summarizes_the_latest_story(self):
+        from story_factory.__main__ import report
+
+        ctx, _ = make_context()
+        outcome = pipeline.generate_story(ctx, "sixty_seconds")
+        row = db.get_story(ctx.conn, outcome.story_id)
+        text = report(ctx.conn, row)
+        self.assertIn(f"Story #{outcome.story_id}", text)
+        self.assertIn("**Status:** approved", text)
+        self.assertIn("Titles (best first)", text)
+        self.assertIn("Stages run:", text)
+
+    def test_aws_only_config_loads(self):
+        from story_factory.config import load_config
+
+        cfg = load_config("config.aws-only.toml")
+        for role, specs in cfg["roles"].items():
+            for text in specs:
+                self.assertEqual(ModelSpec.parse(text).provider, "aws", role)
+        families = {ModelSpec.parse(t).family for t in cfg["roles"]["judges"]}
+        self.assertEqual(families, {"anthropic", "openai", "xai"})
+
+
 class LegendTests(unittest.TestCase):
     def test_legend_is_researched_once_and_told_once(self):
         ctx, brain = make_context()

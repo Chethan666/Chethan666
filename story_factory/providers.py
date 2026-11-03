@@ -15,6 +15,7 @@ import json
 import os
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 
@@ -337,6 +338,42 @@ class AWSChatClient(XAIClient):
         return aws_models(self.cfg)
 
 
+class AWSEmbedClient:
+    """Amazon Titan text embeddings on Bedrock (InvokeModel), authenticated with the Bedrock API key."""
+
+    def __init__(self, spec: ModelSpec, cfg: dict, recorder: UsageRecorder):
+        self.spec = spec
+        self.recorder = recorder
+        self.cfg = cfg
+        self.key = _aws_key()
+        self.url = (f"https://bedrock-runtime.{_aws_region(cfg)}.amazonaws.com/model/"
+                    f"{urllib.parse.quote(spec.model, safe='')}/invoke")
+
+    def embed(self, text: str) -> list[float]:
+        body = json.dumps({"inputText": text, "dimensions": 512, "normalize": True}).encode()
+        for attempt in range(5):
+            request = urllib.request.Request(self.url, data=body, method="POST", headers={
+                "Authorization": f"Bearer {self.key}", "Content-Type": "application/json",
+                "Accept": "application/json"})
+            try:
+                with urllib.request.urlopen(request, timeout=120) as response:
+                    data = json.loads(response.read())
+                break
+            except urllib.error.HTTPError as exc:
+                if (exc.code != 429 and exc.code < 500) or attempt == 4:
+                    raise LLMError(f"{self.spec.label} HTTP {exc.code}: "
+                                   f"{exc.read().decode(errors='replace')[:300]}") from exc
+            except (urllib.error.URLError, TimeoutError) as exc:
+                if attempt == 4:
+                    raise LLMError(f"{self.spec.label} request failed: {exc}") from exc
+            time.sleep(2 ** (attempt + 2))
+        self.recorder.record("embed", self.spec, int(data.get("inputTextTokenCount", 0)), 0)
+        return [float(v) for v in data["embedding"]]
+
+    def list_models(self) -> list[str]:
+        return aws_models(self.cfg)
+
+
 def aws_models(cfg: dict) -> list[str]:
     """Model IDs listed by Bedrock's OpenAI-compatible endpoint."""
     import openai
@@ -352,6 +389,8 @@ def build(spec: ModelSpec, cfg: dict, recorder: UsageRecorder) -> Any:
     if spec.provider == "aws":
         if spec.family == "anthropic":
             return AWSClaudeClient(spec, cfg, recorder)
+        if spec.family == "amazon" and "embed" in spec.model:
+            return AWSEmbedClient(spec, cfg, recorder)
         if any(spec.model.startswith(p) for p in cfg["providers"]["aws"]["responses_api_models"]):
             return AWSResponsesClient(spec, cfg, recorder)
         return AWSChatClient(spec, cfg, recorder)

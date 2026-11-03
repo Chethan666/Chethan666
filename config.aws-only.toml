@@ -1,0 +1,25 @@
+# Every role on Amazon Bedrock: needs only AWS_BEARER_TOKEN_BEDROCK (and AWS_REGION).
+# Used by the GitHub Actions workflow until the Gemini and Claude API keys are added.
+# Three companies (Anthropic, OpenAI, xAI) still judge each other's work.
+
+database = "data/stories.db"
+
+[budget]
+# Hard stop for this account's test runs.
+monthly_cap_usd = 25
+
+[roles]
+pitchers   = ["aws:anthropic.claude-sonnet-5-5@high", "aws:openai.gpt-5.5@low", "aws:xai.grok-4.6"]
+judges     = ["aws:anthropic.claude-sonnet-5-5@high", "aws:openai.gpt-5.5@low", "aws:xai.grok-4.6"]
+writers    = ["aws:anthropic.claude-opus-5-5@high", "aws:xai.grok-4.6"]
+reviser    = ["aws:anthropic.claude-opus-5-5@high"]
+audience   = ["aws:xai.grok-4.6", "aws:openai.gpt-5.5@low"]
+polisher   = ["aws:anthropic.claude-opus-5-5@high"]
+# Bedrock has no web search, so legend research uses Wikipedia notes.
+researcher = ["aws:anthropic.claude-sonnet-5-5@medium"]
+planner    = ["aws:anthropic.claude-sonnet-5-5@medium"]
+embedder   = ["aws:amazon.titan-embed-text-v2:0"]
+
+[providers.aws]
+# AWS_REGION in the environment overrides this.
+region = "us-east-1"
