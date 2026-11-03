@@ -382,6 +382,18 @@ def bible_check(bible: dict[str, Any], items: Sequence[tuple[str, str]], script:
             f"rules or limits (empty if none).{legend}")
 
 
+def confirm_breaks(bible: dict[str, Any], script: dict[str, Any], claimed: Sequence[str],
+                   dossier: dict | None = None) -> str:
+    listed = "\n".join(f"[{n}] {c}" for n, c in enumerate(claimed, 1))
+    notes = (f"\nLegend research notes:\n{json.dumps(dossier, ensure_ascii=False)}\n" if dossier else "")
+    return (f"STORY BIBLE:\n{json.dumps(bible, ensure_ascii=False)}\n{notes}\nSCRIPT:\n{_script(script)}\n\n"
+            f"Another editor claims the script breaks the threat's own rules (or, for a legend, gives "
+            f"its being traits the research does not support):\n{listed}\n\nFor each numbered claim, "
+            "decide whether it is real: the script clearly shows the threat doing what its rules or the "
+            "research forbid. Mark it not real if it is a stretch, a matter of interpretation, or about "
+            "something the script never shows. Give its number, your verdict and a one-line reason.")
+
+
 # --- Outline and drafts ------------------------------------------------------
 
 def beat_sheet(*, series: Any, kind: str, recipe: Any, formats: dict[str, str], endings: dict[str, str],

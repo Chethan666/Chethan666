@@ -86,6 +86,9 @@ REVIEW = obj(scores=obj(**{c: I for c in REVIEW_CRITERIA}),
 # Does the script deliver each promise of the story bible? Quotes are verified in code.
 BIBLE_CHECK = obj(items=arr(obj(id=S, present=B, quote=S)), threat_rule_breaks=arr(S))
 
+# A second judge's verdict on each claimed rule break, by its number in the list.
+CONFIRM = obj(items=arr(obj(index=I, real=B, reason=S)))
+
 AUDIENCE = obj(chunks=arr(obj(chunk=I, interest=I, would_leave=B, note=S)), overall=S)
 
 CHUNK_REWRITE = obj(chunks=arr(obj(chunk=I, text=S)))

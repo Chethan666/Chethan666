@@ -802,36 +802,61 @@ def clean_style(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str,
     return best
 
 
-def check_bible(ctx: Context, story: Story, script: dict[str, Any],
-                author_family: str) -> tuple[list[str], list[str]]:
-    """Does the script deliver the story bible? Returns (blocking issues, advisory notes).
+@dataclass
+class BibleVerdict:
+    breaks: list[str] = field(default_factory=list)  # confirmed by two independent judges
+    missing: list[str] = field(default_factory=list)
+    low_coverage: bool = False
 
-    A promise only counts when the judge's quote is really in the script. Missing
-    promises block when coverage falls below the bar; broken threat rules always do.
+
+def check_bible(ctx: Context, story: Story, script: dict[str, Any], author_family: str) -> BibleVerdict:
+    """Does the script deliver the story bible?
+
+    A promise only counts when the judge's quote is really in the script. A claimed
+    break of the threat's rules (or, for a legend, a trait the research doesn't
+    support) counts only when a second, independent judge confirms it: one model's
+    claim is too noisy to veto a story.
     """
     if not story.bible:
-        return [], []
+        return BibleVerdict()
     promises = bible_promises(story.bible, story.series.kind, story.dossier)
     if not promises:
-        return [], []
-    judge = FailoverJudge(ctx.router.judges([author_family]))
+        return BibleVerdict()
+    judges = ctx.router.judges([author_family])
     try:
-        result = judge.generate_json("bible_check", prompts.SYSTEM_EDITOR,
-                                     prompts.bible_check(story.bible, promises, script, story.dossier),
-                                     schemas.BIBLE_CHECK)
+        result = FailoverJudge(judges).generate_json(
+            "bible_check", prompts.SYSTEM_EDITOR,
+            prompts.bible_check(story.bible, promises, script, story.dossier), schemas.BIBLE_CHECK)
     except LLMError as exc:
         log.warning("Story-bible check skipped: %s", exc)
-        return [], []
+        return BibleVerdict()
     narration = narration_of(script)
     shown = {str(r.get("id")) for r in result.get("items", [])
              if isinstance(r, dict) and r.get("present") is True and quote_found(str(r.get("quote", "")), narration)}
     missing = [f"deliver the story bible: {requirement}" for item_id, requirement in promises if item_id not in shown]
-    breaks = [f"the threat breaks its own rules: {b}" for b in result.get("threat_rule_breaks", []) if _real_issue(b)]
+    claimed = [str(b).strip() for b in result.get("threat_rule_breaks", []) if _real_issue(b)]
+    breaks = confirm_breaks(ctx, story, script, claimed, judges[1:]) if claimed else []
     coverage = 1 - len(missing) / len(promises)
-    story.note("bible_check", coverage=round(coverage, 2), missing=len(missing), rule_breaks=len(breaks))
-    if coverage < ctx.cfg["quality"]["bible_min_coverage"]:
-        return breaks + missing, []
-    return breaks, missing
+    story.note("bible_check", coverage=round(coverage, 2), missing=len(missing),
+               rule_breaks_claimed=len(claimed), rule_breaks_confirmed=len(breaks))
+    floor = ctx.cfg["quality"]["bible_min_coverage" if story.series.kind == "long" else "bible_min_coverage_short"]
+    return BibleVerdict([f"the threat breaks its own rules: {b}" for b in breaks], missing, coverage < floor)
+
+
+def confirm_breaks(ctx: Context, story: Story, script: dict[str, Any], claimed: list[str],
+                   others: list[Any]) -> list[str]:
+    """Keep only the claimed rule breaks a second judge agrees are real."""
+    if not others:
+        return claimed
+    try:
+        result = FailoverJudge(others).generate_json(
+            "confirm_breaks", prompts.SYSTEM_EDITOR,
+            prompts.confirm_breaks(story.bible, script, claimed, story.dossier), schemas.CONFIRM)
+    except LLMError as exc:
+        log.warning("Could not confirm rule breaks, keeping them: %s", exc)
+        return claimed
+    real = {int(r.get("index", 0)) for r in result.get("items", []) if isinstance(r, dict) and r.get("real") is True}
+    return [c for n, c in enumerate(claimed, 1) if n in real]
 
 
 def editors_loop(ctx: Context, story: Story, script: dict[str, Any], author_family: str,
@@ -850,18 +875,22 @@ def editors_loop(ctx: Context, story: Story, script: dict[str, Any], author_fami
         if not copy.ok:
             issues.append(f"rewrite in original words: {copy.reason}")
         advice = [i for i in style_issues(narration_of(script), cfg, kind) if i not in issues]
+        last = round_ == cfg["quality"]["max_revisions"]
         if not issues:
-            issues, missing = check_bible(ctx, story, script, author_family)
-            advice += missing
-        if not issues:
+            # The editors' panel is the gate; the story-bible check steers the revision.
+            bible = check_bible(ctx, story, script, author_family)
             reviews = ctx.router.panel(
                 lambda judge: judge.generate_json("review", prompts.SYSTEM_EDITOR, prompts.review(
                     kind, story.recipe, FORMATS, ENDINGS, script, story.dossier, story.bible), schemas.REVIEW),
                 ctx.router.judges([author_family], cfg["quality"]["judges_per_comparison"]))
             agg = aggregate_reviews(reviews)
-            issues = review_issues(agg, cfg["quality"]["min_score"])
+            panel = review_issues(agg, cfg["quality"]["min_score"])
+            gaps = bible.missing if bible.low_coverage and not (last and not panel) else []
+            issues = panel + bible.breaks + gaps
             if issues:
-                issues += advice  # style advice and unmet story-bible promises help the revision
+                issues += advice + [m for m in bible.missing if m not in issues]
+            elif bible.missing:
+                story.note("bible_gaps_accepted", missing=bible.missing[:4])
         story.note("editors", round=round_ + 1, issues=len(issues), scores=agg.get("scores"))
         if not issues:
             return script, agg, ""

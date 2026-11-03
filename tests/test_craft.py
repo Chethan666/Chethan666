@@ -65,26 +65,44 @@ class StoryBibleTests(unittest.TestCase):
         short["threat"]["limits"] = []
         self.assertEqual(pipeline.bible_issues(short, "short"), [])  # Shorts need less
 
-    def test_unmet_bible_promises_block_the_story(self):
+    def test_unmet_bible_promises_steer_revisions_then_the_panel_decides(self):
         ctx, brain = make_context()
         brain.bible_present = lambda item_id: item_id.startswith("clue")
         outcome = pipeline.generate_story(ctx, "hollow_world")
+        self.assertEqual(outcome.status, "approved", outcome.detail)
+        self.assertEqual(len(brain.tasks("revise")), ctx.cfg["quality"]["max_revisions"])
+        stages = [e["stage"] for e in json.loads(db.get_story(ctx.conn, outcome.story_id)["production_log"])]
+        self.assertIn("bible_gaps_accepted", stages)
+
+    def test_unmet_promises_and_a_failing_panel_reject(self):
+        ctx, brain = make_context()
+        brain.bible_present = lambda item_id: item_id.startswith("clue")
+        brain.review_scores = 5
+        outcome = pipeline.generate_story(ctx, "hollow_world")
         self.assertEqual(outcome.status, "rejected")
-        self.assertIn("deliver the story bible", outcome.detail)
-        self.assertEqual(brain.tasks("review"), [])  # never reached the scored review
 
     def test_a_small_gap_only_advises(self):
         ctx, brain = make_context()
         brain.bible_present = lambda item_id: item_id != "breath"
         outcome = pipeline.generate_story(ctx, "hollow_world")
         self.assertEqual(outcome.status, "approved", outcome.detail)
+        self.assertEqual(brain.tasks("revise"), [])
 
-    def test_threat_breaking_its_rules_blocks(self):
+    def test_confirmed_rule_breaks_block(self):
         ctx, brain = make_context()
         brain.threat_breaks = ["it speaks, though it cannot speak"]
+        brain.real_breaks = {"it speaks, though it cannot speak"}
         outcome = pipeline.generate_story(ctx, "hollow_world")
         self.assertEqual(outcome.status, "rejected")
         self.assertIn("breaks its own rules", outcome.detail)
+
+    def test_an_unconfirmed_rule_break_claim_does_not_block(self):
+        ctx, brain = make_context()
+        brain.threat_breaks = ["the laundry rule is implied to be broken somehow"]
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        self.assertEqual(outcome.status, "approved", outcome.detail)
+        self.assertTrue(brain.tasks("confirm_breaks"))
+        self.assertNotEqual(brain.tasks("bible_check")[0], brain.tasks("confirm_breaks")[0])  # another judge
 
     def test_quotes_must_really_be_on_the_page(self):
         text = "She hums the same three notes every night before the last stop."

@@ -74,6 +74,7 @@ class Brain:
         self.cast_override: Callable[[list[str]], list[dict]] | None = None
         self.bible_present: Callable[[str], bool] = lambda item_id: True
         self.threat_breaks: list[str] = []
+        self.real_breaks: set[str] = set()  # claimed breaks a second judge confirms
         self.unfit_legends: set[str] = set()
         self.pauses: list[dict] = [{"after": "Some doors are better left closed", "ms": 1200}]
 
@@ -183,6 +184,11 @@ class Brain:
         ids = re.findall(r"^- \[(\w+)\]", prompt, re.MULTILINE)
         return {"items": [{"id": i, "present": self.bible_present(i), "quote": quote} for i in ids],
                 "threat_rule_breaks": list(self.threat_breaks)}
+
+    def _confirm_breaks(self, prompt: str, spec: ModelSpec) -> dict:
+        claims = re.findall(r"^\[(\d+)\] (.*)$", prompt, re.MULTILINE)
+        return {"items": [{"index": int(n), "real": text in self.real_breaks, "reason": "checked"}
+                          for n, text in claims]}
 
     def _write_section(self, prompt: str, spec: ModelSpec) -> dict:
         self.counter += 1

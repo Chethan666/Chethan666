@@ -115,6 +115,7 @@ DEFAULTS: dict[str, Any] = {
         "draft_sections": 3,
         # Share of story-bible promises the script must visibly deliver.
         "bible_min_coverage": 0.75,
+        "bible_min_coverage_short": 0.5,
         # Dedicated line edits for machine-sounding phrasing before each editor round.
         "style_fix_attempts": 2,
         # Repair rounds when the final check finds must-fix issues.
