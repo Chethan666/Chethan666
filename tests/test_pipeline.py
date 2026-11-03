@@ -154,6 +154,23 @@ class WritersRoomTests(unittest.TestCase):
         self.assertEqual(outcome.status, "approved", outcome.detail)
         self.assertIn("google:judge-c", brain.tasks("score_pitch"))
 
+    def test_single_model_roles_fail_over(self):
+        cfg = test_config()
+        cfg["roles"]["reviser"] = ["anthropic:writer-a", "openai:writer-b"]
+        cfg["roles"]["writers"] = ["anthropic:writer-a", "openai:writer-b"]
+        ctx, brain = make_context(cfg=cfg)
+        original = brain._beat_sheet
+
+        def flaky(prompt, spec):
+            if spec.model == "writer-a":
+                raise LLMError("hit max tokens before finishing")
+            return original(prompt, spec)
+
+        brain.overrides["beat_sheet"] = flaky
+        outcome = pipeline.generate_story(ctx, "sixty_seconds")
+        self.assertEqual(outcome.status, "approved", outcome.detail)
+        self.assertEqual(brain.tasks("beat_sheet"), ["anthropic:writer-a", "openai:writer-b"])
+
     def test_panel_fails_only_when_every_judge_fails(self):
         ctx, brain = make_context()
         brain.failing.update({"anthropic:judge-a", "openai:judge-b", "google:judge-c", "xai:judge-d"})

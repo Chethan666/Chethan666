@@ -8,16 +8,17 @@ database = "data/stories.db"
 monthly_cap_usd = 0
 
 [roles]
+# Single-model roles fail over to the next model listed.
 pitchers   = ["aws:moonshotai.kimi-k2.5", "aws:zai.glm-5", "aws:deepseek.v3.2"]
 # Five companies, so every comparison gets independent judges.
 judges     = ["aws:qwen.qwen3-235b-a22b-2507", "aws:mistral.mistral-large-3-675b-instruct",
               "aws:zai.glm-5", "aws:deepseek.v3.2"]
 writers    = ["aws:moonshotai.kimi-k2.5", "aws:zai.glm-5"]
-reviser    = ["aws:moonshotai.kimi-k2.5"]
+reviser    = ["aws:moonshotai.kimi-k2.5", "aws:zai.glm-5"]
 audience   = ["aws:qwen.qwen3-235b-a22b-2507", "aws:mistral.mistral-large-3-675b-instruct"]
-polisher   = ["aws:moonshotai.kimi-k2.5"]
-researcher = ["aws:deepseek.v3.2"]
-planner    = ["aws:deepseek.v3.2"]
+polisher   = ["aws:moonshotai.kimi-k2.5", "aws:zai.glm-5"]
+researcher = ["aws:deepseek.v3.2", "aws:qwen.qwen3-235b-a22b-2507"]
+planner    = ["aws:deepseek.v3.2", "aws:qwen.qwen3-235b-a22b-2507"]
 embedder   = ["local:hash"]
 
 [providers.aws]
