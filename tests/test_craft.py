@@ -209,6 +209,22 @@ class StyleTests(unittest.TestCase):
         self.assertNotIn("sense of dread", db.get_story(ctx.conn, outcome.story_id)["narration"])
 
 
+class SoftStyleTests(unittest.TestCase):
+    def test_judgment_calls_advise_but_never_block(self):
+        ctx, brain = make_context()
+
+        def framed(prompt, spec):
+            frame = brain._write_frame(prompt, spec)
+            frame["outro"] = "You wait. You listen. You count. You breathe. " + frame["outro"]
+            return frame
+
+        brain.overrides["write_frame"] = framed
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        self.assertEqual(outcome.status, "approved", outcome.detail)
+        self.assertTrue(brain.tasks("line_edit"))  # still offered to the line editor
+        self.assertTrue(brain.tasks("review"))  # and the editors still read it
+
+
 class EditorTests(unittest.TestCase):
     def test_structured_notes_are_quoted_with_fixes(self):
         reviews = [{"scores": {}, "flags": {}, "notes": [{"quote": "the door", "problem": "too soon",

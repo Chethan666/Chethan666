@@ -137,11 +137,21 @@ def syllables(word: str) -> int:
     return max(groups, 1)
 
 
+def machine_phrasing(text: str) -> list[str]:
+    """Phrases that mark prose as machine-written. Each is easy to replace, so they block."""
+    return [f"replace the overused phrase '{m.group(0)}' with something specific to this story"
+            for m in AI_ISMS.finditer(text)]
+
+
 def style_issues(text: str, cfg: dict, kind: str) -> list[str]:
-    """Free checks for prose that sounds machine-written or is hard to follow by ear."""
+    """Free checks for prose that sounds machine-written or is hard to follow by ear.
+
+    Only machine phrasing blocks a story; the rest are judgment calls (a repeated
+    opening can be deliberate rhetoric), so they go to the line edit and the editors
+    as advice.
+    """
     rules = cfg["style"]
-    issues = [f"replace the overused phrase '{m.group(0)}' with something specific to this story"
-              for m in AI_ISMS.finditer(text)]
+    issues = machine_phrasing(text)
     feelings = [m.group(0) for m in NAMED_FEELINGS.finditer(text)]
     if len(feelings) > (rules["max_named_feelings"] if kind == "long" else 1):
         issues.append(f"show fear through the body and actions instead of naming it ({', '.join(feelings[:4])})")
@@ -201,9 +211,9 @@ def structure_issues(script: dict[str, Any], kind: str, cfg: dict) -> list[str]:
 
 
 def script_issues(script: dict[str, Any], kind: str, cfg: dict) -> list[str]:
-    """Every check that needs no model call."""
+    """Every blocking check that needs no model call."""
     issues = structure_issues(script, kind, cfg)
-    return issues + style_issues(narration_of(script), cfg, kind)
+    return issues + machine_phrasing(narration_of(script))
 
 
 def _note_text(note: Any) -> str:
@@ -739,9 +749,10 @@ def editors_loop(ctx: Context, story: Story, script: dict[str, Any], author_fami
         copy = dedup.check_script(ctx.conn, cfg, story_id, narration_of(script), sources)
         if not copy.ok:
             issues.append(f"rewrite in original words: {copy.reason}")
-        advice: list[str] = []
+        advice = [i for i in style_issues(narration_of(script), cfg, kind) if i not in issues]
         if not issues:
-            issues, advice = check_bible(ctx, story, script, author_family)
+            issues, missing = check_bible(ctx, story, script, author_family)
+            advice += missing
         if not issues:
             reviews = ctx.router.panel(
                 lambda judge: judge.generate_json("review", prompts.SYSTEM_EDITOR, prompts.review(
@@ -750,7 +761,7 @@ def editors_loop(ctx: Context, story: Story, script: dict[str, Any], author_fami
             agg = aggregate_reviews(reviews)
             issues = review_issues(agg, cfg["quality"]["min_score"])
             if issues:
-                issues += advice  # unmet story-bible promises help the revision
+                issues += advice  # style advice and unmet story-bible promises help the revision
         story.note("editors", round=round_ + 1, issues=len(issues), scores=agg.get("scores"))
         if not issues:
             return script, agg, ""

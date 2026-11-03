@@ -135,7 +135,7 @@ DEFAULTS: dict[str, Any] = {
         "long_sentence_words": 32,
         "max_long_sentences": 3,
         "max_named_feelings": 2,
-        "max_same_openings_in_a_row": 2,
+        "max_same_openings_in_a_row": 3,
         "words_per_dash": 60,
         "max_hard_word_share": 0.05,
     },

@@ -30,7 +30,8 @@ Its goal is the best possible story, not the cheapest. Every step either creates
                     → head-to-head judging
  5. EDITORS' LOOP   each round: fit the length → FREE STYLE CHECKS (machine-sounding phrases, named
                     feelings, long sentences, repeated openings, dashes, hard words) with a dedicated
-                    line edit → STORY-BIBLE CHECK (a judge must quote where each promise is delivered;
+                    line edit (only machine phrasing blocks; the rest is advice for the editors)
+                    → STORY-BIBLE CHECK (a judge must quote where each promise is delivered;
                     quotes are verified in code; broken threat rules block) → editors score 8 qualities
                     against a written scoring guide; the median of every one must reach the bar
                     → revisions use the editors' quoted line notes with fixes, or the story is rejected
