@@ -26,8 +26,8 @@ on:
       config:
         description: Model setup
         type: choice
-        options: [config.aws-only.toml, config.example.toml]
-        default: config.aws-only.toml
+        options: [config.aws-open.toml, config.aws-only.toml, config.example.toml]
+        default: config.aws-open.toml
 
 permissions:
   contents: read

@@ -2,7 +2,7 @@ import json
 import random
 import unittest
 
-from story_factory import db, learning, pipeline, tournament
+from story_factory import db, dedup, learning, pipeline, tournament
 from story_factory.llm import BudgetExceeded, LLMError, ModelSpec, UsageRecorder, parse_json
 from story_factory.router import Router
 from tests.fakes import Brain, FakeClient, make_context, premise, test_config
@@ -245,6 +245,26 @@ class AWSEmbedAndReportTests(unittest.TestCase):
         self.assertIn("**Status:** approved", text)
         self.assertIn("Titles (best first)", text)
         self.assertIn("Stages run:", text)
+
+    def test_local_hash_embedder(self):
+        from story_factory import providers
+
+        cfg = test_config()
+        embedder = providers.build(ModelSpec.parse("local:hash"), cfg, UsageRecorder(db.connect(":memory:"), cfg))
+        a = embedder.embed("The night bus had one passenger too many.")
+        b = embedder.embed("One passenger too many rode the night bus.")
+        c = embedder.embed("A lighthouse keeper counts the waves until dawn.")
+        self.assertGreater(dedup.cosine(a, b), dedup.cosine(a, c))
+        self.assertAlmostEqual(dedup.cosine(a, a), 1.0)
+
+    def test_aws_open_config_has_independent_judges(self):
+        from story_factory.config import load_config
+
+        cfg = load_config("config.aws-open.toml")
+        families = {ModelSpec.parse(t).family for t in cfg["roles"]["judges"]}
+        self.assertEqual(len(families), 4)
+        writer_families = {ModelSpec.parse(t).family for t in cfg["roles"]["writers"]}
+        self.assertTrue(families - writer_families)  # someone can always judge a writer
 
     def test_aws_only_config_loads(self):
         from story_factory.config import load_config

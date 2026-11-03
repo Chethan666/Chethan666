@@ -248,6 +248,17 @@ class AWSClientTests(unittest.TestCase):
         grok.generate_json("t", "s", "p", {"type": "object"})  # stays on the address that worked
         self.assertEqual(self.requests[-1].url.path, "/openai/v1/chat/completions")
 
+    def test_broken_json_is_retried_in_json_mode(self):
+        import openai
+
+        model = providers.build(ModelSpec.parse("aws:openai.gpt-oss-120b"), self.cfg, self.recorder)
+        broken = json.dumps(XAIClientTests.completion('{"ok": true "x"}')).encode()
+        good = json.dumps(XAIClientTests.completion('{"ok": true}')).encode()
+        model.client = openai.OpenAI(api_key="k", base_url=str(model.client.base_url), http_client=self.transport([
+            (200, broken, "application/json"), (200, good, "application/json")]))
+        self.assertEqual(model.generate_json("t", "s", "p", {"type": "object"}), {"ok": True})
+        self.assertEqual(json.loads(self.requests[1].content)["response_format"], {"type": "json_object"})
+
     def test_missing_bedrock_key_is_reported(self):
         del os.environ["AWS_BEARER_TOKEN_BEDROCK"]
         with self.assertRaises(LLMError):

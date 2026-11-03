@@ -254,7 +254,16 @@ class XAIClient:
                 raise LLMError(f"{self.spec.label} HTTP {exc.status_code}: {exc.message}") from exc
         except self.openai.APIStatusError as exc:
             raise LLMError(f"{self.spec.label} HTTP {exc.status_code}: {exc.message}") from exc
-        return parse_json(text)
+        try:
+            return parse_json(text)
+        except LLMError:
+            # Some open models occasionally break the JSON; ask once more in plain JSON mode.
+            messages[1]["content"] = (f"{prompt}\n\nReturn only valid JSON matching this JSON Schema:\n"
+                                      f"{json.dumps(schema)}")
+            try:
+                return parse_json(self._complete(task, messages, {"type": "json_object"}))
+            except self.openai.APIStatusError as exc:
+                raise LLMError(f"{self.spec.label} HTTP {exc.status_code}: {exc.message}") from exc
 
     def list_models(self) -> list[str]:
         return sorted(m.id for m in self.client.models.list())
@@ -415,7 +424,36 @@ def aws_models(cfg: dict) -> list[str]:
     raise LLMError(f"Bedrock model list not found at {', '.join(_aws_openai_urls(cfg))}: {last}")
 
 
-PROVIDERS = {"anthropic": AnthropicClient, "openai": OpenAIClient, "google": GoogleClient, "xai": XAIClient}
+class LocalHashEmbedder:
+    """Offline stand-in for an embedding model: hashed word and word-pair counts.
+
+    Catches reworded near-copies far less well than a real embedding model;
+    use it only when no embedding API is reachable.
+    """
+
+    DIMENSIONS = 1024
+
+    def __init__(self, spec: ModelSpec, cfg: dict, recorder: UsageRecorder):
+        self.spec = spec
+
+    def embed(self, text: str) -> list[float]:
+        import hashlib
+        import math
+        import re
+
+        words = re.sub(r"[^a-z0-9\s]", " ", text.lower()).split()
+        vector = [0.0] * self.DIMENSIONS
+        for token in words + [f"{a} {b}" for a, b in zip(words, words[1:])]:
+            vector[int(hashlib.md5(token.encode()).hexdigest(), 16) % self.DIMENSIONS] += 1.0
+        norm = math.sqrt(sum(v * v for v in vector)) or 1.0
+        return [v / norm for v in vector]
+
+    def list_models(self) -> list[str]:
+        return ["hash"]
+
+
+PROVIDERS = {"anthropic": AnthropicClient, "openai": OpenAIClient, "google": GoogleClient, "xai": XAIClient,
+             "local": LocalHashEmbedder}
 
 
 def build(spec: ModelSpec, cfg: dict, recorder: UsageRecorder) -> Any:

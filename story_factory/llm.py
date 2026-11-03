@@ -36,7 +36,7 @@ class ModelSpec:
     def parse(cls, text: str) -> "ModelSpec":
         provider, _, rest = text.partition(":")
         model, _, effort = rest.partition("@")
-        if provider not in ("anthropic", "openai", "google", "xai", "aws") or not model:
+        if provider not in ("anthropic", "openai", "google", "xai", "aws", "local") or not model:
             raise ValueError(f"Bad model spec {text!r}; use provider:model[@effort]")
         return cls(provider, model, effort or None)
 

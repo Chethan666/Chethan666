@@ -1,0 +1,24 @@
+# Runs on the Bedrock models this AWS account can use today (open-weight models from five
+# companies), with a local stand-in for embeddings. Needs only AWS_BEARER_TOKEN_BEDROCK.
+# Switch to config.aws-only.toml once Claude and GPT are available on the account.
+
+database = "data/stories.db"
+
+[budget]
+monthly_cap_usd = 0
+
+[roles]
+pitchers   = ["aws:moonshotai.kimi-k2.5", "aws:zai.glm-5", "aws:deepseek.v3.2"]
+# Five companies, so every comparison gets independent judges.
+judges     = ["aws:qwen.qwen3-235b-a22b-2507", "aws:mistral.mistral-large-3-675b-instruct",
+              "aws:zai.glm-5", "aws:deepseek.v3.2"]
+writers    = ["aws:moonshotai.kimi-k2.5", "aws:zai.glm-5"]
+reviser    = ["aws:moonshotai.kimi-k2.5"]
+audience   = ["aws:qwen.qwen3-235b-a22b-2507", "aws:mistral.mistral-large-3-675b-instruct"]
+polisher   = ["aws:moonshotai.kimi-k2.5"]
+researcher = ["aws:deepseek.v3.2"]
+planner    = ["aws:deepseek.v3.2"]
+embedder   = ["local:hash"]
+
+[providers.aws]
+region = "us-east-1"
