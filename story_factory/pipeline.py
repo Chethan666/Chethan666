@@ -365,6 +365,26 @@ def draft_contest(ctx: Context, story: Story, outline: dict[str, Any]) -> tuple[
     return {k: best.get(k) for k in SCRIPT_FIELDS}, best["_family"]
 
 
+def fit_length(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, Any]:
+    """Bring the script inside the word range with a dedicated edit (models count words badly).
+
+    Keeps the original if the edits don't land in range.
+    """
+    lo, hi = word_range(ctx.cfg, story.series.kind)
+    reviser = ctx.router.one("reviser")
+    candidate = script
+    for _ in range(ctx.cfg["quality"]["length_fix_attempts"]):
+        words = len(narration_of(candidate).split())
+        if lo <= words <= hi:
+            if candidate is not script:
+                story.note("fit_length", words=words)
+            return candidate
+        candidate = tidy(reviser.generate_json("fit_length", prompts.SYSTEM_WRITER,
+                                               prompts.fit_length(candidate, words, lo, hi), schemas.SCRIPT))
+    words = len(narration_of(candidate).split())
+    return candidate if lo <= words <= hi else script
+
+
 def editors_loop(ctx: Context, story: Story, script: dict[str, Any], author_family: str,
                  story_id: int) -> tuple[dict[str, Any] | None, dict[str, Any], str]:
     """Review and revise until every editor median clears the bar. Returns (script|None, review, reason)."""
@@ -374,6 +394,7 @@ def editors_loop(ctx: Context, story: Story, script: dict[str, Any], author_fami
     sources = _sources(story)
     agg: dict[str, Any] = {}
     for round_ in range(cfg["quality"]["max_revisions"] + 1):
+        script = fit_length(ctx, story, script)
         issues = script_issues(script, kind, cfg)
         copy = dedup.check_script(ctx.conn, cfg, story_id, narration_of(script), sources)
         if not copy.ok:

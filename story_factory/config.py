@@ -101,6 +101,8 @@ DEFAULTS: dict[str, Any] = {
         "audience_chunk_words": 70,
         "audience_min_interest": 7,
         "max_chunks_to_rewrite": 5,
+        # Dedicated edits to bring a script inside the word range before each editor round.
+        "length_fix_attempts": 2,
         # Alternative openings the hook lab writes and pits against the original.
         "hook_alternatives": 4,
         "audience_personas": [

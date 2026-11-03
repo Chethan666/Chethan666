@@ -435,6 +435,22 @@ class ScriptCheckTests(unittest.TestCase):
         self.assertTrue(any("never claim" in i for i in issues))
         self.assertTrue(any("cliche" in i for i in issues))
 
+    def test_overlong_draft_is_fitted_before_review(self):
+        ctx, brain = make_context()
+        original = brain._write_draft
+
+        def long_draft(prompt, spec):
+            script = original(prompt, spec)
+            script["body"] += " " + " ".join(f"extra{i}" for i in range(80)) + "."
+            return script
+
+        brain.overrides["write_draft"] = long_draft
+        brain.overrides["fit_length"] = lambda prompt, spec: brain.make_script("150-320" in prompt)
+        outcome = pipeline.generate_story(ctx, "sixty_seconds")
+        self.assertEqual(outcome.status, "approved", outcome.detail)
+        self.assertTrue(brain.tasks("fit_length"))
+        self.assertEqual(brain.tasks("revise"), [])  # length never used up an editing round
+
     def test_derived_fields_are_recomputed_not_judged(self):
         script = Brain().make_script(long=False)
         script["outro"] = "Some rides never end. Would you have taken the fare?"

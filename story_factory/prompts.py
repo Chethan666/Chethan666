@@ -256,6 +256,16 @@ def review(kind: str, recipe: Any, formats: dict[str, str], endings: dict[str, s
             "lowest scores; quote the passage each note is about.")
 
 
+def fit_length(script: dict[str, Any], current: int, min_words: int, max_words: int) -> str:
+    target = (min_words + max_words) // 2
+    change = (f"Cut about {current - target} words" if current > target
+              else f"Add about {target - current} words")
+    return (f"Script:\n{json.dumps(script, ensure_ascii=False)}\n\nintro + body + outro is {current} words. "
+            f"It must be {min_words}-{max_words} words; aim for {target}. {change} by tightening or "
+            "enriching sentences. Keep every story event, clue, the ending and the outro's final "
+            "question. Return every field.")
+
+
 def revise(kind: str, script: dict[str, Any], notes: list[str], min_words: int, max_words: int) -> str:
     return (f"Current script:\n{json.dumps(script, ensure_ascii=False)}\n\nEditors' notes:\n"
             + "\n".join(f"- {n}" for n in notes)

@@ -22,3 +22,7 @@ embedder   = ["local:hash"]
 
 [providers.aws]
 region = "us-east-1"
+
+[quality]
+# Allow an extra editing round; these models revise in smaller steps.
+max_revisions = 3
