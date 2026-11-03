@@ -90,9 +90,14 @@ def scene_ranges(kind: str) -> tuple[tuple[int, int], tuple[int, int]]:
 def tidy(script: dict[str, Any]) -> dict[str, Any]:
     """Recompute the fields derived from the text, so a model's copying slip can't sink a story.
 
-    comment_question is the outro's final question; hook_line is the body's first sentence.
+    comment_question is the outro's final question (appended to the outro if the model
+    only returned it separately); hook_line is the body's first sentence.
     """
     outro = str(script.get("outro", "")).strip()
+    question = str(script.get("comment_question", "")).strip()
+    if outro and not outro.endswith("?") and question.endswith("?") and question not in outro:
+        # The model wrote the closing question separately; the Storyteller says it last.
+        outro = script["outro"] = f"{outro} {question}"
     if outro.endswith("?"):
         script["comment_question"] = re.split(r"(?<=[.!?…])\s+", outro)[-1]
     body = str(script.get("body", "")).strip()

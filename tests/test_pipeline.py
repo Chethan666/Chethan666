@@ -136,8 +136,9 @@ class WritersRoomTests(unittest.TestCase):
         def revise(prompt, spec):
             calls.append(prompt)
             script = brain.make_script(False)
-            if len(calls) == 1:  # the first fix forgets the closing question
+            if len(calls) == 1:  # the first fix loses the closing question entirely
                 script["outro"] = "Some rides never end."
+                script["comment_question"] = ""
             return script
 
         brain.overrides["revise"] = revise
@@ -499,6 +500,11 @@ class ScriptCheckTests(unittest.TestCase):
         self.assertEqual(script["comment_question"], "Would you have taken the fare?")
         self.assertEqual(script["hook_line"], script["body"].split(". ")[0] + ".")
         script["outro"] = "Some rides never end."
+        script["comment_question"] = "Would you have taken the fare?"
+        self.assertEqual(pipeline.script_issues(script, "short", test_config()), [])
+        self.assertEqual(script["outro"], "Some rides never end. Would you have taken the fare?")
+        script["outro"] = "Some rides never end."
+        script["comment_question"] = ""
         self.assertTrue(any("must end with one question" in i
                             for i in pipeline.script_issues(script, "short", test_config())))
 
