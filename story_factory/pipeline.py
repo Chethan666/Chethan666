@@ -881,6 +881,16 @@ def draft_contest(ctx: Context, story: Story, outline: dict[str, Any],
         jobs = [(w, "") for w in writers]
 
     def write(job: tuple[Any, str]) -> dict[str, Any] | None:
+        # A model that loops to its output limit usually manages on a second try, and a
+        # contest with one draft is no contest; long drafts get that second try.
+        for attempt in range(2 if kind == "long" else 1):
+            draft = write_once(job)
+            if draft is not None:
+                return draft
+            log.info("Retrying writer %s", job[0].spec.label)
+        return None
+
+    def write_once(job: tuple[Any, str]) -> dict[str, Any] | None:
         writer, angle = job
         try:
             if in_parts:

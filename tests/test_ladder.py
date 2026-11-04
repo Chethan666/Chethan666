@@ -351,5 +351,26 @@ class OverrideTests(unittest.TestCase):
             apply_overrides(test_config(), ["quality.no_such_key=1"])
 
 
+
+class WriterRetryTests(unittest.TestCase):
+    def test_a_long_draft_writer_that_fails_once_gets_a_second_try(self):
+        ctx, brain = make_context()
+        handler = brain._write_section
+        failures = {"left": 1}
+
+        def flaky(prompt, spec):
+            if spec.model == "writer-b" and failures["left"]:
+                failures["left"] -= 1
+                from story_factory.llm import LLMError
+                raise LLMError("writer-b hit max tokens before finishing")
+            return handler(prompt, spec)
+
+        brain.overrides["write_section"] = flaky
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        self.assertEqual(outcome.status, "approved", outcome.detail)
+        log = json.loads(db.get_story(ctx.conn, outcome.story_id)["production_log"])
+        self.assertEqual(next(e for e in log if e["stage"] == "draft_contest")["drafts"], 2)
+
+
 if __name__ == "__main__":
     unittest.main()
