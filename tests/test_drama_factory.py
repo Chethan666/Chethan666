@@ -157,6 +157,17 @@ class EpisodeTests(unittest.TestCase):
             s["line"] = ""
         self.assertTrue(any("dialogue drama" in p for p in pipeline.episode_issues(silent, BIBLE)))
         self.assertEqual(pipeline.episode_issues(episode(), BIBLE), [])
+        issues = pipeline.episode_issues(episode(bad_speaker=True), BIBLE)
+        self.assertTrue(any("Stranger" in p for p in issues))  # the writer is told which name is wrong
+
+    def test_near_miss_names_are_snapped_to_the_bible(self):
+        ep = episode()
+        ep["shots"][0].update(speaker="Lena (V.O.)", characters=["lena"], location="the Chapel")
+        ep["shots"][1].update(speaker="ADRIAN", location="Ward 7 corridor")
+        self.assertEqual(pipeline.episode_issues(ep, BIBLE), [])
+        self.assertEqual((ep["shots"][0]["speaker"], ep["shots"][0]["characters"], ep["shots"][0]["location"]),
+                         ("Lena", ["Lena"], "Chapel"))
+        self.assertEqual((ep["shots"][1]["speaker"], ep["shots"][1]["location"]), ("Adrian", "Ward 7"))
 
     def test_a_safety_flag_that_survives_a_repair_rejects(self):
         self.brain.overrides["drama_final_check"] = lambda p, s: {"flags": {"gore": True}, "issues": ["blood"]}

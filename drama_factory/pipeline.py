@@ -25,7 +25,7 @@ from typing import Any
 
 from story_factory import db, dedup, tournament
 from story_factory.llm import LLMError
-from story_factory.pipeline import Context
+from story_factory.pipeline import Context, snap_cast
 
 from . import catalog, prompts, schemas
 
@@ -223,8 +223,35 @@ def create_series(ctx: Context) -> int:
 
 # --- Episodes ----------------------------------------------------------------
 
+def snap_names(ep: dict[str, Any], bible: dict[str, Any]) -> dict[str, Any]:
+    """Point near-miss names at the cast, in place: "Mara (V.O.)" or "Mara" is the cast's "Mara Quell".
+    Writers do this constantly, and voices and looks are chosen by the cast name."""
+    cast = bible.get("cast", [])
+    places = [str(loc.get("name", "")) for loc in bible.get("locations", []) if isinstance(loc, dict)]
+    for s in ep.get("shots") or []:
+        if not isinstance(s, dict):
+            continue
+        snap_cast([s], cast)
+        if str(s.get("speaker", "")).strip():
+            s["speaker"] = snap_cast([{"characters": [str(s["speaker"])]}], cast)[0]["characters"][0]
+        if s.get("location"):
+            s["location"] = _place(str(s["location"]), places)
+    return ep
+
+
+def _place(name: str, places: list[str]) -> str:
+    """"the Embalming Room" is the bible's "Embalming Room"; anything else is left for the check."""
+    bare = lambda x: " ".join(w for w in dedup.normalize(x).split() if w not in ("the", "a", "an"))  # noqa: E731
+    exact = [p for p in places if bare(p) == bare(name)]
+    inside = [p for p in places if bare(p) and (bare(p) in bare(name) or bare(name) in bare(p))]
+    hits = exact or inside
+    return hits[0] if len(hits) == 1 else name
+
+
 def episode_issues(ep: dict[str, Any], bible: dict[str, Any]) -> list[str]:
-    """Free checks: enough shots, known characters and places, mostly dialogue, short lines."""
+    """Free checks: enough shots, known characters and places, mostly dialogue, short lines.
+    Near-miss names are snapped to the cast first."""
+    snap_names(ep, bible)
     shots = ep.get("shots") or []
     issues = []
     if not 10 <= len(shots) <= 32:
@@ -234,13 +261,18 @@ def episode_issues(ep: dict[str, Any], bible: dict[str, Any]) -> list[str]:
     strangers = {c for s in shots for c in s.get("characters", []) if c.lower() not in names}
     if strangers:
         issues.append("characters not in the cast: " + ", ".join(sorted(strangers)))
-    if any(str(s.get("speaker", "")).lower() not in names for s in shots if str(s.get("line", "")).strip()):
-        issues.append("every speaker must be a cast member")
+    voices = sorted({str(s.get("speaker", "")) or "(none)" for s in shots
+                     if str(s.get("line", "")).strip() and str(s.get("speaker", "")).lower() not in names})
+    if voices:
+        issues.append("every speaker must be a cast member (use the cast's exact names); not in the cast: "
+                      + ", ".join(voices))
     unknown = {s.get("location", "") for s in shots if str(s.get("location", "")).lower() not in places}
     if unknown:
         issues.append("use only the bible's locations; unknown: " + ", ".join(sorted(unknown)))
     if sum(1 for s in shots if str(s.get("line", "")).strip()) < len(shots) * 0.5:
-        issues.append("this is a dialogue drama: at least half the shots carry a spoken line")
+        spoken = sum(1 for s in shots if str(s.get("line", "")).strip())
+        issues.append(f"this is a dialogue drama: at least half the shots carry a spoken line "
+                      f"(only {spoken} of {len(shots)} do)")
     if sum(1 for s in shots if s.get("motion")) > 4:
         issues.append("mark at most four shots as motion")
     if any(len(str(s.get("line", "")).split()) > 24 for s in shots):
