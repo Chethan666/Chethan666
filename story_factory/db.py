@@ -179,6 +179,8 @@ MIGRATIONS = {
         "best_draft": "TEXT", "diagnosis": "TEXT", "production": "TEXT",
     },
     "inspirations": {"dossier": "TEXT", "unsuitable": "TEXT"},
+    "series": {"pitch": "TEXT", "production_log": "TEXT"},
+    "episodes": {"audience_report": "TEXT", "packaging": "TEXT", "production_log": "TEXT"},
     "world_entities": {"look": "TEXT"},
     "costs": {"story_id": "INTEGER"},
 }

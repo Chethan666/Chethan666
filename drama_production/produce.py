@@ -23,9 +23,9 @@ from typing import Any
 import numpy as np
 import soundfile
 
-from production import sound
 from story_factory import db
 
+from . import sound
 from .media import BosonVoice, Fal, MediaError, data_uri, download, first_url
 
 log = logging.getLogger(__name__)
@@ -109,7 +109,7 @@ class Producer:
                  size: tuple[int, int] = (W, H)):
         self.conn, self.cfg = conn, cfg
         self.w, self.h = size
-        self.d = cfg.get("drama", {})
+        self.d = cfg.get("drama_video", {})
         self.assets = assets
         self.fal = fal
         self.voices = voices

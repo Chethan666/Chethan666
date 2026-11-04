@@ -206,13 +206,32 @@ DEFAULTS: dict[str, Any] = {
     # voices: am_michael, am_fenrir, am_onyx, bm_george, bm_lewis... lang "a" is US
     # English, "b" British English.
     "video": {"voice": "am_michael", "lang": "a", "speed": 0.92},
-    # Short drama series (vertical 9:16 episodes told in dialogue). Model names are fal.ai
-    # endpoint ids; check them with `python -m drama check` before spending anything.
+    # Pipeline 3: the drama writers' room (series bibles and dialogue episodes).
     "drama": {
         "genre": "supernatural thriller",
         "episodes_per_series": 12,
         "episode_seconds": 90,
+        # Median editor score every criterion must reach, and the plan bar.
         "min_score": 7,
+        "plan_min_score": 7,
+        "plan_revisions": 2,
+        "pitches_per_pitcher": 3,
+        "tournament_size": 4,
+        "shelve_min_score": 7.5,
+        "max_revisions": 2,
+        "max_fresh_starts": 1,
+        # Alternatives the hook and cliffhanger labs write.
+        "alternatives": 2,
+        "viewers": [
+            "a 22-year-old who binges short dramas at night and hates slow openings",
+            "a 35-year-old commuter who swipes away from anything confusing",
+            "a 45-year-old who pays to unlock episodes when a character's secret hooks her",
+            "a 28-year-old skeptic who spots plot holes and recycled tropes",
+        ],
+    },
+    # Pipeline 4: the drama video pipeline. Model names are fal.ai endpoint ids; check
+    # them with `python -m drama_production check` before spending anything.
+    "drama_video": {
         "models": {
             "portrait": "fal-ai/bytedance/seedream/v4/text-to-image",
             "shot": "fal-ai/bytedance/seedream/v4/edit",
@@ -234,7 +253,7 @@ DEFAULTS: dict[str, Any] = {
         "max_motion_shots": 3,
         "parallel_images": 4,
         # Voices: Kokoro (free) unless Boson voice ids are listed by gender, e.g.
-        # boson_voices = {female = ["..."], male = ["..."]} (see `python -m drama check`).
+        # boson_voices = {female = ["..."], male = ["..."]} (see the check).
         "boson_model": "higgs-tts-3",
         "boson_voices": {},
         "voices": {},

@@ -2,7 +2,7 @@
 
 Both are plain HTTPS calls (no SDK). Keys come only from the environment (FAL_KEY,
 BOSON_API_KEY). Model names live in the config, because these catalogs change often;
-`python -m drama check` lists what each configured model expects before anything is spent.
+`python -m drama_production check` lists what each configured model expects before anything is spent.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Short drama series: bible, episodes, judging, and a whole vertical episode with fake services."""
+"""Pipeline 4: a whole vertical episode with fake fal.ai and a placeholder voice."""
 
 import json
 import shutil
@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from drama import writing
+from story_factory import db
 from tests.fakes import make_context
 
 try:
@@ -57,54 +57,20 @@ def scores(value: int) -> dict:
             "problems": ["the middle drags"] if value < 7 else []}
 
 
-def drama_context(review=8, first=None):
-    ctx, brain = make_context()
-    brain.overrides["drama_bible"] = lambda p, s: BIBLE
-    brain.overrides["drama_episode"] = lambda p, s: first or episode()
-    brain.overrides["drama_revise"] = lambda p, s: episode()
-    brain.overrides["drama_review"] = lambda p, s: scores(review)
-    return ctx, brain
-
-
-class WritingTests(unittest.TestCase):
-    def test_a_series_then_episodes_in_order(self):
-        ctx, brain = drama_context()
-        series_id = writing.create_series(ctx, "supernatural thriller", 3)
-        first, status = writing.write_episode(ctx, series_id)
-        second, _ = writing.write_episode(ctx, series_id)
-        self.assertEqual(status, "approved")
-        numbers = [r["number"] for r in ctx.conn.execute("SELECT number FROM episodes ORDER BY id")]
-        self.assertEqual(numbers, [1, 2])
-        prompt = [p for p in brain.calls if p[0] == "drama_episode"]
-        self.assertEqual(len(prompt), 2)
-
-    def test_free_checks_catch_strangers_and_monologues(self):
-        problems = writing.episode_issues(episode(bad_speaker=True), BIBLE)
-        self.assertTrue(any("cast member" in p for p in problems))
-        silent = episode()
-        for s in silent["shots"]:
-            s["line"] = ""
-        self.assertTrue(any("dialogue drama" in p for p in writing.episode_issues(silent, BIBLE)))
-        self.assertEqual(writing.episode_issues(episode(), BIBLE), [])
-
-    def test_a_weak_episode_is_revised_once_then_kept_or_rejected(self):
-        ctx, brain = drama_context(review=5)
-        series_id = writing.create_series(ctx, "thriller", 3)
-        _, status = writing.write_episode(ctx, series_id)
-        self.assertEqual(status, "rejected")
-        self.assertEqual(len(brain.tasks("drama_revise")), 1)
-        # a rejected episode is written again next time, not skipped
-        brain.overrides["drama_review"] = lambda p, s: scores(8)
-        _, status = writing.write_episode(ctx, series_id)
-        self.assertEqual(status, "approved")
-        self.assertEqual([r["number"] for r in ctx.conn.execute("SELECT number FROM episodes")], [1])
-
-    def test_a_broken_first_draft_is_revised_before_judging(self):
-        ctx, brain = drama_context(first=episode(n=4))
-        series_id = writing.create_series(ctx, "thriller", 3)
-        _, status = writing.write_episode(ctx, series_id)
-        self.assertEqual(status, "approved")
-        self.assertEqual(len(brain.tasks("drama_revise")), 1)
+def add_episode(conn, bible=BIBLE, number=1) -> tuple[int, int]:
+    """A series and an approved episode, written straight into the database."""
+    now = db.now()
+    row = conn.execute("SELECT id FROM series WHERE title = ?", (bible["title"],)).fetchone()
+    if row is None:
+        series_id = conn.execute(
+            "INSERT INTO series (title, genre, status, bible, created_at, updated_at) VALUES (?, ?, 'active', ?, ?, ?)",
+            (bible["title"], bible["genre"], json.dumps(bible), now, now)).lastrowid
+    else:
+        series_id = row["id"]
+    episode_id = conn.execute(
+        "INSERT INTO episodes (series_id, number, title, status, script, created_at, updated_at) "
+        "VALUES (?, ?, 'The Ring', 'approved', ?, ?, ?)", (series_id, number, json.dumps(episode()), now, now)).lastrowid
+    return series_id, episode_id
 
 
 class FakeFal:
@@ -130,12 +96,11 @@ class FakeFal:
 @unittest.skipUnless(HAVE_VIDEO, "video libraries or ffmpeg not installed")
 class ProductionTests(unittest.TestCase):
     def test_an_episode_becomes_a_vertical_video_with_references_reused(self):
-        from drama.produce import Producer
-        from production.voice import SilentVoice
+        from drama_production.produce import Producer
+        from drama_production.voices import SilentVoice
 
-        ctx, brain = drama_context()
-        series_id = writing.create_series(ctx, "thriller", 3)
-        episode_id, _ = writing.write_episode(ctx, series_id)
+        ctx, _ = make_context()
+        series_id, episode_id = add_episode(ctx.conn)
         root = Path(tempfile.mkdtemp())
         try:
             fal = FakeFal(root)
@@ -154,7 +119,7 @@ class ProductionTests(unittest.TestCase):
             edits = [c for c in fal.calls if c[0].endswith("/edit")]
             self.assertTrue(all("image_urls" in c[1] for c in edits))
             # a second episode reuses the same references instead of making new ones
-            second, _ = writing.write_episode(ctx, series_id)
+            _, second = add_episode(ctx.conn, number=2)
             fal.calls.clear()
             producer.produce(second, root / "out")
             self.assertFalse([c for c in fal.calls if "text-to-image" in c[0]])
@@ -164,7 +129,7 @@ class ProductionTests(unittest.TestCase):
             shutil.rmtree(root, ignore_errors=True)
 
     def test_subtitles_mark_thoughts(self):
-        from drama.produce import subtitles
+        from drama_production.produce import subtitles
 
         text = subtitles(shots(4), [0, 1, 2, 3], [1, 1, 1, 1])
         events = [line for line in text.splitlines() if line.startswith("Dialogue:")]

@@ -4,10 +4,11 @@
 #   mode=story: also researches Wikipedia and generates one real story
 #   mode=bench: blind-compares the writing of `config` against `bench_against` on fixed pitches
 #   mode=recheck: runs the legend recognition test on approved retellings that never had it
-#   mode=drama-check: lists what each configured fal.ai model expects, and the Boson voices (no spend)
-#   mode=drama-series: writes a new short-drama series bible
-#   mode=drama-write: writes the next episodes (story_id = how many, default 3)
-#   mode=drama-video: makes the next approved episode's vertical video (story_id = an episode id), saved as drama-<run>
+# Pipelines 1 and 2 are the stickman channel (story factory, video); 3 and 4 are the dramas:
+#   mode=drama-series: pipeline 3 pitches and plans a new short-drama series
+#   mode=drama-write: pipeline 3 writes the next episodes (story_id = how many, default 3)
+#   mode=drama-check: pipeline 4 lists what each configured fal.ai model expects, and the Boson voices (no spend)
+#   mode=drama-video: pipeline 4 makes the next approved episode's vertical video (story_id = an episode id), saved as drama-<run>
 #   mode=video: pipeline 2 turns the next approved story (or story_id) into a video, saved as
 #               an artifact named video-<run number> for 14 days
 # The story database carries over between runs (saved as an artifact, restored at the
@@ -181,15 +182,16 @@ jobs:
         run: |
           SETS=()
           for kv in $OVERRIDES; do SETS+=(--set "$kv"); done
-          D=(python -m drama --config "$CONFIG" "${SETS[@]}")
+          P3=(python -m drama_factory --config "$CONFIG" "${SETS[@]}")     # pipeline 3: writing
+          P4=(python -m drama_production --config "$CONFIG" "${SETS[@]}")  # pipeline 4: video
           case "$MODE" in
-            drama-check)  "${D[@]}" check ;;
-            drama-series) "${D[@]}" series ;;
-            drama-write)  "${D[@]}" write --count "${STORY_ID:-3}" ;;
-            drama-video)  if [ -n "$STORY_ID" ]; then "${D[@]}" produce --episode "$STORY_ID"; else "${D[@]}" produce; fi ;;
+            drama-check)  "${P4[@]}" check ;;
+            drama-series) "${P3[@]}" series ;;
+            drama-write)  "${P3[@]}" write --count "${STORY_ID:-3}" ;;
+            drama-video)  if [ -n "$STORY_ID" ]; then "${P4[@]}" produce --episode "$STORY_ID"; else "${P4[@]}" produce; fi ;;
           esac 2>&1 | tee drama-output.txt
           status=${PIPESTATUS[0]}
-          { echo "## $MODE"; echo '```'; tail -c 60000 drama-output.txt; echo '```'; "${D[@]}" status; } >> "$GITHUB_STEP_SUMMARY"
+          { echo "## $MODE"; echo '```'; tail -c 60000 drama-output.txt; echo '```'; echo '```'; "${P3[@]}" status; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           exit $status
 
       - name: Save the episode video
