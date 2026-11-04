@@ -80,6 +80,7 @@ def produce(story: dict[str, Any], out_dir: Path, narrator: voice.Voice, router:
         for v, frame in enumerate(draw.scene_frames(spec, looks, size, paper, grain, seed=i)):
             frame.save(work / f"scene_{i:03d}_{v}.png")
     log.info("Drew %d scenes (%d directed by keywords)", len(direction), fallbacks)
+    moving = animator.run(work, scenes, direction) if animator is not None else {}
 
     # 3. Sound and captions.
     rate = narrator.sample_rate
@@ -92,7 +93,7 @@ def produce(story: dict[str, Any], out_dir: Path, narrator: voice.Voice, router:
 
     # 4. Video.
     durations = [b - a for a, b in times]
-    assemble.assemble(work, direction, durations, size, "mix.wav", "captions.ass", "video.mp4")
+    assemble.assemble(work, direction, durations, size, "mix.wav", "captions.ass", "video.mp4", moving=moving)
     shutil.move(str(work / "video.mp4"), out_dir / "video.mp4")
 
     # 5. Thumbnail and upload details.
@@ -115,6 +116,7 @@ def produce(story: dict[str, Any], out_dir: Path, narrator: voice.Voice, router:
     summary = {"video": str(out_dir / "video.mp4"), "seconds": round(timeline.duration, 1), "scenes": len(scenes),
                "chunks": len(timeline.chunks), "directed_by_keywords": fallbacks,
                "quoted_lines": len(lines), "character_voices": voice_names,
+               "moving_scenes": sorted(moving), "motion_usd": round(getattr(animator, "spent", 0.0), 2),
                "render_minutes": round((time.time() - started) / 60, 1)}
     log.info("Made %s", summary)
     return summary

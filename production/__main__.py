@@ -36,6 +36,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--no-direction-model", action="store_true",
                    help="direct scenes from keywords only (no model calls)")
     p.add_argument("--keep-work", action="store_true", help="keep the scene pictures and clips")
+    p.add_argument("--no-motion", action="store_true", help="drawn scenes only (no paid moving clips)")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
@@ -65,15 +66,27 @@ def main(argv: list[str] | None = None) -> int:
         narrator = voice.KokoroVoice(video_cfg.get("voice", "am_michael"), video_cfg.get("lang", "a"),
                                      float(video_cfg.get("speed", 0.92)))
     router = None if args.no_direction_model else Router(cfg, conn)
+    animator = None
+    if not args.no_motion and int(video_cfg.get("motion_scenes", 0)) > 0 and os.environ.get("FAL_KEY"):
+        from drama_production.media import Fal
+
+        from .animate import Animator
+        animator = Animator(Fal(), video_cfg["motion_model"], video_cfg.get("motion_args", {}),
+                            float(video_cfg.get("motion_usd_per_second", 0.0)),
+                            float(video_cfg.get("motion_max_usd", 0.0)), int(video_cfg["motion_scenes"]))
     out_dir = Path(args.out) / f"story-{story['id']}"
     try:
-        summary = run.produce(story, out_dir, narrator, router, args.resolution, args.keep_work, video_cfg)
+        summary = run.produce(story, out_dir, narrator, router, args.resolution, args.keep_work, video_cfg,
+                              animator)
     except Exception as exc:  # report, and hand a claimed story back to the queue
         log.exception("Production failed")
         info = {"error": str(exc)[:500], "run": os.environ.get("GITHUB_RUN_ID")}
         db.update_story(conn, story["id"], production=info, **({"status": "approved"} if claimed else {}))
         print(f"[failed] story #{story['id']}: {exc}", file=sys.stderr)
         return 2
+    if animator is not None and animator.spent:
+        db.record_cost(conn, pipeline="video", task="motion", model=animator.model, input_units=0,
+                       output_units=len(summary.get("moving_scenes", [])), usd=animator.spent)
     summary.update(run=os.environ.get("GITHUB_RUN_ID"), voice=args.voice)
     db.update_story(conn, story["id"], production=summary, **({"status": "produced"} if claimed else {}))
     print(json.dumps(summary, indent=2))

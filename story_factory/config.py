@@ -205,7 +205,18 @@ DEFAULTS: dict[str, Any] = {
     # Pipeline 2: the narrator's voice (Kokoro, open source, runs on the CPU). Kokoro
     # voices: am_michael, am_fenrir, am_onyx, bm_george, bm_lewis... lang "a" is US
     # English, "b" British English.
-    "video": {"voice": "am_michael", "lang": "a", "speed": 0.92},
+    "video": {
+        "voice": "am_michael", "lang": "a", "speed": 0.92,
+        # Characters read their own quoted lines (voices by kind of speaker; see production/voice.py).
+        "character_voices": True,
+        # Moving chalk: up to `motion_scenes` scenes (key moments first) become real video clips
+        # on fal.ai when FAL_KEY is set, within `motion_max_usd` per video. 0 scenes turns it off.
+        "motion_scenes": 8,
+        "motion_max_usd": 2.0,
+        "motion_model": "fal-ai/bytedance/seedance/v1/lite/image-to-video",
+        "motion_args": {"duration": "5", "resolution": "720p", "aspect_ratio": "16:9"},
+        "motion_usd_per_second": 0.036,
+    },
     # Pipeline 3: the drama writers' room (series bibles and dialogue episodes).
     "drama": {
         "genre": "supernatural thriller",
