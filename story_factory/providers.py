@@ -236,13 +236,19 @@ class XAIClient:
         temperature = temperature_for(getattr(self, "temperatures", {}), task)
         if temperature is not None and not getattr(self, "_no_temperature", False):
             extra["temperature"] = temperature
+        if getattr(self, "send_effort", False) and self.spec.effort:
+            extra["reasoning_effort"] = self.spec.effort
         try:
             limit = (getattr(self, "temperatures", {}).get("task_max_tokens") or {}).get(task)
             response = self.client.chat.completions.create(
                 model=self.spec.model, messages=messages, response_format=response_format,
                 max_completion_tokens=min(self.max_tokens, limit or self.max_tokens), **extra)
         except self.openai.BadRequestError as exc:
-            if not extra or "temperature" not in str(exc).lower():
+            text = str(exc).lower()
+            if "reasoning_effort" in extra and "reasoning" in text:
+                self.send_effort = False  # this model takes no reasoning effort
+                return self._complete(task, messages, response_format)
+            if "temperature" not in extra or "temperature" not in text:
                 raise
             self._no_temperature = True  # this model fixes its own temperature
             return self._complete(task, messages, response_format)
@@ -390,6 +396,58 @@ class AWSChatClient(_BedrockAddressFallback, XAIClient):
         return aws_models(self.cfg)
 
 
+# How Bedrock says a model doesn't serve the API route it was called on.
+WRONG_ROUTE = ("does not support the '/v1/responses' api", "isn't supported on this route",
+               "is not supported on this route", "does not support the '/v1/chat/completions' api")
+
+
+class AWSRouteClient:
+    """An OpenAI-compatible Bedrock model on whichever API route it serves.
+
+    Bedrock serves some models only through the Responses API and others only
+    through Chat Completions, and that changes between models and over time. The
+    configured route is tried first; a "wrong route" error switches to the other
+    one for good. `client` is the active route's SDK client.
+    """
+
+    def __init__(self, spec: ModelSpec, cfg: dict, recorder: UsageRecorder):
+        self.spec = spec
+        self.cfg = cfg
+        self.recorder = recorder
+        responses_first = any(spec.model.startswith(p) for p in cfg["providers"]["aws"]["responses_api_models"])
+        self.routes = [AWSResponsesClient, AWSChatClient] if responses_first else [AWSChatClient, AWSResponsesClient]
+        self.route = self._open(self.routes[0])
+        self._switched = False
+
+    def _open(self, kind: type) -> Any:
+        route = kind(self.spec, self.cfg, self.recorder)
+        route.send_effort = True  # GPT models on Chat Completions take reasoning effort too
+        return route
+
+    @property
+    def client(self) -> Any:
+        return self.route.client
+
+    @client.setter
+    def client(self, value: Any) -> None:
+        self.route.client = value
+
+    def generate_json(self, task: str, system: str, prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return self.route.generate_json(task, system, prompt, schema)
+        except LLMError as exc:
+            if self._switched or not any(w in str(exc).lower() for w in WRONG_ROUTE):
+                raise
+            self._switched = True
+            client = self.route.client
+            self.route = self._open(self.routes[1])
+            self.route.client = client  # one OpenAI SDK client serves both routes
+            return self.route.generate_json(task, system, prompt, schema)
+
+    def list_models(self) -> list[str]:
+        return aws_models(self.cfg)
+
+
 class AWSEmbedClient:
     """Amazon Titan text embeddings on Bedrock (InvokeModel), authenticated with the Bedrock API key."""
 
@@ -478,7 +536,5 @@ def build(spec: ModelSpec, cfg: dict, recorder: UsageRecorder) -> Any:
             return AWSClaudeClient(spec, cfg, recorder)
         if spec.family == "amazon" and "embed" in spec.model:
             return AWSEmbedClient(spec, cfg, recorder)
-        if any(spec.model.startswith(p) for p in cfg["providers"]["aws"]["responses_api_models"]):
-            return AWSResponsesClient(spec, cfg, recorder)
-        return AWSChatClient(spec, cfg, recorder)
+        return AWSRouteClient(spec, cfg, recorder)
     return PROVIDERS[spec.provider](spec, cfg, recorder)

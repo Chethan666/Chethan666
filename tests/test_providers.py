@@ -198,9 +198,9 @@ class AWSClientTests(unittest.TestCase):
         spec = lambda text: ModelSpec.parse(text)
         self.assertIsInstance(providers.build(spec("aws:anthropic.claude-opus-5-5"), self.cfg, self.recorder),
                               providers.AWSClaudeClient)
-        self.assertIsInstance(providers.build(spec("aws:openai.gpt-5.5"), self.cfg, self.recorder),
+        self.assertIsInstance(providers.build(spec("aws:openai.gpt-5.5"), self.cfg, self.recorder).route,
                               providers.AWSResponsesClient)
-        self.assertIsInstance(providers.build(spec("aws:xai.grok-4.6"), self.cfg, self.recorder),
+        self.assertIsInstance(providers.build(spec("aws:xai.grok-4.6"), self.cfg, self.recorder).route,
                               providers.AWSChatClient)
         self.assertEqual(spec("aws:xai.grok-4.6").family, "xai")
 
@@ -234,6 +234,21 @@ class AWSClientTests(unittest.TestCase):
         self.assertEqual(grok.generate_json("t", "s", "p", {"type": "object"}), {"winner": "A"})
         self.assertEqual(self.requests[0].url.path, "/v1/chat/completions")
         self.assertEqual(json.loads(self.requests[0].content)["model"], "xai.grok-4.6")
+
+    def test_a_model_on_the_wrong_api_route_switches_routes(self):
+        import openai
+
+        gpt = providers.build(ModelSpec.parse("aws:openai.gpt-5.5@high"), self.cfg, self.recorder)
+        ok = json.dumps(XAIClientTests.completion('{"ok": true}')).encode()
+        gpt.client = openai.OpenAI(api_key="k", base_url=str(gpt.client.base_url), http_client=self.transport([
+            (400, b'{"error": {"message": "The model \'openai.gpt-5.5\' does not support the \'/v1/responses\' API"}}',
+             "application/json"),
+            (200, ok, "application/json"), (200, ok, "application/json")]))
+        self.assertEqual(gpt.generate_json("review", "s", "p", {"type": "object"}), {"ok": True})
+        gpt.generate_json("review", "s", "p", {"type": "object"})  # stays on the route that worked
+        self.assertEqual([r.url.path for r in self.requests],
+                         ["/v1/responses", "/v1/chat/completions", "/v1/chat/completions"])
+        self.assertEqual(json.loads(self.requests[1].content)["reasoning_effort"], "high")
 
     def test_404_switches_to_the_other_bedrock_address(self):
         import openai
