@@ -78,6 +78,11 @@ class Costs:
             db.record_cost(self.conn, pipeline="drama", task=task, model=model, input_units=0,
                            output_units=int(units), usd=usd)
 
+    def credit(self, model: str, units: float = 1.0) -> None:
+        """Count media already paid for (kept from a failed run) against this episode's cap."""
+        with self.lock:
+            self.spent += float(self.prices.get(model, 0.0)) * units
+
     def reserve(self, model: str, units: float = 1.0) -> bool:
         """Hold budget for a job before it starts (jobs run in parallel); `release` gives it back."""
         usd = float(self.prices.get(model, 0.0)) * units
@@ -296,7 +301,10 @@ class Producer:
         def picture(job: tuple[int, dict[str, Any]]) -> Path:
             i, shot = job
             path = cache / f"shot_{i:03d}_{_digest(shot_prompt(shot, bible), shot.get('characters'))}.png"
-            return path if path.exists() else self.picture(shot, bible, refs, path, costs)
+            if path.exists():
+                costs.credit(self.models["shot"])
+                return path
+            return self.picture(shot, bible, refs, path, costs)
 
         with ThreadPoolExecutor(max_workers=int(self.d.get("parallel_images", 4))) as pool:
             pictures = list(pool.map(picture, enumerate(shots)))
@@ -326,15 +334,19 @@ class Producer:
         # Every shot moves: real clips, the most important first, in parallel, within the budget.
         order = motion_order(shots)[: int(self.d.get("max_motion_shots", len(shots)))]
 
-        def film(i: int) -> tuple[int, Path | None]:
+        def target(i: int) -> Path:
             key = _digest(motion_prompt(shots[i]), pictures[i].name, self.clip_seconds(durations[i]))
-            target = cache / f"motion_{i:03d}_{key}.mp4"
-            if target.exists():
-                return i, target
-            return i, self.motion(shots[i], pictures[i], target, costs, durations[i])
+            return cache / f"motion_{i:03d}_{key}.mp4"
+
+        moving = {i: target(i) for i in order if target(i).exists()}  # kept from a failed run
+        for i in moving:
+            costs.credit(self.models.get("motion", ""), self.clip_seconds(durations[i]))
+
+        def film(i: int) -> tuple[int, Path | None]:
+            return i, self.motion(shots[i], pictures[i], target(i), costs, durations[i])
 
         with ThreadPoolExecutor(max_workers=int(self.d.get("parallel_motion", 4))) as pool:
-            moving = {i: clip for i, clip in pool.map(film, order) if clip is not None}
+            moving.update({i: clip for i, clip in pool.map(film, [i for i in order if i not in moving]) if clip})
         log.info("Moving shots: %d of %d", len(moving), len(shots))
 
         track = np.concatenate(lines)

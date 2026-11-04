@@ -87,7 +87,7 @@ class FakeFal:
                         "-r", "30", str(self.video)], check=True)
 
     def run(self, endpoint, args):
-        self.calls.append((endpoint, sorted(args)))
+        self.calls.append((endpoint, sorted(args), args.get("prompt", "")))
         if "image-to-video" in endpoint:
             return {"video": {"url": self.video.as_uri()}}
         return {"images": [{"url": self.image.as_uri()}]}
@@ -111,7 +111,11 @@ class ProductionTests(unittest.TestCase):
                                     "stream=width,height", "-of", "csv=p=0", str(video)], capture_output=True, text=True)
             self.assertEqual(probe.stdout.strip(), "270,480")  # vertical 9:16
             self.assertEqual(meta["shots"], 26)
-            self.assertEqual(meta["moving_shots"], 1)
+            # every shot is filmed until the episode's cap; the marked shot, hook and cliffhanger come first
+            self.assertGreaterEqual(meta["moving_shots"], 15)
+            self.assertLessEqual(meta["estimated_media_usd"], ctx.cfg["drama_video"]["max_usd_per_episode"])
+            prompts = [c[2] for c in fal.calls if "image-to-video" in c[0]]
+            self.assertTrue(any("is speaking, with natural mouth" in p for p in prompts))
             self.assertEqual(set(meta["voices"]), {"Lena", "Adrian"})
             self.assertNotEqual(meta["voices"]["Lena"], meta["voices"]["Adrian"])
             refs = [c for c in fal.calls if "text-to-image" in c[0]]
