@@ -8,6 +8,7 @@ import tomllib
 import logging
 import random
 import sys
+import threading
 
 from . import bench, catalog, db, learning, pipeline, research
 from .config import load_config
@@ -147,6 +148,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("stats", help="cost per story, winning models and common rejection reasons")
     p = sub.add_parser("ping", help="send a tiny real request to every configured model (costs a fraction of a cent)")
     p.add_argument("--models", help="comma-separated provider:model specs to test instead of the configured roles")
+    p.add_argument("--timeout", type=int, default=120, help="seconds to wait for each model")
     p = sub.add_parser("report", help="Markdown summary of a story (default: the latest)")
     p.add_argument("id", type=int, nargs="?")
     p = sub.add_parser("bench", help="blind-compare this config's writing against another config on fixed pitches")
@@ -250,17 +252,24 @@ def main(argv: list[str] | None = None) -> int:
         failed = 0
         specs = ([t.strip() for t in args.models.split(",") if t.strip()] if args.models
                  else [t for specs in cfg["roles"].values() for t in specs])
-        for text in dict.fromkeys(specs):
+        def check(text: str) -> str:
             try:
                 client = router._client(text)
                 if hasattr(client, "embed") and (text in cfg["roles"]["embedder"] or "embed" in text):
-                    result = f"OK ({len(client.embed('A lantern in the fog.'))} dimensions)"
-                else:
-                    reply = client.generate_json("ping", "You answer with JSON only.", 'Reply {"ok": true}.', PING_SCHEMA)
-                    # Any well-formed reply proves the model is reachable and returns JSON.
-                    result = "OK" if isinstance(reply.get("ok"), bool) else f"UNEXPECTED REPLY {reply}"
+                    return f"OK ({len(client.embed('A lantern in the fog.'))} dimensions)"
+                reply = client.generate_json("ping", "You answer with JSON only.", 'Reply {"ok": true}.', PING_SCHEMA)
+                # Any well-formed reply proves the model is reachable and returns JSON.
+                return "OK" if isinstance(reply.get("ok"), bool) else f"UNEXPECTED REPLY {reply}"
             except Exception as exc:  # report every model, whatever goes wrong
-                result = f"FAILED: {str(exc)[:400]}"
+                return f"FAILED: {str(exc)[:400]}"
+
+        for text in dict.fromkeys(specs):
+            # A model that hangs gets a verdict too, instead of stalling the whole check.
+            box: list[str] = []
+            worker = threading.Thread(target=lambda t=text: box.append(check(t)), daemon=True)
+            worker.start()
+            worker.join(args.timeout)
+            result = box[0] if box else f"FAILED: no answer within {args.timeout} seconds"
             failed += not result.startswith("OK")
             print(f"{text:<45} {result}", flush=True)
         return 1 if failed else 0
