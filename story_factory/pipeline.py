@@ -1384,8 +1384,13 @@ def audience_test(ctx: Context, story: Story, script: dict[str, Any]) -> tuple[d
         if n in weak and str(row.get("text", "")).strip():
             new_chunks[n - 1] = str(row["text"]).strip()
     candidate = dict(script, body="\n\n".join(new_chunks))
-    if script_issues(candidate, kind, ctx.cfg) or candidate["body"] == script["body"]:
-        report["rewrite"] = "discarded: failed checks or no change"
+    if candidate["body"] == script["body"]:
+        report["rewrite"] = "discarded: no change"
+        return script, report
+    candidate = fit_length(ctx, story, tidy(candidate, kind))  # rewritten parts often run long
+    problems = script_issues(candidate, kind, ctx.cfg)
+    if problems:
+        report["rewrite"] = "discarded: failed checks (" + "; ".join(problems[:2]) + ")"
         return script, report
 
     def compare(judge: Any, a: dict, b: dict) -> str:
@@ -1618,7 +1623,7 @@ def ending_lab(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, 
     except LLMError as exc:
         log.warning("Ending lab skipped: %s", exc)
         return script
-    limit = 3 * len(ending.split()) + 20  # a fuller ending is fine; a new story isn't
+    limit = 3 * max(len(ending.split()), 35) + 20  # a fuller ending is fine; a new story isn't
     offered = [e.strip() for e in result.get("endings", []) if isinstance(e, str) and e.strip()]
     candidates = [ending] + list(dict.fromkeys(e for e in offered if e != ending and len(e.split()) <= limit))
     if len(candidates) == 1:
