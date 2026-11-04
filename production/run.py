@@ -11,7 +11,7 @@ from typing import Any
 
 import soundfile
 
-from . import assemble, director, draw, sound, timing, voice
+from . import assemble, dialogue, director, draw, sound, timing, voice
 
 log = logging.getLogger(__name__)
 
@@ -37,8 +37,11 @@ def scene_times(timeline: timing.Timeline, spans: list[tuple[int, int]]) -> list
 
 
 def produce(story: dict[str, Any], out_dir: Path, narrator: voice.Voice, router: Any = None,
-            resolution: str = "1080", keep_work: bool = False) -> dict[str, Any]:
-    """Make the video for one story. Returns a summary of what was made."""
+            resolution: str = "1080", keep_work: bool = False, options: dict[str, Any] | None = None,
+            animator: Any = None) -> dict[str, Any]:
+    """Make the video for one story. Returns a summary of what was made.
+    `options` is the config's [video] section; `animator` turns chosen scenes into moving clips."""
+    options = options or {}
     started = time.time()
     out_dir.mkdir(parents=True, exist_ok=True)
     work = out_dir / "work"
@@ -55,9 +58,16 @@ def produce(story: dict[str, Any], out_dir: Path, narrator: voice.Voice, router:
     pauses = _json(story.get("pauses"), [])
     pronunciations = _json(story.get("pronunciations"), [])
 
-    # 1. Voice, timed chunk by chunk.
+    # 1. Voices, timed chunk by chunk: the narrator, and each character for their own lines.
     spans = timing.scene_spans(narration, scenes)
-    audio, timeline = voice.narrate(narrator, narration, pauses, pronunciations, scenes, spans)
+    lines, cast_voices, voice_names = [], {}, {}
+    if options.get("character_voices", True) and hasattr(narrator, "speaker"):
+        lines, kinds = dialogue.attribute(router, narration, cast)
+        pools = {k: list(v) for k, v in (options.get("cast_voices") or voice.KOKORO_CAST).items()}
+        voice_names = voice.pick_voices(kinds, pools, str(getattr(narrator, "voice", options.get("voice", ""))))
+        cast_voices = {who: narrator.speaker(name) for who, name in voice_names.items()}
+        log.info("Dialogue: %d quoted lines; voices %s", len(lines), voice_names)
+    audio, timeline = voice.narrate(narrator, narration, pauses, pronunciations, scenes, spans, lines, cast_voices)
     times = scene_times(timeline, spans)
     log.info("Narration: %.1f s in %d chunks", timeline.duration, len(timeline.chunks))
 
@@ -104,6 +114,7 @@ def produce(story: dict[str, Any], out_dir: Path, narrator: voice.Voice, router:
         shutil.rmtree(work, ignore_errors=True)
     summary = {"video": str(out_dir / "video.mp4"), "seconds": round(timeline.duration, 1), "scenes": len(scenes),
                "chunks": len(timeline.chunks), "directed_by_keywords": fallbacks,
+               "quoted_lines": len(lines), "character_voices": voice_names,
                "render_minutes": round((time.time() - started) / 60, 1)}
     log.info("Made %s", summary)
     return summary

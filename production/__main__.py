@@ -67,7 +67,7 @@ def main(argv: list[str] | None = None) -> int:
     router = None if args.no_direction_model else Router(cfg, conn)
     out_dir = Path(args.out) / f"story-{story['id']}"
     try:
-        summary = run.produce(story, out_dir, narrator, router, args.resolution, args.keep_work)
+        summary = run.produce(story, out_dir, narrator, router, args.resolution, args.keep_work, video_cfg)
     except Exception as exc:  # report, and hand a claimed story back to the queue
         log.exception("Production failed")
         info = {"error": str(exc)[:500], "run": os.environ.get("GITHUB_RUN_ID")}

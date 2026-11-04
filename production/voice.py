@@ -14,7 +14,7 @@ from typing import Any, Protocol
 
 import numpy as np
 
-from .timing import Chunk, Timeline, split_chunks
+from .timing import Chunk, Timeline, split_chunks, split_lines
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +42,12 @@ class KokoroVoice:
         self.voice = voice
         self.base_speed = base_speed
 
+    def speaker(self, voice: str, base_speed: float = 1.0) -> "KokoroVoice":
+        """Another voice sharing the loaded model (for a character's lines)."""
+        other = object.__new__(KokoroVoice)
+        other.pipeline, other.voice, other.base_speed = self.pipeline, voice, base_speed
+        return other
+
     def say(self, text: str, speed: float) -> np.ndarray:  # pragma: no cover - needs the model
         parts = []
         for _, _, audio in self.pipeline(text, voice=self.voice, speed=self.base_speed * speed):
@@ -57,6 +63,11 @@ class SilentVoice:
 
     def __init__(self, words_per_minute: float = 140):
         self.wpm = words_per_minute
+
+    def speaker(self, voice: str, base_speed: float = 1.0) -> "SilentVoice":
+        other = SilentVoice(self.wpm)
+        other.voice = voice
+        return other
 
     def say(self, text: str, speed: float) -> np.ndarray:
         seconds = max(len(text.split()), 1) * 60 / (self.wpm * speed)
@@ -81,9 +92,12 @@ def speed_for(offset: int, spans: list[tuple[int, int]], scenes: list[dict[str, 
 
 
 def narrate(voice: Voice, narration: str, pauses: list[dict[str, Any]], pronunciations: list[dict[str, Any]],
-            scenes: list[dict[str, Any]], spans: list[tuple[int, int]]) -> tuple[np.ndarray, Timeline]:
-    """Read the whole narration. Returns (mono audio, timeline with every chunk's times)."""
-    chunks: list[Chunk] = split_chunks(narration, pauses)
+            scenes: list[dict[str, Any]], spans: list[tuple[int, int]], lines: list[Any] | None = None,
+            cast_voices: dict[str, Voice] | None = None) -> tuple[np.ndarray, Timeline]:
+    """Read the whole narration. Returns (mono audio, timeline with every chunk's times).
+    With `lines` and `cast_voices`, each quoted line is read in its speaker's own voice."""
+    chunks: list[Chunk] = split_lines(narration, split_chunks(narration, pauses), lines or [])
+    cast_voices = cast_voices or {}
     rate = voice.sample_rate
     pieces: list[np.ndarray] = []
     t = 0.0
@@ -91,8 +105,16 @@ def narrate(voice: Voice, narration: str, pauses: list[dict[str, Any]], pronunci
     pieces.append(lead_in)
     t += len(lead_in) / rate
     for chunk in chunks:
-        audio = voice.say(respell(chunk.text, pronunciations), speed_for(chunk.start, spans, scenes))
+        reader = cast_voices.get(chunk.speaker, voice) if chunk.speaker != "narrator" else voice
+        text = respell(chunk.text, pronunciations)
+        if reader is not voice:
+            text = text.strip("“”\"").strip() or text
+            audio = _resample(reader.say(text, 1.0), reader.sample_rate, rate)
+        else:
+            audio = voice.say(text, speed_for(chunk.start, spans, scenes))
         audio = _trim(audio, rate)
+        if reader is not voice:  # the cast sit a little behind the narrator in the mix
+            audio = _match_level(audio, 0.85)
         chunk.t0, chunk.t1 = t, t + len(audio) / rate
         pieces.append(audio)
         gap = np.zeros(int(chunk.gap_ms / 1000 * rate), dtype=np.float32)
@@ -116,3 +138,42 @@ def _trim(audio: np.ndarray, rate: int, threshold: float = 0.004) -> np.ndarray:
         return audio
     pad = int(0.03 * rate)
     return audio[max(loud[0] - pad, 0): min(loud[-1] + pad, audio.size)]
+
+
+def _resample(audio: np.ndarray, source: int, target: int) -> np.ndarray:
+    audio = np.asarray(audio, dtype=np.float32).reshape(-1) if np.ndim(audio) == 1 else np.asarray(audio).mean(axis=1)
+    if source == target or audio.size == 0:
+        return audio.astype(np.float32)
+    n = int(audio.size * target / source)
+    return np.interp(np.linspace(0, audio.size - 1, n), np.arange(audio.size), audio).astype(np.float32)
+
+
+def _match_level(audio: np.ndarray, peak: float) -> np.ndarray:
+    top = float(np.max(np.abs(audio))) if audio.size else 0.0
+    return (audio * (peak / top)).astype(np.float32) if top > 0 else audio
+
+
+# One voice per kind of speaker, from Kokoro's English voices (narrator excluded).
+KOKORO_CAST = {
+    "man": ["am_fenrir", "bm_george", "am_echo", "am_liam"],
+    "woman": ["af_heart", "bf_emma", "af_nicole", "af_sarah"],
+    "old_man": ["bm_lewis", "bm_daniel"],
+    "old_woman": ["bf_isabella", "bf_alice"],
+    "boy": ["am_puck"],
+    "girl": ["af_sky", "af_bella"],
+}
+
+
+def pick_voices(kinds: dict[str, str], pools: dict[str, list[str]], narrator: str) -> dict[str, str]:
+    """A distinct voice name for every speaker, by kind; never the narrator's."""
+    chosen: dict[str, str] = {}
+    used = {narrator}
+    for speaker, kind in sorted(kinds.items()):
+        if speaker == "narrator" or kind == "narrator":
+            continue
+        pool = pools.get(kind) or pools.get("man") or []
+        pick = next((v for v in pool if v not in used), None) or (pool[len(chosen) % len(pool)] if pool else narrator)
+        chosen[speaker] = pick
+        used.add(pick)
+    return chosen
+

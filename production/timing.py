@@ -23,6 +23,7 @@ class Chunk:
     gap_ms: int  # silence after the chunk
     t0: float = 0.0  # seconds, filled in after the voice has read it
     t1: float = 0.0
+    speaker: str = "narrator"  # who reads it: the narrator, or the character whose line it is
 
 
 @dataclass
@@ -235,3 +236,42 @@ def ass(cues: list[Cue], width: int, height: int, font: str = "DejaVu Sans") -> 
         text = c.text.replace("{", "(").replace("}", ")").replace("\n", " ")
         lines.append(f"Dialogue: 0,{t(c.start)},{t(c.end)},Caption,,0,0,0,,{text}")
     return "\n".join(lines) + "\n"
+
+
+def split_lines(narration: str, chunks: list[Chunk], lines: list[Any], handoff_ms: int = 90) -> list[Chunk]:
+    """Cut chunks where a quoted line starts or ends, so each character reads their own words.
+    `lines` have start, end (the quote's offsets, marks included) and speaker."""
+    if not lines:
+        return chunks
+    out: list[Chunk] = []
+    for chunk in chunks:
+        cuts = sorted({x for ln in lines for x in (ln.start, ln.end) if chunk.start < x < chunk.end})
+        bounds = [chunk.start, *cuts, chunk.end]
+        pieces: list[Chunk] = []
+        for a, b in zip(bounds, bounds[1:]):
+            while a < b and narration[a].isspace():
+                a += 1
+            while b > a and narration[b - 1].isspace():
+                b -= 1
+            text = narration[a:b]
+            if not re.search(r"\w", text):  # a lone mark or comma joins the piece before it
+                if pieces:
+                    pieces[-1].text, pieces[-1].end = narration[pieces[-1].start:b], b
+                continue
+            who = next((ln.speaker for ln in lines if ln.start <= a and b <= ln.end), "narrator")
+            pieces.append(Chunk(text, a, b, handoff_ms, speaker=who))
+        if not pieces:
+            out.append(chunk)
+            continue
+        pieces[-1].gap_ms = chunk.gap_ms
+        # Speech in the same voice on both sides of a cut reads as one chunk again.
+        merged = [pieces[0]]
+        for piece in pieces[1:]:
+            if piece.speaker == merged[-1].speaker:
+                merged[-1].text = narration[merged[-1].start:piece.end]
+                merged[-1].end, merged[-1].gap_ms = piece.end, piece.gap_ms
+            else:
+                merged.append(piece)
+        out.extend(merged)
+    return out
+
