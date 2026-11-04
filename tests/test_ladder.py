@@ -374,5 +374,29 @@ class WriterRetryTests(unittest.TestCase):
         self.assertEqual(next(e for e in log if e["stage"] == "draft_contest")["drafts"], 2)
 
 
+
+class FreshDraftRepairTests(unittest.TestCase):
+    def test_a_fresh_draft_that_fails_a_free_check_is_repaired_not_dropped(self):
+        ctx, brain = make_context()
+        reviews_in_turn(brain, [scores(hook=4, tension=4), scores()])
+        handler = brain._write_frame
+        calls = {"n": 0}
+
+        def frame(prompt, spec):
+            calls["n"] += 1
+            result = handler(prompt, spec)
+            if calls["n"] > 2:  # the fresh drafts' frames slip into machine phrasing
+                result["outro"] = "A sense of dread lingers. " + result["outro"]
+            return result
+
+        brain.overrides["write_frame"] = frame
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        log = json.loads(db.get_story(ctx.conn, outcome.story_id)["production_log"])
+        actions = [e["action"] for e in log if e["stage"] == "showrunner"]
+        self.assertEqual(actions[:2], ["redraft", "structure"])
+        failed = [e for e in log if e["stage"] == "editors" and e.get("free_check_failed")]
+        self.assertTrue(failed)
+
+
 if __name__ == "__main__":
     unittest.main()

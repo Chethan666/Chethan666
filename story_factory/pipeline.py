@@ -1308,7 +1308,8 @@ def editors_loop(ctx: Context, story: Story, script: dict[str, Any], author_fami
             best = version
         story.note("editors", round=round_, after=last_action or "first draft", issues=len(version.blocking()),
                    scores=version.scores or None, coverage=version.bible.coverage if version.scores else None,
-                   kept="this version" if improved else "the earlier best")
+                   kept="this version" if improved else "the earlier best",
+                   **({"free_check_failed": version.structural[:2]} if version.structural else {}))
         if not version.blocking():
             return Edit(version.script, version.agg, "", outline, version)
         if best.passes_but_gaps() and (gap_fix_tried or round_ >= rounds):
@@ -1318,14 +1319,20 @@ def editors_loop(ctx: Context, story: Story, script: dict[str, Any], author_fami
             break
         stuck = (version.low(q["min_score"]) & previous.low(q["min_score"]) & STRUCTURAL_CRITERIA
                  if previous and version.scores else set())
-        action, why = diagnose(best, kind, q, fresh_left, stuck, last_action, stalled=not improved)
+        target = best
+        if version.structural and version is not best and last_action != "structure":
+            # A new draft (often a fresh start) that only fails a free check, such as its
+            # length, is repaired before it is judged against the best, not thrown away.
+            target, action, why = version, "structure", "repair the new draft's free-check problems first"
+        else:
+            action, why = diagnose(best, kind, q, fresh_left, stuck, last_action, stalled=not improved)
         story.note("showrunner", action=action, why=why)
         if action == "kill":
             break
         gap_fix_tried = gap_fix_tried or best.passes_but_gaps()
         if version.scores:
             previous = version
-        script, author_family, outline = apply_action(ctx, story, action, best, outline)
+        script, author_family, outline = apply_action(ctx, story, action, target, outline)
         if action in ("redraft", "replan"):
             fresh_left -= 1
             rounds += 1  # a fresh start gets its own review
