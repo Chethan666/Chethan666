@@ -15,49 +15,69 @@ Its goal is the best possible story, not the cheapest. Every step either creates
                     → 9-layer repeat check → judges from OTHER companies score every pitch
                     → top 4 go head-to-head, each pair judged in both orders → winner
                     → strong runners-up are SHELVED for a later run
- 2. STORY BIBLE     before any plotting, the head writer decides what a storyteller decides first:
-                    a HERO (want, wound, flaw, false belief, one human detail), the THREAT's rules and
-                    limits, the THEME and the question the ending answers, the hero's CHOICE, what the
-                    viewer knows before the hero (dramatic irony), a breath moment, a REFRAIN that
-                    returns darker, a sound motif, the meaning of the red accent, a deliberate
-                    ambiguity, the AFTERTASTE that follows viewers home, and clues with payoffs
-                    → free completeness check → independent editors approve it or it is revised
- 3. OUTLINE         beat sheet built from the bible: every beat has a turn and leaves an open question;
-                    planned REHOOKS (~30 s, ~2 min, midpoint), a midpoint reversal and a peak moment
-                    → free structure check → independent editors approve it or send it back
- 4. DRAFT CONTEST   2 writers draft the script; long episodes are written in 3 PARTS (each part sees the
-                    story so far), then The Storyteller's frame: a COLD OPEN flashed forward from the
-                    story, "The lantern is lit.", and an outro that lets the fear follow viewers home;
-                    Shorts aim for a last line that loops back into the first
-                    → head-to-head judging
- 5. EDITORS' LOOP   each round: fit the length → FREE STYLE CHECKS (machine-sounding phrases, named
-                    feelings, long sentences, repeated openings, dashes, hard words) with a dedicated
-                    line edit (only machine phrasing blocks; the rest is advice for the editors)
-                    → STORY-BIBLE CHECK (steers the revision; a claimed rule break blocks only when a
-                    second judge confirms it, and the editors' panel stays the gate) (a judge must quote where each promise is delivered;
-                    quotes are verified in code; broken threat rules block) → editors score 8 qualities
-                    against a written scoring guide; the median of every one must reach the bar
-                    → revisions use the editors' quoted line notes with fixes, or the story is rejected
- 6. HOOK LAB        2 alternative openings compete with the original for the first ten seconds;
+ 2. PLAN CONTEST    before any plotting, each writer makes a STORY BIBLE: a HERO (want, wound, flaw,
+                    false belief, one human detail), the THREAT's rules and limits, the THEME and the
+                    question the ending answers, the hero's CHOICE, what the viewer knows before the
+                    hero (dramatic irony), a breath moment, a REFRAIN that returns darker, a sound
+                    motif, the meaning of the red accent, a deliberate ambiguity, the AFTERTASTE,
+                    clues with payoffs, and INSIDER DETAILS only someone who lived it would know
+                    → free completeness check → editors SCORE it and name their top problems;
+                    revisions are reviewed again and the best-scoring version is kept
+                    → then an OUTLINE from that bible: every beat has a turn and leaves an open
+                    question; planned REHOOKS, a midpoint reversal, a peak, and an ESCALATION LADDER
+                    (each escalation closer, more personal, and taking away a safety)
+                    → judges pick the better plan head to head → the winner's outline is scored
+                    and revised the same way. Shorts plan once with free checks only
+ 3. DRAFT CONTEST   long episodes: each writer drafts in 3 PARTS (each part sees the story so far),
+                    then The Storyteller's frame: a COLD OPEN flashed forward from the story, "The
+                    lantern is lit.", and an outro that lets the fear follow viewers home.
+                    Shorts compete on BREADTH: 6 complete takes with different approaches, a quick
+                    score, then the top 3 head to head; their last line aims to loop into the first
+ 4. EDITORS' LOOP   each round: fit the length → FREE STYLE CHECKS (only machine phrasing blocks; the
+                    rest is advice) → STORY-BIBLE CHECK (quotes verified in code; a claimed rule
+                    break counts only when a second judge confirms it) → editors score 8 qualities
+                    against a written guide → for a retold legend, a RECOGNITION TEST (would most
+                    judges recognize the legend's being?)
+                    KEEP THE BEST: a version worse than the best so far is set aside, so a revision
+                    can never lose ground.
+                    THE SHOWRUNNER picks the fix for the deepest problem:
+                      premise too familiar (originality ≤ 4)      → stop: rejected, not rewritten
+                      legend not recognized, or tension/character/payoff still low after a revision
+                                                                  → RE-PLAN the outline, fresh drafts
+                      draft far from its plan (a score ≤ 5, or under 30% of the bible delivered)
+                                                                  → FRESH DRAFTS that know the notes
+                      only the hook is weak                       → the hook lab
+                      anything else (long)                        → rewrite only the SECTIONS the
+                                                                    editors' quoted notes point at
+                      anything else (Short), or a fix that failed → revise the whole script
+                    One fresh start per story (`max_fresh_starts`), on top of the revision rounds.
+                    If the editors never approve: the best draft and the diagnosis are saved; a
+                    strong original premise is PARKED for a stronger model (`retry_parked`)
+ 5. HOOK LAB        2 alternative openings compete with the original for the first ten seconds;
                     the original stays unless judges prefer a new one
- 7. AUDIENCE TEST   5 simulated viewers rate every ~30 seconds and say where they'd leave
+ 6. ENDING LAB      the hook lab's twin for the last lines: alternative endings compete with the
+                    original; viewers remember the peak and the end most
+ 7. SURPRISE TEST   readers hear the first 70% and guess the ending; if most guess right, a revision
+                    adds misdirection, kept only if fewer readers see it coming and judges agree
+ 8. AUDIENCE TEST   5 simulated viewers rate every ~30 seconds and say where they'd leave
                     → weak parts are rewritten, kept only if judges agree the new version is better
- 8. POLISH          read-aloud line edit for one narrator voice, a pronunciation guide and up to 12
-                    DRAMATIC PAUSES for the voice engine (discarded if it changes the story)
- 9. FINAL CHECK     rule violations, legend accuracy against the dossier, cultural sensitivity; judges
+ 9. POLISH          a light read-aloud line edit for one narrator voice (discarded if it changes
+                    the story); after the final check, NARRATION NOTES are made on the final script:
+                    a pronunciation guide and up to 12 DRAMATIC PAUSES for the voice engine
+10. FINAL CHECK     rule violations, legend accuracy against the dossier, cultural sensitivity; judges
                     grade each issue must-fix or minor; accuracy and cultural issues block only when
                     most judges raise one, safety flags on any one judge (two repair rounds).
                     A retold legend's core elements are story-bible promises, checked while editing,
                     and traits the research doesn't support count as broken rules. Before pitching,
                     judges skip legends that can't frighten without invented traits (a harmless rain
                     spirit, a sacred figure); those are never offered again
-10. SCENE PLAN      exact narration spans, visuals (red only for the story's red accent), sound cues
+11. SCENE PLAN      exact narration spans, visuals (red only for the story's red accent), sound cues
                     including the story's sound motif, a delivery cue for the narrator, key moments,
                     and a CAST with one fixed look per character (recurring characters keep their look)
-11. PACKAGING       5 titles, the top 3 ranked head-to-head, a phone-readable thumbnail (one or two
+12. PACKAGING       5 titles, the top 3 ranked head-to-head, a phone-readable thumbnail (one or two
                     figures, the red accent, at most 3 words) that adds to the title, description with
                     credit, tags, pinned comment, and an end-screen line inviting the next story
-12. TEASER SHORT    every long episode also gets a 60-second teaser Short with its own scene plan,
+13. TEASER SHORT    every long episode also gets a 60-second teaser Short with its own scene plan,
                     stopping on a cliffhanger that sends viewers to the full episode
                     → APPROVED, waiting for pipeline 2
 ```
@@ -118,6 +138,10 @@ the story bible, writing in parts and the bible check.
 **Between GitHub runs, the database persists**: each run restores the database the last run
 saved (an Actions artifact kept 90 days and re-saved every run), so repeat prevention, the
 shelf, the shared world and the hero history all carry over.
+
+**Re-checking legends**: `python -m story_factory recheck` (workflow mode `recheck`) runs the
+recognition test on approved retellings that never had it. One that most judges don't
+recognize goes back to `rejected` with its script kept, and its legend is free to be retold.
 
 **Judges that loop fail fast**: quick judgments have a smaller output limit
 (`[task_max_tokens]`), so a model stuck in a loop gives up in seconds and the panel carries on.

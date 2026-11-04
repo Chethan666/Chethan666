@@ -54,17 +54,22 @@ BIBLE = obj(
     threat=obj(what_it_is=S, what_it_wants=S, rules=arr(S), limits=arr(S), tell=S),
     theme=S, theme_question=S, hero_choice=S, dramatic_irony=S, breath_moment=S,
     refrain=S, refrain_turn=S, sound_motif=S, red_accent=S, open_detail=S, aftertaste=S,
-    clues=arr(obj(plant=S, payoff=S)))
+    clues=arr(obj(plant=S, payoff=S)),
+    # Lived-in authenticity: what only someone who did that job or lived there would know.
+    insider_details=arr(S))
 
 BEAT_SHEET = obj(
     central_question=S, emotional_core=S,
     # Planned retention: new questions raised along the way, and the big moments.
     rehooks=arr(obj(at_seconds=I, question=S)),
     midpoint_reversal=S, peak_moment=S,
+    # Each escalation is worse in a concrete way: closer, more personal, a safety gone.
+    escalations=arr(obj(beat=S, closer=S, more_personal=S, safety_lost=S)),
     beats=arr(obj(name=S, purpose=S, summary=S, target_seconds=I, tension=I,
                   turn=S, open_loop=S, plants=arr(S), payoffs=arr(S))))
 
-OUTLINE_REVIEW = obj(problems=arr(S), approved=B)
+# Plan reviews score the plan and name only the few problems that matter most.
+OUTLINE_REVIEW = obj(score=I, problems=arr(S), approved=B)
 
 ENTITY = obj(kind=enum("character", "place", "object", "rule"), name=S, description=S)
 
@@ -93,9 +98,19 @@ AUDIENCE = obj(chunks=arr(obj(chunk=I, interest=I, would_leave=B, note=S)), over
 
 CHUNK_REWRITE = obj(chunks=arr(obj(chunk=I, text=S)))
 
-POLISH = obj(intro=S, body=S, outro=S, pronunciations=arr(obj(word=S, say_as=S)),
-             # Silences for the narrator: after this exact phrase, pause this long.
-             pauses=arr(obj(after=S, ms=I)))
+POLISH = obj(intro=S, body=S, outro=S)
+
+# Narration notes for the voice engine, made on the final script.
+ANNOTATE = obj(pronunciations=arr(obj(word=S, say_as=S)),
+               # Silences for the narrator: after this exact phrase, pause this long.
+               pauses=arr(obj(after=S, ms=I)))
+
+# Would people who know the legend recognize its being in the script?
+RECOGNITION = obj(recognizable=B, contradicted=arr(S), reason=S)
+
+# Surprise test: readers guess the ending from the first part; a judge grades the guesses.
+PREDICTION = obj(guess=S)
+GUESS_GRADES = obj(items=arr(obj(index=I, guessed=B)), reason=S)
 
 # Judges grade each issue: only must_fix blocks; minor ones are offered to the reviser.
 ISSUE = obj(issue=S, severity=enum("must_fix", "minor"))
@@ -113,6 +128,8 @@ SCENES = obj(
                    delivery=enum(*DELIVERIES), sfx=arr(S), key_moment=B)))
 
 HOOKS = obj(openings=arr(S))
+
+ALT_ENDINGS = obj(endings=arr(S))
 
 PACKAGING = obj(titles=arr(S), thumbnail_brief=S, thumbnail_text=S, description=S,
                 tags=arr(S), pinned_comment=S, end_screen_line=S)

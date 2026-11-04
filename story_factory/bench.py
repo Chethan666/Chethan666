@@ -1,7 +1,7 @@
 """Blind benchmark: do two model setups write better stories than each other?
 
-Both setups write the same fixed pitches through the writers' room (story bible,
-outline, competing drafts, style line edit, polish). Judges drawn from both setups
+Both setups write the same fixed pitches through the writers' room (plan contest,
+competing drafts, style line edit, polish). Judges drawn from both setups
 then compare the two scripts without knowing who wrote which, in both orders.
 Use it before switching models, so an upgrade is proven rather than assumed.
 """
@@ -88,11 +88,10 @@ def write(cfg: dict, pitch: dict[str, Any], factory: Factory | None = None) -> t
                            pitch={k: v for k, v in pitch.items() if k != "recipe"}, legend=None, dossier=None,
                            sparks=[], world=db.world_entities(conn))
     try:
-        story.bible = pipeline.make_bible(ctx, story)
-        outline = pipeline.make_outline(ctx, story)
+        story.bible, outline = pipeline.make_plan(ctx, story)
         script, _ = pipeline.draft_contest(ctx, story, outline)
         script = pipeline.fit_length(ctx, story, pipeline.clean_style(ctx, story, pipeline.fit_length(ctx, story, script)))
-        script, _, _ = pipeline.polish(ctx, story, script)
+        script = pipeline.polish(ctx, story, script)
     except LLMError as exc:
         log.warning("Benchmark writer failed on %s: %s", pitch["title"], exc)
         script = None

@@ -36,7 +36,8 @@ class StoryBibleTests(unittest.TestCase):
         self.assertTrue(all("she hums three notes" in p for p in section_prompts))
         self.assertIn("red accent: the stop button", scene_prompts[0])
         stages = [e["stage"] for e in json.loads(row["production_log"])]
-        self.assertIn("story_bible", stages)
+        self.assertIn("bible_review", stages)
+        self.assertIn("plan_contest", stages)
         self.assertIn("bible_check", stages)
 
     def test_incomplete_bible_is_revised(self):
@@ -48,7 +49,9 @@ class StoryBibleTests(unittest.TestCase):
         outcome = pipeline.generate_story(ctx, "hollow_world")
         self.assertEqual(outcome.status, "approved", outcome.detail)
         self.assertTrue(brain.tasks("revise_bible"))
-        self.assertEqual(brain.tasks("review_bible"), [])  # editors only read complete bibles
+        tasks = [task for task, _ in brain.calls]
+        # Editors only read complete bibles: no review before the incomplete one was revised.
+        self.assertLess(tasks.index("revise_bible"), tasks.index("review_bible"))
         self.assertTrue(json.loads(db.get_story(ctx.conn, outcome.story_id)["bible"])["clues"])
 
     def test_bible_issues(self):
@@ -70,9 +73,10 @@ class StoryBibleTests(unittest.TestCase):
         brain.bible_present = lambda item_id: item_id.startswith("clue")
         outcome = pipeline.generate_story(ctx, "hollow_world")
         self.assertEqual(outcome.status, "approved", outcome.detail)
-        self.assertEqual(len(brain.tasks("revise")), ctx.cfg["quality"]["max_revisions"])
-        stages = [e["stage"] for e in json.loads(db.get_story(ctx.conn, outcome.story_id)["production_log"])]
-        self.assertIn("bible_gaps_accepted", stages)
+        log = json.loads(db.get_story(ctx.conn, outcome.story_id)["production_log"])
+        # The panel approved it: one attempt to deliver the missing promises, then accepted.
+        self.assertEqual(len([e for e in log if e["stage"] == "showrunner"]), 1)
+        self.assertIn("bible_gaps_accepted", [e["stage"] for e in log])
 
     def test_unmet_promises_and_a_failing_panel_reject(self):
         ctx, brain = make_context()

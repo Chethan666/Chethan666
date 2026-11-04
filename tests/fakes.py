@@ -77,6 +77,10 @@ class Brain:
         self.real_breaks: set[str] = set()  # claimed breaks a second judge confirms
         self.unfit_legends: set[str] = set()
         self.pauses: list[dict] = [{"after": "Some doors are better left closed", "ms": 1200}]
+        self.plan_score = 8  # plan reviewers' score
+        self.recognized = True  # do judges recognize a retold legend's being?
+        self.guessed = False  # do surprise-test readers guess the ending?
+        self.prefer_ending: str | None = None
 
     def tasks(self, name: str) -> list[str]:
         return [label for task, label in self.calls if task == name]
@@ -152,6 +156,8 @@ class Brain:
                 "rehooks": [{"at_seconds": 25, "question": "Who rang?"}, {"at_seconds": 120, "question": "Why her?"},
                             {"at_seconds": 260, "question": "What is it?"}],
                 "midpoint_reversal": "The passenger is her brother", "peak_moment": "The mirror",
+                "escalations": [{"beat": f"escalation {i}", "closer": "one seat nearer", "more_personal": "it hums her song",
+                                 "safety_lost": "the lit cab"} for i in range(1, 4)],
                 "beats": [{"name": n, "purpose": "question", "summary": "x", "target_seconds": 60,
                            "tension": i + 2, "turn": "it gets worse", "open_loop": "" if i == 7 else "why?",
                            "plants": ["ticket"], "payoffs": []} for i, n in enumerate(names)]}
@@ -171,12 +177,15 @@ class Brain:
                 "red_accent": "the stop button", "open_detail": "whose handprint?",
                 "aftertaste": "the stop bell on your bus home",
                 "clues": [{"plant": "the timetable", "payoff": "the date"},
-                          {"plant": "the cold seat", "payoff": "her brother's seat"}]}
+                          {"plant": "the cold seat", "payoff": "her brother's seat"}],
+                "insider_details": ["the dead-head sign", "the fare box jams in the cold",
+                                    "dispatch calls her by her run number", "the 12:06 layover"]}
 
     _revise_bible = _story_bible
 
     def _review_bible(self, prompt: str, spec: ModelSpec) -> dict:
-        return {"problems": [], "approved": True}
+        ok = self.plan_score >= 7
+        return {"score": self.plan_score, "problems": [] if ok else ["the hero is generic"], "approved": ok}
 
     def _bible_check(self, prompt: str, spec: ModelSpec) -> dict:
         script = json.loads(_between(prompt, "SCRIPT:\n", "\n\nTASK:"))
@@ -213,7 +222,39 @@ class Brain:
     _revise_outline = _beat_sheet
 
     def _review_outline(self, prompt: str, spec: ModelSpec) -> dict:
-        return {"problems": [], "approved": True}
+        ok = self.plan_score >= 7
+        return {"score": self.plan_score, "problems": [] if ok else ["the middle sags"], "approved": ok}
+
+    def _compare_plans(self, prompt: str, spec: ModelSpec) -> dict:
+        return {"reason": "stronger plan", "winner": "A"}
+
+    def _rewrite_sections(self, prompt: str, spec: ModelSpec) -> dict:
+        asked = re.findall(r"^\[(\d+)\] ", prompt.split("The editors' notes on these sections:")[1], re.MULTILINE)
+        self.counter += 1
+        return {"chunks": [{"chunk": int(n), "text": " ".join(unique_words(f"w{n}{self.counter}", 30)) + "."}
+                           for n in asked]}
+
+    def _recognition(self, prompt: str, spec: ModelSpec) -> dict:
+        return {"recognizable": self.recognized, "contradicted": [] if self.recognized else ["it lives in a city"],
+                "reason": "checked"}
+
+    def _predict_ending(self, prompt: str, spec: ModelSpec) -> dict:
+        return {"guess": "She was the ghost all along."}
+
+    def _grade_guesses(self, prompt: str, spec: ModelSpec) -> dict:
+        count = len(re.findall(r"^\[(\d+)\] ", prompt, re.MULTILINE))
+        return {"items": [{"index": n, "guessed": self.guessed} for n in range(1, count + 1)], "reason": "graded"}
+
+    def _alternative_endings(self, prompt: str, spec: ModelSpec) -> dict:
+        return {"endings": ["The bell rang once more, and this time it rang for her. She did not get off."]}
+
+    def _compare_endings(self, prompt: str, spec: ModelSpec) -> dict:
+        a = _between(prompt, "ENDING A:\n", "\n\nENDING B:")
+        winner = "A" if not self.prefer_ending or self.prefer_ending in a else "B"
+        return {"reason": "lands harder", "winner": winner}
+
+    def _annotate(self, prompt: str, spec: ModelSpec) -> dict:
+        return {"pronunciations": [{"word": "Llorona", "say_as": "yoh-ROH-nah"}], "pauses": self.pauses}
 
     def _write_draft(self, prompt: str, spec: ModelSpec) -> dict:
         return self.make_script("150-320" in prompt, marker="PREFERRED" if spec.model == "writer-b" else "")

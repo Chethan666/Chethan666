@@ -5,6 +5,8 @@ Story lifecycle (`stories.status`):
     idea -> scripted -> approved -> in_production -> produced -> published
       |  \\________\\___________________________________-> rejected / failed
       +-> shelved (a strong runner-up pitch, developed in a later run)
+      +-> parked (editors never approved it, but the premise wasn't the problem: kept
+                  with its best draft and diagnosis for a stronger model)
 
 Rejected and shelved rows are kept so the same idea is never generated twice.
 """
@@ -17,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-STATUSES = ("idea", "shelved", "scripted", "approved", "in_production", "produced", "published",
+STATUSES = ("idea", "shelved", "parked", "scripted", "approved", "in_production", "produced", "published",
             "rejected", "failed")
 
 SCHEMA = """
@@ -148,13 +150,14 @@ MIGRATIONS = {
         "pitch": "TEXT", "pitch_score": "REAL", "author_models": "TEXT", "beat_sheet": "TEXT",
         "audience_report": "TEXT", "pronunciations": "TEXT", "packaging": "TEXT",
         "production_log": "TEXT", "cast": "TEXT", "bible": "TEXT", "pauses": "TEXT",
+        "best_draft": "TEXT", "diagnosis": "TEXT",
     },
     "inspirations": {"dossier": "TEXT", "unsuitable": "TEXT"},
     "world_entities": {"look": "TEXT"},
     "costs": {"story_id": "INTEGER"},
 }
 JSON_COLUMNS = ("scenes", "review", "pitch", "author_models", "beat_sheet", "audience_report",
-                "pronunciations", "packaging", "production_log", "cast", "bible", "pauses")
+                "pronunciations", "packaging", "production_log", "cast", "bible", "pauses", "best_draft")
 
 
 def now() -> str:
@@ -320,9 +323,10 @@ def used_signatures(conn: sqlite3.Connection) -> set[str]:
     }
 
 
-def best_shelved(conn: sqlite3.Connection, series: str) -> sqlite3.Row | None:
+def best_shelved(conn: sqlite3.Connection, series: str, include_parked: bool = False) -> sqlite3.Row | None:
+    statuses = "('shelved', 'parked')" if include_parked else "('shelved')"
     return conn.execute(
-        "SELECT * FROM stories WHERE status = 'shelved' AND series = ? "
+        f"SELECT * FROM stories WHERE status IN {statuses} AND series = ? "
         "ORDER BY pitch_score DESC, id LIMIT 1", (series,)
     ).fetchone()
 
@@ -475,19 +479,19 @@ def stats(conn: sqlite3.Connection) -> dict[str, Any]:
         "SELECT s.kind, COUNT(DISTINCT s.id) AS stories, ROUND(SUM(c.usd), 2) AS usd, "
         "ROUND(SUM(c.usd) / COUNT(DISTINCT s.id), 2) AS usd_per_story "
         "FROM costs c JOIN stories s ON s.id = c.story_id "
-        "WHERE s.status NOT IN ('rejected', 'shelved', 'idea') GROUP BY s.kind")]
+        "WHERE s.status NOT IN ('rejected', 'shelved', 'parked', 'idea') GROUP BY s.kind")]
     unattributed = conn.execute("SELECT ROUND(COALESCE(SUM(usd), 0), 2) FROM costs WHERE story_id IS NULL").fetchone()[0]
     by_model = [dict(r) for r in conn.execute(
         "SELECT model, COUNT(*) AS calls, ROUND(SUM(usd), 2) AS usd FROM costs GROUP BY model ORDER BY usd DESC")]
     winners: dict[str, int] = {}
     for row in conn.execute("SELECT author_models FROM stories WHERE author_models IS NOT NULL "
-                            "AND status NOT IN ('rejected', 'shelved', 'idea')"):
+                            "AND status NOT IN ('rejected', 'shelved', 'parked', 'idea')"):
         draft = json.loads(row["author_models"]).get("draft")
         if draft:
             winners[draft] = winners.get(draft, 0) + 1
     reasons = [dict(r) for r in conn.execute(
         "SELECT substr(reject_reason, 1, 70) AS reason, COUNT(*) AS n FROM stories "
-        "WHERE status = 'rejected' GROUP BY 1 ORDER BY n DESC LIMIT 8")]
+        "WHERE status IN ('rejected', 'parked') GROUP BY 1 ORDER BY n DESC LIMIT 8")]
     return {"stories": by_series, "cost_per_approved_story": cost_per_story,
             "pitching_and_research_usd": unattributed, "spend_by_model": by_model,
             "draft_wins_by_model": winners, "top_reject_reasons": reasons}

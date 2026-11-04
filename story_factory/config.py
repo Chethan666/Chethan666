@@ -132,6 +132,36 @@ DEFAULTS: dict[str, Any] = {
         "teaser_shorts": True,
         # Recent heroes the story bible must differ from.
         "recent_heroes": 12,
+        # Long episodes: every writer plans (story bible + outline) and judges pick the
+        # better plan before any prose is written.
+        "plan_contest": True,
+        # Median plan-review score that approves a bible or outline (out of 10), and
+        # the revisions it may get. The best-scoring version is always kept.
+        "plan_min_score": 7,
+        "plan_revisions": 2,
+        # Shorts compete on breadth: this many complete drafts, a quick score, then a
+        # head-to-head contest among the finalists.
+        "short_drafts": 6,
+        "short_finalists": 3,
+        # The rewrite ladder (see `diagnose`): at most this many fresh starts (a new
+        # draft, or a new plan and draft) per story, on top of `max_revisions`.
+        "max_fresh_starts": 1,
+        # A draft this far off is written again rather than patched.
+        "redraft_below_coverage": 0.3,
+        "redraft_at_or_below_score": 5,
+        # A premise this unoriginal is dropped rather than rewritten.
+        "kill_at_or_below_originality": 4,
+        # Retold legends: most judges must recognize the legend's being in the script.
+        "recognition_check": True,
+        # Surprise test: readers guess the ending from the first part of the story.
+        "surprise_test": True,
+        "surprise_readers": 3,
+        "surprise_cut": 0.7,
+        # Alternative endings pitted against the original, like the hook lab.
+        "ending_alternatives": 2,
+        # Rejected originals whose premise wasn't the problem are parked with their best
+        # draft for a stronger model; set True to develop parked stories again.
+        "retry_parked": False,
         "audience_personas": [
             "a 24-year-old horror fan who plays story channels at night and is bored by cliches",
             "a 17-year-old Shorts scroller who leaves within seconds unless something grabs them",
@@ -157,7 +187,9 @@ DEFAULTS: dict[str, Any] = {
         "pitches": 1.0, "story_bible": 0.9, "revise_bible": 0.8, "write_section": 0.85,
         "write_draft": 0.85, "write_frame": 0.8, "alternative_openings": 0.95, "packaging": 0.8,
         "rewrite_chunks": 0.8, "revise": 0.7, "line_edit": 0.6, "audience": 0.8,
-        "score_pitch": 0.2, "compare_pitches": 0.2, "compare_drafts": 0.2, "compare_openings": 0.2,
+        "score_pitch": 0.2, "compare_pitches": 0.2, "compare_plans": 0.2, "compare_endings": 0.2,
+        "recognition": 0.1, "grade_guesses": 0.1, "predict_ending": 0.7, "annotate": 0.3,
+        "rewrite_sections": 0.8, "alternative_endings": 0.95, "compare_drafts": 0.2, "compare_openings": 0.2,
         "compare_titles": 0.2, "review": 0.2, "review_outline": 0.2, "review_bible": 0.2,
         "bible_check": 0.1, "final_check": 0.1, "judge_duplicate": 0.1, "scene_plan": 0.3,
     },
@@ -166,6 +198,8 @@ DEFAULTS: dict[str, Any] = {
     "task_max_tokens": {
         "score_pitch": 6000, "compare_pitches": 6000, "compare_drafts": 6000, "compare_openings": 4000,
         "compare_titles": 4000, "judge_duplicate": 4000, "review_outline": 8000, "review_bible": 8000,
+        "compare_plans": 6000, "compare_endings": 4000, "recognition": 6000, "grade_guesses": 4000,
+        "predict_ending": 2000,
     },
     "dedup": {
         "title_similarity": 0.85,

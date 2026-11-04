@@ -3,6 +3,7 @@
 #   mode=check: tests + which models your keys can use (no paid generation)
 #   mode=story: also researches Wikipedia and generates one real story
 #   mode=bench: blind-compares the writing of `config` against `bench_against` on fixed pitches
+#   mode=recheck: runs the legend recognition test on approved retellings that never had it
 # The story database carries over between runs (saved as an artifact, restored at the
 # start of the next run), so stories never repeat and the shared world keeps growing.
 # This repository is public: run logs and the summary are public, and so are artifacts to
@@ -13,9 +14,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "check = tests and model access only; story = also generate one story; bench = compare two model setups"
+        description: "check = tests and model access only; story = also generate one story; bench = compare two model setups; recheck = re-check approved legends"
         type: choice
-        options: [check, story, bench]
+        options: [check, story, bench, recheck]
         default: check
       series:
         description: Series to generate in story mode
@@ -103,7 +104,7 @@ jobs:
           fi
 
       - name: Restore the story database from the last run
-        if: env.MODE == 'story'
+        if: env.MODE == 'story' || env.MODE == 'recheck'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -116,6 +117,10 @@ jobs:
       - name: Generate one story
         if: env.MODE == 'story'
         run: python -m story_factory --config "$CONFIG" generate "$SERIES"
+
+      - name: Re-check approved retold legends
+        if: env.MODE == 'recheck'
+        run: python -m story_factory --config "$CONFIG" recheck | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Benchmark two model setups
         if: env.MODE == 'bench'
@@ -132,7 +137,7 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Save the story database
-        if: always() && env.MODE == 'story'
+        if: always() && (env.MODE == 'story' || env.MODE == 'recheck')
         uses: actions/upload-artifact@v6
         with:
           # The next run restores the newest one; each run re-saves it, so it never expires in use.

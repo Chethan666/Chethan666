@@ -25,7 +25,7 @@ class WritersRoomTests(unittest.TestCase):
         self.assertEqual(json.loads(story["packaging"])["titles"][0], "The Extra Passenger")
         self.assertTrue(json.loads(story["beat_sheet"])["beats"])
         self.assertIn("chunk_interest", json.loads(story["audience_report"]))
-        self.assertEqual(json.loads(story["pronunciations"])[0]["say_as"], "yoh-ROH-nah")
+        self.assertEqual(json.loads(story["pauses"])[0]["after"], "Some doors are better left closed")
         authors = json.loads(story["author_models"])
         self.assertEqual(set(authors) >= {"pitch", "outline", "draft", "polisher"}, True)
         stages = [entry["stage"] for entry in json.loads(story["production_log"])]
@@ -118,7 +118,9 @@ class WritersRoomTests(unittest.TestCase):
         outcome = pipeline.generate_story(ctx, "hollow_world")
         story = db.get_story(ctx.conn, outcome.story_id)
         log = json.loads(story["production_log"])
-        self.assertIn({"stage": "polish", "kept": False}, log)
+        self.assertTrue(any(e["stage"] == "polish" and e["kept"] is False for e in log))
+        # Narration notes are still made on the final script.
+        self.assertTrue(json.loads(story["pauses"]))
 
     def test_final_check_issue_is_fixed_or_rejected(self):
         ctx, brain = make_context()

@@ -61,8 +61,15 @@ def report(conn, row) -> str:
     if packaging.get("titles"):
         lines.append("- **Titles (best first):** " + " | ".join(packaging["titles"]))
         lines.append(f"- **Thumbnail:** {packaging.get('thumbnail_brief', '')} [{packaging.get('thumbnail_text', '')}]")
-    if story.get("pauses"):
-        lines.append(f"- **Narrator pauses marked:** {len(story['pauses'])}")
+    if audience.get("surprise_test"):
+        s = audience["surprise_test"]
+        lines.append(f"- **Surprise test:** {s.get('guessed', 0)} of {s.get('readers', 0)} readers guessed the ending"
+                     + (f"; misdirection revision {s['revision']}" if s.get("revision") else ""))
+    if story.get("pauses") or story.get("pronunciations"):
+        lines.append(f"- **Narration notes:** {len(story.get('pauses') or [])} pauses, "
+                     f"{len(story.get('pronunciations') or [])} pronunciations")
+    if row["status"] in ("rejected", "parked") and story.get("diagnosis"):
+        lines.append(f"- **Diagnosis:** {story['diagnosis']}" + ("; best draft kept" if story.get("best_draft") else ""))
     if story.get("scenes"):
         lines.append(f"- **Scenes:** {len(story['scenes'])}, cast: "
                      + ", ".join(m["name"] for m in story.get("cast") or []))
@@ -111,6 +118,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--likes", type=int)
     p.add_argument("--comments", type=int)
     sub.add_parser("learn", help="turn real performance into lessons for future pitches")
+    sub.add_parser("recheck", help="run the legend recognition test on approved retellings that never had it")
     sub.add_parser("stats", help="cost per story, winning models and common rejection reasons")
     p = sub.add_parser("ping", help="send a tiny real request to every configured model (costs a fraction of a cent)")
     p.add_argument("--models", help="comma-separated provider:model specs to test instead of the configured roles")
@@ -236,6 +244,14 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "bench":
         summary = bench.run(cfg, load_config(args.against), max(1, min(args.pitches, len(bench.PITCHES))))
         print(bench.markdown(summary, args.config or "default config", args.against))
+    elif args.command == "recheck":
+        ctx = _context(cfg)
+        results = pipeline.recheck_legends(ctx)
+        for r in results:
+            verdict = "recognized" if r["recognized"] else "NOT recognized, moved back to rejected"
+            print(f"#{r['id']} {r['title']}: {verdict}" + (f" ({r['issues'][0]})" if r["issues"] else ""))
+        if not results:
+            print("No approved retold legend needs a re-check")
     elif args.command == "learn":
         ctx = _context(cfg)
         insights = learning.learn(ctx.conn, ctx.router)
