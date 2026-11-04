@@ -504,6 +504,52 @@ def aws_models(cfg: dict) -> list[str]:
     raise LLMError(f"Bedrock model list not found at {', '.join(_aws_openai_urls(cfg))}: {last}")
 
 
+def _mantle_get(cfg: dict, path: str) -> Any:
+    """GET a Bedrock Mantle path with the Bedrock API key; returns parsed JSON."""
+    url = f"https://bedrock-mantle.{_aws_region(cfg)}.api.aws{path}"
+    request = urllib.request.Request(url, headers={"Authorization": f"Bearer {_aws_key()}",
+                                                   "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            return json.loads(response.read())
+    except urllib.error.HTTPError as exc:
+        raise LLMError(f"GET {path}: HTTP {exc.code}: {exc.read().decode(errors='replace')[:300]}") from exc
+    except (urllib.error.URLError, TimeoutError) as exc:
+        raise LLMError(f"GET {path} failed: {exc}") from exc
+
+
+def aws_catalogue(cfg: dict) -> dict[str, dict[str, Any]]:
+    """Bedrock Mantle's model catalogue for this account, by model ID.
+
+    Each entry carries `status` ("available" or not), `status_reason`, and
+    `data_retention` (the effective `mode` and the model's `allowed_modes`): a model
+    can be listed yet unavailable to an account, for example when the account's data
+    retention mode is one the model's provider doesn't accept.
+    """
+    data = _mantle_get(cfg, "/v1/models")
+    return {str(e.get("id")): e for e in data.get("data", []) if isinstance(e, dict)}
+
+
+def aws_data_retention(cfg: dict) -> dict[str, Any]:
+    """The account's data retention setting on Bedrock Mantle (`mode`)."""
+    return _mantle_get(cfg, "/v1/data_retention")
+
+
+def availability(entry: dict[str, Any] | None) -> str:
+    """One line on whether a catalogue entry is callable, and if not, why."""
+    if entry is None:
+        return "NOT LISTED for this account"
+    status = str(entry.get("status") or "unknown")
+    retention = entry.get("data_retention") if isinstance(entry.get("data_retention"), dict) else {}
+    parts = [status.upper() if status != "available" else "available"]
+    if entry.get("status_reason"):
+        parts.append(f"reason: {entry['status_reason']}")
+    if retention:
+        parts.append(f"retention mode {retention.get('mode', '?')}, model allows "
+                     f"{', '.join(map(str, retention.get('allowed_modes') or [])) or '?'}")
+    return "; ".join(parts)
+
+
 class LocalHashEmbedder:
     """Offline stand-in for an embedding model: hashed word and word-pair counts.
 

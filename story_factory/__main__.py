@@ -10,7 +10,7 @@ import random
 import sys
 import threading
 
-from . import bench, catalog, db, learning, pipeline, research
+from . import providers, bench, catalog, db, learning, pipeline, research
 from .config import load_config
 from .llm import BudgetExceeded, LLMError, ModelSpec
 from .router import Router
@@ -117,6 +117,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("init", help="create the database and seed the story world")
     p = sub.add_parser("models", help="check every configured model against what your API keys can use")
     p.add_argument("--list", action="store_true", help="also print every model ID each provider offers")
+    p.add_argument("--why", nargs="*", metavar="MODEL",
+                   help="Bedrock: say why each model (default: every aws model in the config) is or isn't "
+                        "callable on this account, and show the account's data retention mode")
     p = sub.add_parser("research", help="collect folklore and audience-demand signals")
     p.add_argument("--skip-wikipedia", action="store_true")
     p.add_argument("--skip-youtube", action="store_true")
@@ -180,6 +183,21 @@ def main(argv: list[str] | None = None) -> int:
                 models = available[spec.provider]
                 state = "UNVERIFIED" if models is None else "OK" if spec.model in models else "NOT FOUND"
                 print(f"{role:<11} {text:<45} {state}")
+        if args.why is not None:
+            print("\nBedrock availability for this account:")
+            try:
+                print(f"  account data retention: {json.dumps(providers.aws_data_retention(cfg))}")
+            except LLMError as exc:
+                print(f"  account data retention: unknown ({exc})")
+            try:
+                catalogue = providers.aws_catalogue(cfg)
+            except LLMError as exc:
+                print(f"  catalogue unavailable: {exc}")
+                catalogue = None
+            wanted = args.why or sorted({ModelSpec.parse(t).model for specs in cfg["roles"].values()
+                                         for t in specs if t.startswith("aws:")})
+            for model in wanted if catalogue is not None else []:
+                print(f"  {model:<42} {providers.availability(catalogue.get(model))}")
         if args.list:
             for provider, models in available.items():
                 print(f"\n{provider} offers {len(models or [])} models:")

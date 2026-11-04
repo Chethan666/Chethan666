@@ -100,7 +100,7 @@ jobs:
 
       - name: Model access
         # Lists every model ID the keys can use, so configured IDs can be corrected.
-        run: python -m story_factory --config "$CONFIG" models --list || true
+        run: python -m story_factory --config "$CONFIG" models --list --why || true
 
       - name: Test call to every model
         # A tiny real request per model. Failures are reported, not fatal: judge panels

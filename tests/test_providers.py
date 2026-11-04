@@ -322,6 +322,16 @@ class AWSClientTests(unittest.TestCase):
         self.assertNotIn("temperature", sent[2])  # remembered for this model
         self.assertEqual(sent[1]["response_format"]["type"], "json_schema")
 
+    def test_catalogue_entries_explain_why_a_model_is_unavailable(self):
+        entry = {"id": "anthropic.claude-fable-5", "status": "unavailable",
+                 "status_reason": "This model is not available under data retention mode 'default'.",
+                 "data_retention": {"mode": "default", "allowed_modes": ["aws_review", "provider_data_share"]}}
+        line = providers.availability(entry)
+        self.assertIn("UNAVAILABLE", line)
+        self.assertIn("retention mode default, model allows aws_review, provider_data_share", line)
+        self.assertEqual(providers.availability({"id": "x", "status": "available"}), "available")
+        self.assertIn("NOT LISTED", providers.availability(None))
+
     def test_missing_bedrock_key_is_reported(self):
         del os.environ["AWS_BEARER_TOKEN_BEDROCK"]
         with self.assertRaises(LLMError):
