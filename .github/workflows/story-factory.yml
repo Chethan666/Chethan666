@@ -4,6 +4,8 @@
 #   mode=story: also researches Wikipedia and generates one real story
 #   mode=bench: blind-compares the writing of `config` against `bench_against` on fixed pitches
 #   mode=recheck: runs the legend recognition test on approved retellings that never had it
+#   mode=video: pipeline 2 turns the next approved story (or story_id) into a video, saved as
+#               an artifact named video-<run number> for 14 days
 # The story database carries over between runs (saved as an artifact, restored at the
 # start of the next run), so stories never repeat and the shared world keeps growing.
 # This repository is public: run logs and the summary are public, and so are artifacts to
@@ -14,9 +16,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "check = tests and model access only; story = also generate one story; bench = compare two model setups; recheck = re-check approved legends"
+        description: "check = tests and model access only; story = generate one story; video = make the next approved story's video; bench = compare two model setups; recheck = re-check approved legends"
         type: choice
-        options: [check, story, bench, recheck]
+        options: [check, story, video, bench, recheck]
         default: check
       series:
         description: Series to generate in story mode
@@ -41,6 +43,10 @@ on:
         type: choice
         options: [config.aws-open.toml, config.aws-top.toml, config.aws-only.toml, config.example.toml]
         default: config.example.toml
+      story_id:
+        description: "video mode: a story number to render (default: the next approved story)"
+        type: string
+        default: ""
       overrides:
         description: "Optional config overrides, space-separated KEY=VALUE (e.g. quality.min_score=8)"
         type: string
@@ -77,6 +83,7 @@ jobs:
       BENCH_AGAINST: ${{ inputs.bench_against }}
       BENCH_PITCHES: ${{ inputs.bench_pitches }}
       OVERRIDES: ${{ inputs.overrides }}
+      STORY_ID: ${{ inputs.story_id }}
     steps:
       - uses: actions/checkout@v5
 
@@ -114,7 +121,7 @@ jobs:
           fi
 
       - name: Restore the story database from the last run
-        if: env.MODE == 'story' || env.MODE == 'recheck'
+        if: env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -130,6 +137,38 @@ jobs:
           SETS=()
           for kv in $OVERRIDES; do SETS+=(--set "$kv"); done
           python -m story_factory --config "$CONFIG" "${SETS[@]}" generate "$SERIES"
+
+      - name: Cache the narrator voice model
+        if: env.MODE == 'video'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: kokoro-82m-v1
+
+      - name: Install video tools
+        if: env.MODE == 'video'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-video.txt
+
+      - name: Make the video
+        if: env.MODE == 'video'
+        run: |
+          ARGS=()
+          if [ -n "$STORY_ID" ]; then ARGS+=(--story "$STORY_ID"); fi
+          python -m production --config "$CONFIG" produce "${ARGS[@]}" | tee video-summary.txt
+          { echo '## Video'; echo '```'; cat video-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Save the video
+        if: always() && env.MODE == 'video'
+        uses: actions/upload-artifact@v6
+        with:
+          name: video-${{ github.run_number }}
+          path: out/
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Re-check approved retold legends
         if: env.MODE == 'recheck'
@@ -150,7 +189,7 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Save the story database
-        if: always() && (env.MODE == 'story' || env.MODE == 'recheck')
+        if: always() && (env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video')
         uses: actions/upload-artifact@v6
         with:
           # The next run restores the newest one; each run re-saves it, so it never expires in use.

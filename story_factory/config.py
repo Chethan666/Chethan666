@@ -202,6 +202,10 @@ DEFAULTS: dict[str, Any] = {
         "compare_plans": 6000, "compare_endings": 4000, "recognition": 6000, "grade_guesses": 4000,
         "predict_ending": 2000,
     },
+    # Pipeline 2: the narrator's voice (Kokoro, open source, runs on the CPU). Kokoro
+    # voices: am_michael, am_fenrir, am_onyx, bm_george, bm_lewis... lang "a" is US
+    # English, "b" British English.
+    "video": {"voice": "am_michael", "lang": "a", "speed": 0.92},
     "dedup": {
         "title_similarity": 0.85,
         "synopsis_lexical_similarity": 0.30,

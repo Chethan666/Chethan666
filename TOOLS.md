@@ -1,5 +1,7 @@
 # Tools and budget
 
+> **Update (November 2026):** the production pipeline now runs on GitHub Actions with open-source tools: Kokoro for the narrator's voice, chalk stickman pictures drawn in code with art direction from an open model on Bedrock, and FFmpeg. See [PRODUCTION.md](PRODUCTION.md). The tool table below is the original plan.
+>
 > **Update:** the story pipeline (pipeline 1) now uses the best available models from Anthropic, OpenAI and Google instead of the Gemini free tier, and is no longer bound by the $20 limit. With the balanced default models it is estimated at about $50–100 a month; see [STORY_FACTORY.md](STORY_FACTORY.md). The table below still describes the production pipeline (pipeline 2), which hasn't been redesigned yet.
 
 Original limit: **$20 per month**, with all paid calls stopping at **$18**.
