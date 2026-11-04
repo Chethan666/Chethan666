@@ -1448,6 +1448,8 @@ def polish(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, Any]
                                     schemas.POLISH)
     candidate = tidy(dict(script, intro=result.get("intro", ""), body=result.get("body", ""),
                           outro=result.get("outro", "")), kind)
+    if str(candidate.get("body", "")).strip():
+        candidate = fit_length(ctx, story, candidate)  # a word or two over shouldn't cost the polish
     similarity = dedup.lexical_similarity(narration_of(script), narration_of(candidate), size=1)
     problems = script_issues(candidate, kind, ctx.cfg)
     if problems or similarity < 0.6:
