@@ -120,6 +120,8 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("research", help="collect folklore and audience-demand signals")
     p.add_argument("--skip-wikipedia", action="store_true")
     p.add_argument("--skip-youtube", action="store_true")
+    p.add_argument("--if-needed", action="store_true",
+                   help="read Wikipedia only when unused legends run low (spares its rate limit)")
     p = sub.add_parser("fill", help="generate stories until every series backlog is full")
     p.add_argument("--max", type=int, default=10, help="most stories to approve in this run")
     p = sub.add_parser("generate", help="generate one story for a series")
@@ -185,7 +187,9 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  {model}")
     elif args.command == "research":
         conn = db.connect(cfg["database"])
-        if not args.skip_wikipedia:
+        if args.if_needed and not args.skip_wikipedia:
+            print(f"Wikipedia legends added: {research.ensure_legend_supply(conn, cfg)}")
+        elif not args.skip_wikipedia:
             print(f"Wikipedia legends saved: {research.research_wikipedia(conn, cfg)}")
         if not args.skip_youtube:
             print(f"YouTube trend titles saved: {research.research_youtube(conn, cfg)}")

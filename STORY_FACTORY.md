@@ -150,6 +150,40 @@ recognize goes back to `rejected` with its script kept, and its legend is free t
 **Judges that loop fail fast**: quick judgments have a smaller output limit
 (`[task_max_tokens]`), so a model stuck in a loop gives up in seconds and the panel carries on.
 
+## Top-tier models on Amazon Bedrock
+
+`config.aws-top.toml` runs the writers' room on top-tier models through the same AWS key:
+Claude Fable 5 and GPT-5.5 write competing plans and drafts, Claude Opus 5.5 revises
+and polishes, and Claude Sonnet 5, GPT-5.5, Grok 4.3 and Qwen judge. Every single-model
+role keeps an open model as a backup, and the bar is 8.
+
+A live check (November 2026) found:
+
+| Model | On this account's Bedrock |
+|---|---|
+| Claude Fable 5, Opus 5.5, Opus 5, Sonnet 5, Opus 4.8, Haiku 4.5 | listed, but every call refused: "not available for this account" |
+| GPT-5.5, GPT-5.4, GPT-5.6 and GPT-6.x | listed, refused the same way |
+| Grok 4.3 | refuses Chat Completions; on the Responses API it never answered |
+| Claude Sonnet 5.5, Grok 4.6 | not on Bedrock (the IDs the older configs used) |
+| Titan text embeddings | blocked by the AWS organization's service control policy |
+| Kimi K2.5 and K2 Thinking, GLM-5, DeepSeek V3.2, Qwen3 235B, MiniMax M2.5, Mistral Large 3 | work |
+
+To unlock the top tier, someone with admin rights on the AWS account enables Anthropic
+and OpenAI models for it: Amazon Bedrock console > Model access (Anthropic asks for a
+short use-case form). If the account belongs to an AWS Organization, its administrator
+may also need to allow these models. "Contact AWS Sales" in the error means the account
+itself isn't entitled yet, which no code change can work around. Then:
+
+1. Workflow `check` with config `config.aws-top.toml`: every model should say OK.
+2. Workflow `bench` with config `config.aws-open.toml` and bench_against
+   `config.aws-top.toml`: both setups write the same fixed pitches and judges compare
+   them blind.
+3. Workflow `story` with config `config.aws-top.toml` for each series.
+
+The code already handles what the check found: OpenAI-compatible models switch API
+route by themselves when Bedrock refuses one, Claude is retried without the effort
+setting if the endpoint rejects it, and each model in `check` gets a time limit.
+
 ## Benchmarking model setups
 
 Before switching models, prove the upgrade:

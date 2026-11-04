@@ -324,9 +324,20 @@ class AWSEmbedAndReportTests(unittest.TestCase):
 
         cfg = load_config("config.aws-open.toml")
         families = {ModelSpec.parse(t).family for t in cfg["roles"]["judges"]}
-        self.assertEqual(len(families), 4)
+        self.assertEqual(len(families), len(cfg["roles"]["judges"]))  # one judge per company
         writer_families = {ModelSpec.parse(t).family for t in cfg["roles"]["writers"]}
         self.assertTrue(families - writer_families)  # someone can always judge a writer
+
+    def test_aws_top_config_has_independent_judges_and_backups(self):
+        from story_factory.config import load_config
+
+        cfg = load_config("config.aws-top.toml")
+        families = {ModelSpec.parse(t).family for t in cfg["roles"]["judges"]}
+        self.assertEqual(len(families), len(cfg["roles"]["judges"]))
+        self.assertEqual(len({ModelSpec.parse(t).family for t in cfg["roles"]["writers"]}), 2)
+        for role in ("reviser", "polisher", "researcher", "planner"):
+            self.assertGreater(len(cfg["roles"][role]), 1, role)  # a refused call fails over
+        self.assertEqual(cfg["quality"]["min_score"], 8)
 
     def test_aws_only_config_loads(self):
         from story_factory.config import load_config

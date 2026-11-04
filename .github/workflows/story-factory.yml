@@ -122,7 +122,7 @@ jobs:
 
       - name: Wikipedia research
         if: env.MODE == 'story'
-        run: python -m story_factory --config "$CONFIG" research
+        run: python -m story_factory --config "$CONFIG" research --if-needed
 
       - name: Generate one story
         if: env.MODE == 'story'

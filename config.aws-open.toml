@@ -10,14 +10,14 @@ monthly_cap_usd = 0
 [roles]
 # Single-model roles fail over to the next model listed.
 pitchers   = ["aws:moonshotai.kimi-k2.5", "aws:zai.glm-5", "aws:deepseek.v3.2"]
-# Five companies, so every comparison gets independent judges.
+# Six companies, so every comparison gets independent judges.
 # Best judges first: contests use the first three independent ones. Mistral is last
-# because it sometimes loops on pairwise comparisons until its output limit.
+# because it often loops on comparisons and viewer reports until its output limit.
 judges     = ["aws:qwen.qwen3-235b-a22b-2507", "aws:zai.glm-5", "aws:deepseek.v3.2",
-              "aws:mistral.mistral-large-3-675b-instruct"]
+              "aws:minimax.minimax-m2.5", "aws:mistral.mistral-large-3-675b-instruct"]
 writers    = ["aws:moonshotai.kimi-k2.5", "aws:zai.glm-5"]
 reviser    = ["aws:moonshotai.kimi-k2.5", "aws:zai.glm-5"]
-audience   = ["aws:qwen.qwen3-235b-a22b-2507", "aws:mistral.mistral-large-3-675b-instruct"]
+audience   = ["aws:qwen.qwen3-235b-a22b-2507", "aws:minimax.minimax-m2.5"]
 polisher   = ["aws:moonshotai.kimi-k2.5", "aws:zai.glm-5"]
 researcher = ["aws:deepseek.v3.2", "aws:qwen.qwen3-235b-a22b-2507"]
 planner    = ["aws:deepseek.v3.2", "aws:qwen.qwen3-235b-a22b-2507"]
@@ -29,6 +29,6 @@ region = "us-east-1"
 [quality]
 # Allow an extra editing round; these models revise in smaller steps.
 max_revisions = 3
-# Test bar for open models. The main setup (Claude and GPT writers) keeps 8; raise this
-# back to 8 before publishing anything written by this setup.
-min_score = 7
+# The publishing bar. Live runs at 8 still approved stories from these models, with the
+# showrunner re-planning and fixing what fell short.
+min_score = 8

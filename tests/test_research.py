@@ -75,5 +75,25 @@ class ResearchTests(unittest.TestCase):
         self.assertEqual((trend["title"], trend["popularity"]), ("Night shift rules", 123456))
 
 
+class PoliteFetchTests(unittest.TestCase):
+    def test_rate_limits_are_waited_out(self):
+        import io
+        import urllib.error
+        from unittest import mock
+
+        calls = []
+
+        def fake_urlopen(request, timeout=60):
+            calls.append(request.full_url)
+            if len(calls) == 1:
+                raise urllib.error.HTTPError(request.full_url, 429, "Too Many Requests", {"Retry-After": "3"}, None)
+            return io.BytesIO(b'{"ok": true}')
+
+        with mock.patch("urllib.request.urlopen", fake_urlopen), mock.patch("time.sleep") as sleep:
+            self.assertEqual(research.http_fetch("https://en.wikipedia.org/w/api.php?x=1"), {"ok": True})
+        self.assertEqual(len(calls), 2)
+        self.assertIn(mock.call(3.0), sleep.call_args_list)
+
+
 if __name__ == "__main__":
     unittest.main()
