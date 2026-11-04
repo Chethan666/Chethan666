@@ -265,7 +265,7 @@ DEFAULTS: dict[str, Any] = {
         "max_motion_shots": 40,
         "parallel_motion": 4,
         # Clip lengths the motion model accepts (seconds); each shot gets the shortest that covers it.
-        "motion_durations": [5],
+        "motion_durations": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],  # Seedance lite, per the check (run 67)
         "parallel_images": 4,
         # Voices: every character gets a fixed Kokoro voice (free). With BOSON_API_KEY set,
         # Boson speaks every line, cloned from a short clip of that voice (kept with the series),
