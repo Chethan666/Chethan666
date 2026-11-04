@@ -691,8 +691,10 @@ def refine_plan(ctx: Context, story: Story, item: dict[str, Any], *, stage: str,
             problems = [] if approved else list(dict.fromkeys(
                 str(p) for rank in range(5) for r in reviews
                 for p in (r.get("problems") or [])[rank:rank + 1] if str(p).strip()))[:6]
-        story.note(f"{stage}_review" if review else f"{stage}_check", round=round_ + 1, score=score,
-                   problems=len(problems))
+        if review:
+            story.note(f"{stage}_review", round=round_ + 1, score=score, problems=len(problems))
+        else:  # free checks only (Shorts, and each plan before the plan contest)
+            story.note("plan_check", plan=stage, round=round_ + 1, problems=len(problems))
         key = (0 if check(current) else 1, score)
         if key > best_key:
             best, best_key = current, key
