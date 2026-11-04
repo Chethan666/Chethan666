@@ -57,9 +57,18 @@ def main(argv: list[str] | None = None) -> int:
                 failed += 1
                 print(f"{role:<9} {endpoint}  NOT FOUND: {exc}")
         try:
-            print("Boson voices:", json.dumps(BosonVoice(d["boson_model"]).voices(), indent=2)[:6000])
+            boson = BosonVoice(d["boson_model"])
         except MediaError as exc:
             print(f"Boson: {exc}")
+        else:
+            for label, call in (("models", boson.models), ("voices", boson.voices)):
+                try:
+                    print(f"Boson {label}:", json.dumps(call(), indent=2)[:4000])
+                except MediaError as exc:
+                    print(f"Boson {label}: {exc}")
+            print(f"Boson speech with {d['boson_model']}:")
+            for name, outcome in boson.probe(list(d.get("boson_probe_voices", []))).items():
+                print(f"  {name:<18} {outcome}")
         return 1 if failed else 0
 
     from .produce import Producer  # the video libraries are only needed here

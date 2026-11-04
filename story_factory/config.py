@@ -254,8 +254,10 @@ DEFAULTS: dict[str, Any] = {
         "parallel_images": 4,
         # Voices: Kokoro (free) unless Boson voice ids are listed by gender, e.g.
         # boson_voices = {female = ["..."], male = ["..."]} (see the check).
-        "boson_model": "higgs-tts-3",
+        "boson_model": "higgs-audio-v3-tts",
         "boson_voices": {},
+        # Names `check` tries against the API (it reports which ones it accepts).
+        "boson_probe_voices": ["jake", "emma", "belinda", "mabel", "chadwick", "vex", "en_man", "en_woman"],
         "voices": {},
         "keep_work": False,
     },

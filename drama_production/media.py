@@ -122,7 +122,7 @@ class BosonVoice:
 
     URL = "https://api.boson.ai/v1/audio"
 
-    def __init__(self, model: str = "higgs-tts-3", key: str | None = None):
+    def __init__(self, model: str = "higgs-audio-v3-tts", key: str | None = None):
         self.key = key or os.environ.get("BOSON_API_KEY", "")
         if not self.key:
             raise MediaError("Set BOSON_API_KEY in the environment")
@@ -142,3 +142,22 @@ class BosonVoice:
 
     def voices(self) -> Any:
         return _request(f"{self.URL}/voices", headers=self.headers)
+
+    def models(self) -> Any:
+        return _request("https://api.boson.ai/v1/models", headers=self.headers)
+
+    def probe(self, names: list[str], text: str = "The door was open. It is never open.") -> dict[str, str]:
+        """Which voice names the API accepts, by speaking a short line with each (the preview is free).
+        A wrong name's error usually lists the valid ones, so one deliberate miss is included."""
+        found: dict[str, str] = {}
+        for name in [""] + list(names) + ["not-a-voice-xyz"]:
+            body: dict[str, Any] = {"model": self.model, "input": text, "response_format": "wav"}
+            if name:
+                body["voice"] = name
+            try:
+                audio = _request(f"{self.URL}/speech", method="POST", headers=self.headers, body=body,
+                                 timeout=120, raw=True)
+                found[name or "(default)"] = f"OK, {len(audio)} bytes"
+            except MediaError as exc:
+                found[name or "(default)"] = f"refused: {str(exc)[-400:]}"
+        return found
