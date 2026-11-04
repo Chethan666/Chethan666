@@ -86,6 +86,23 @@ Shorts go through the same room with shorter targets.
 
 ## Who does what
 
+**In use today: `config.aws-open.toml`**, open-weight models on Amazon Bedrock with one AWS
+key, run by the GitHub Actions workflow (the account's Free plan doesn't allow the Claude
+and GPT models on Bedrock; see below).
+
+| Role | Models |
+|---|---|
+| Pitchers | Kimi K2.5, GLM-5, DeepSeek V3.2 |
+| Writers (plans and drafts) | Kimi K2.5, GLM-5 |
+| Reviser, polisher | Kimi K2.5 (GLM-5 as backup) |
+| Judges | Qwen3 235B, GLM-5, DeepSeek V3.2, MiniMax M2.5, Mistral Large 3 |
+| Simulated viewers | Qwen3 235B, MiniMax M2.5 |
+| Researcher, scene planner | DeepSeek V3.2 (Qwen3 as backup) |
+| Repeat detection | a local word-hash embedding (Titan embeddings are blocked for this key) |
+
+The table below describes the original "balanced" design for when Claude, GPT and Gemini
+are available (`config.example.toml`).
+
 The default is a **balanced** setup on three accounts: **Amazon Bedrock** runs most roles (Claude, GPT and Grok through one AWS key), **Google's Gemini API** runs the Gemini roles (Bedrock doesn't offer Gemini), and the **direct Claude API** runs legend research, because only it offers Claude's web search.
 
 | Role | Default model | Runs on | Price per million tokens (in / out) | Why |
@@ -249,7 +266,10 @@ Two things then improve future stories:
 
    `OPENAI_API_KEY` and `XAI_API_KEY` are only needed if you switch roles to the direct `openai:` or `xai:` providers.
 
-   In the AWS console, also open Bedrock → **Model access** and enable Claude Opus 5.5, Claude Sonnet 5.5, GPT-5.5 and Grok 4.6 in your region. Anthropic models ask for a short use-case form, and new accounts may need a quota increase before the pipeline can run at full speed.
+   The open-model setup needs only the Bedrock key. Claude and GPT on Bedrock are sold
+   through AWS Marketplace, which an AWS Free plan account can't use until it upgrades to
+   the Paid plan; `python -m story_factory models --why` says, per model, whether your
+   account can call it and why not.
 3. Copy the example config:
    ```bash
    cp config.example.toml config.toml
@@ -291,6 +311,25 @@ python -m story_factory status
 | `stats` | Cost per approved story, spend by model, which models win the draft contest, and the most common rejection reasons |
 | `report [ID]` | Markdown summary of a story: verdict, hero and theme, scores, audience, titles, cost |
 | `bench --against FILE` | Blind-compare this config's writing against another config on fixed pitches |
+
+## Hand-off to pipeline 2
+
+Approved stories wait in the `stories` table with status `approved`. Pipeline 2 takes one
+with `claim --kind long|short`, which atomically marks it `in_production` and prints it as
+JSON, then reports progress with `set-status` (`produced`, then `published --video-id ...`,
+or `failed`) and later `record-performance`. A claimed story carries:
+
+| Field | What pipeline 2 does with it |
+|---|---|
+| `narration` (and `intro`, `body`, `outro`) | the exact text the narrator reads |
+| `pauses` | silences: after this exact phrase, pause this many milliseconds |
+| `pronunciations` | respellings for names and foreign words the voice may get wrong |
+| `scenes` | in order, covering the whole narration: `text` (the exact span), `visual`, `location`, `characters`, `mood`, `delivery` (steady, slow, tense, hushed, urgent, tender), `sfx`, `key_moment` (deserves a brand-new image) |
+| `cast` | every character with one fixed `look`; recurring characters keep their canon look |
+| `bible` | the red accent and the sound motif, for art direction and sound |
+| `packaging` | `titles` (best first), `thumbnail_brief`, `thumbnail_text`, `description`, `tags`, `pinned_comment`, `end_screen_line` |
+| `packaging.teaser_short` | long episodes only: a 60-second teaser with its own `narration`, `scenes` and `cast` |
+| `comment_question`, `description_credit` | the pinned question and the fiction or folklore credit |
 
 ## Cost
 
