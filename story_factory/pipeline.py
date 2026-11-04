@@ -1633,11 +1633,14 @@ def ending_lab(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, 
     except LLMError as exc:
         log.warning("Ending lab skipped: %s", exc)
         return script
-    limit = 3 * max(len(ending.split()), 35) + 20  # a fuller ending is fine; a new story isn't
+    # Writers often rewrite the whole closing scene, not only the last lines: a fuller
+    # ending is fine (the length check still applies), a new story isn't.
+    limit = max(3 * len(ending.split()) + 20, 180)
     offered = [e.strip() for e in result.get("endings", []) if isinstance(e, str) and e.strip()]
     candidates = [ending] + list(dict.fromkeys(e for e in offered if e != ending and len(e.split()) <= limit))
     if len(candidates) == 1:
-        story.note("ending_lab", candidates=1, offered=len(offered), replaced=False)
+        story.note("ending_lab", candidates=1, offered=len(offered), replaced=False,
+                   offered_words=[len(e.split()) for e in offered], limit=limit)
         return script
 
     def compare(judge: Any, a: str, b: str) -> str:
