@@ -1179,8 +1179,11 @@ def diagnose(version: Version, kind: str, q: dict[str, Any], fresh_left: int, st
         if fresh_left:
             return "replan", "the legend's being isn't recognizable: re-plan around the real legend"
         return "lines", "the legend's being isn't recognizable"
-    if fresh_left and (version.bible.coverage < q["redraft_below_coverage"]
-                       or floor <= q["redraft_at_or_below_score"]):
+    # A low promise count alone isn't enough: on a short script the check's quotes often
+    # miss what is there. It takes weak scores too before the draft is thrown away.
+    far_off = floor <= q["redraft_at_or_below_score"] or (
+        version.bible.coverage < q["redraft_below_coverage"] and floor < q["min_score"] - 1)
+    if fresh_left and far_off:
         return "redraft", (f"the draft is far from its plan (lowest score {floor:g}, promises delivered "
                            f"{version.bible.coverage:.0%}): write it again rather than patch it")
     if stuck and fresh_left:

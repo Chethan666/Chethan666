@@ -54,7 +54,9 @@ class DiagnoseTests(unittest.TestCase):
         self.assertEqual(self.call(version(unrecognized=["not the being"]), fresh=0), "lines")
 
     def test_a_draft_far_from_its_plan_is_written_again(self):
-        self.assertEqual(self.call(version(coverage=0.1)), "redraft")
+        self.assertEqual(self.call(version(coverage=0.1, tension=5)), "redraft")
+        # Good scores with few quoted promises: the check probably missed them; revise instead.
+        self.assertEqual(self.call(version(coverage=0.0, tension=6)), "sections")
         self.assertEqual(self.call(version(hook=4, tension=4)), "redraft")
         self.assertEqual(self.call(version(hook=4, tension=4), fresh=0), "sections")
 
