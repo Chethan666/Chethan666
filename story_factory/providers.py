@@ -43,12 +43,18 @@ class AnthropicClient:
         if self.spec.model in FALLBACK_MODELS:
             # Re-runs a declined request on Anthropic's recommended fallback model.
             kwargs.update(betas=["server-side-fallback-2026-07-01"], fallbacks="default")
-        if self.spec.effort:
+        if self.spec.effort and not getattr(self, "_no_effort", False):
             kwargs.setdefault("output_config", {})["effort"] = self.spec.effort
         try:
             with self.client.beta.messages.stream(model=self.spec.model, max_tokens=self.max_tokens,
                                                   **kwargs) as stream:
                 message = stream.get_final_message()
+        except self.anthropic.BadRequestError as exc:
+            effort = (kwargs.get("output_config") or {}).pop("effort", None)
+            if effort is None or "effort" not in str(exc.message).lower():
+                raise LLMError(f"{self.spec.label} HTTP {exc.status_code}: {exc.message}") from exc
+            self._no_effort = True  # this endpoint or model takes no effort setting
+            return self._request(task, **kwargs)
         except self.anthropic.APIStatusError as exc:
             raise LLMError(f"{self.spec.label} HTTP {exc.status_code}: {exc.message}") from exc
         except self.anthropic.APIConnectionError as exc:

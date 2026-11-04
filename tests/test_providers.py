@@ -223,6 +223,22 @@ class AWSClientTests(unittest.TestCase):
         with self.assertRaises(LLMError):
             client.research("r", "s", "p")
 
+    def test_claude_on_bedrock_without_effort_support_is_retried_without_it(self):
+        import anthropic
+
+        client = providers.build(ModelSpec.parse("aws:anthropic.claude-fable-5@high"), self.cfg, self.recorder)
+        client.client = anthropic.AnthropicBedrockMantle(
+            api_key="bedrock-test-key", aws_region="us-east-1", max_retries=0,
+            http_client=self.transport([
+                (400, b'{"type": "error", "error": {"type": "invalid_request_error", '
+                      b'"message": "output_config.effort: Extra inputs are not permitted"}}', "application/json"),
+                (200, claude_stream('{"ok": true}'), "text/event-stream")]))
+        self.assertEqual(client.generate_json("t", "s", "p", {"type": "object"}), {"ok": True})
+        sent = [json.loads(r.content) for r in self.requests]
+        self.assertEqual(sent[0]["output_config"]["effort"], "high")
+        self.assertNotIn("effort", sent[1]["output_config"])
+        self.assertIn("format", sent[1]["output_config"])
+
     def test_gpt_and_grok_on_bedrock(self):
         import openai
 

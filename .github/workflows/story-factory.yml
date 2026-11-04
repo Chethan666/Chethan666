@@ -34,12 +34,12 @@ on:
       config:
         description: Model setup
         type: choice
-        options: [config.aws-open.toml, config.aws-only.toml, config.example.toml]
+        options: [config.aws-open.toml, config.aws-top.toml, config.aws-only.toml, config.example.toml]
         default: config.aws-open.toml
       bench_against:
         description: "bench mode: the model setup to compare against (B)"
         type: choice
-        options: [config.aws-open.toml, config.aws-only.toml, config.example.toml]
+        options: [config.aws-open.toml, config.aws-top.toml, config.aws-only.toml, config.example.toml]
         default: config.example.toml
       overrides:
         description: "Optional config overrides, space-separated KEY=VALUE (e.g. quality.min_score=8)"

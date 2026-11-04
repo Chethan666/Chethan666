@@ -1,0 +1,52 @@
+# Top-tier models on Amazon Bedrock, by the IDs this account's Bedrock lists
+# (checked November 2026): Claude Fable 5, Opus 5.5 and Sonnet 5, GPT-5.5 and Grok 4.3.
+# Needs only AWS_BEARER_TOKEN_BEDROCK. Each company must be enabled for the AWS
+# account first (Bedrock console > Model access); until then Bedrock answers
+# "not available for this account". Run `ping` (workflow mode `check`) to confirm.
+#
+# Compared with config.aws-open.toml: stronger models write and judge, so fewer
+# revision rounds and Shorts drafts are needed, and the bar is the publishing bar (8).
+# One open model per role stays listed as a backup, so a refused or slow call
+# fails over instead of stopping the story, and Qwen adds a fourth independent judge.
+
+database = "data/stories.db"
+
+[budget]
+# Hard stop for this account; raise it once you've seen a few stories' real cost.
+monthly_cap_usd = 60
+
+[roles]
+pitchers   = ["aws:anthropic.claude-sonnet-5@high", "aws:openai.gpt-5.5@medium", "aws:xai.grok-4.3"]
+# Best judges first: contests use the first three independent ones.
+judges     = ["aws:anthropic.claude-sonnet-5@high", "aws:openai.gpt-5.5@low", "aws:xai.grok-4.3",
+              "aws:qwen.qwen3-235b-a22b-2507"]
+# Two companies write competing drafts and plans, so each is judged by the others.
+writers    = ["aws:anthropic.claude-fable-5@high", "aws:openai.gpt-5.5@high"]
+reviser    = ["aws:anthropic.claude-opus-5-5@high", "aws:moonshotai.kimi-k2.5"]
+audience   = ["aws:openai.gpt-5.5@low", "aws:xai.grok-4.3", "aws:qwen.qwen3-235b-a22b-2507"]
+polisher   = ["aws:anthropic.claude-opus-5-5@high", "aws:moonshotai.kimi-k2.5"]
+# Bedrock has no web search, so legend research uses Wikipedia notes.
+researcher = ["aws:anthropic.claude-sonnet-5@medium", "aws:deepseek.v3.2"]
+planner    = ["aws:anthropic.claude-sonnet-5@medium", "aws:deepseek.v3.2"]
+# Titan embeddings are blocked for this key by the AWS organization's policy.
+embedder   = ["local:hash"]
+
+[providers.aws]
+region = "us-east-1"
+# GPT-5.5 on this Bedrock serves Chat Completions only (the client also switches
+# routes by itself when a model refuses one).
+responses_api_models = []
+
+[quality]
+min_score = 8
+max_revisions = 2
+short_drafts = 4
+
+[prices]
+# USD per million tokens (in, out), for the cost log. Claude Opus 5.5 is Anthropic's
+# list price; the others are estimates: check the Bedrock pricing page.
+"anthropic.claude-fable-5" = [10.0, 50.0]
+"anthropic.claude-opus-5-5" = [4.0, 20.0]
+"anthropic.claude-sonnet-5" = [2.0, 10.0]
+"openai.gpt-5.5" = [5.0, 30.0]
+"xai.grok-4.3" = [2.0, 6.0]
