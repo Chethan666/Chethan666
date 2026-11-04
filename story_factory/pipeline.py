@@ -1576,9 +1576,10 @@ def ending_lab(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, 
         log.warning("Ending lab skipped: %s", exc)
         return script
     limit = 2 * len(ending.split()) + 10
-    candidates = [ending] + list(dict.fromkeys(
-        e.strip() for e in result.get("endings", []) if e.strip() and e.strip() != ending and len(e.split()) <= limit))
+    offered = [e.strip() for e in result.get("endings", []) if isinstance(e, str) and e.strip()]
+    candidates = [ending] + list(dict.fromkeys(e for e in offered if e != ending and len(e.split()) <= limit))
     if len(candidates) == 1:
+        story.note("ending_lab", candidates=1, offered=len(offered), replaced=False)
         return script
 
     def compare(judge: Any, a: str, b: str) -> str:
