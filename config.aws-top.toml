@@ -1,5 +1,7 @@
 # Top-tier models on Amazon Bedrock, by the IDs this account's Bedrock lists
-# (checked November 2026): Claude Fable 5, Opus 5.5 and Sonnet 5, GPT-5.5 and Grok 4.3.
+# (checked November 2026): Claude Opus 5.5 and Sonnet 5, GPT-5.5 and Grok 4.3.
+# (Claude Fable 5 is not used: it needs the account's data retention mode set to
+# aws_review, and Opus 5.5 runs under the default mode.)
 # Needs only AWS_BEARER_TOKEN_BEDROCK. Each company must be enabled for the AWS
 # account first (Bedrock console > Model access); until then Bedrock answers
 # "not available for this account". Run `ping` (workflow mode `check`) to confirm.
@@ -21,7 +23,7 @@ pitchers   = ["aws:anthropic.claude-sonnet-5@high", "aws:openai.gpt-5.5@medium",
 judges     = ["aws:anthropic.claude-sonnet-5@high", "aws:openai.gpt-5.5@low", "aws:xai.grok-4.3",
               "aws:qwen.qwen3-235b-a22b-2507"]
 # Two companies write competing drafts and plans, so each is judged by the others.
-writers    = ["aws:anthropic.claude-fable-5@high", "aws:openai.gpt-5.5@high"]
+writers    = ["aws:anthropic.claude-opus-5-5@high", "aws:openai.gpt-5.5@high"]
 reviser    = ["aws:anthropic.claude-opus-5-5@high", "aws:moonshotai.kimi-k2.5"]
 audience   = ["aws:openai.gpt-5.5@low", "aws:xai.grok-4.3", "aws:qwen.qwen3-235b-a22b-2507"]
 polisher   = ["aws:anthropic.claude-opus-5-5@high", "aws:moonshotai.kimi-k2.5"]
@@ -45,7 +47,6 @@ short_drafts = 4
 [prices]
 # USD per million tokens (in, out), for the cost log. Claude Opus 5.5 is Anthropic's
 # list price; the others are estimates: check the Bedrock pricing page.
-"anthropic.claude-fable-5" = [10.0, 50.0]
 "anthropic.claude-opus-5-5" = [4.0, 20.0]
 "anthropic.claude-sonnet-5" = [2.0, 10.0]
 "openai.gpt-5.5" = [5.0, 30.0]

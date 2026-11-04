@@ -153,9 +153,14 @@ recognize goes back to `rejected` with its script kept, and its legend is free t
 ## Top-tier models on Amazon Bedrock
 
 `config.aws-top.toml` runs the writers' room on top-tier models through the same AWS key:
-Claude Fable 5 and GPT-5.5 write competing plans and drafts, Claude Opus 5.5 revises
+Claude Opus 5.5 and GPT-5.5 write competing plans and drafts, Claude Opus 5.5 revises
 and polishes, and Claude Sonnet 5, GPT-5.5, Grok 4.3 and Qwen judge. Every single-model
 role keeps an open model as a backup, and the bar is 8.
+
+Claude Fable 5 is not used: Bedrock serves it only when the account's data retention
+mode is `aws_review` (AWS keeps prompts up to 30 days for review), and this account
+runs `default`. `python -m story_factory models --why` (shown in every workflow `check`)
+says, per model, whether this account can call it and why not.
 
 A live check (November 2026) found:
 
