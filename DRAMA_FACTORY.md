@@ -31,6 +31,8 @@ EPISODE
                     and continuity and leave notes on shot numbers. KEEP THE BEST: a
                     worse version is set aside. THE SHOWRUNNER picks the fix:
                       free checks failed                    → repair
+                      the editors raised a content flag     → soften: imply it, cut away to
+                                                              the reaction, keep the scene
                       a score of 5 or less                  → a fresh draft contest
                       conflict/character/cliffhanger still low after a revision
                                                             → rethink the episode's outline,

@@ -169,6 +169,18 @@ class EpisodeTests(unittest.TestCase):
                          ("Lena", ["Lena"], "Chapel"))
         self.assertEqual((ep["shots"][1]["speaker"], ep["shots"][1]["location"]), ("Adrian", "Ward 7"))
 
+    def test_a_flag_from_the_editors_is_softened_first(self):
+        flagged = dict(review(), flags={"gore": True})
+        self.ctx, self.brain = room(reviews=[flagged, review()])
+        seen = []
+        self.brain.overrides["drama_revise"] = lambda p, s: seen.append(p) or episode()
+        self.series_id = pipeline.create_series(self.ctx)
+        episode_id, status = self.write()
+        self.assertEqual(status, "approved")
+        actions = [e["action"] for e in log_of(self.ctx, episode_id) if e["stage"] == "showrunner"]
+        self.assertEqual(actions, ["soften"])
+        self.assertIn("content flag 'gore'", seen[0])
+
     def test_a_safety_flag_that_survives_a_repair_rejects(self):
         self.brain.overrides["drama_final_check"] = lambda p, s: {"flags": {"gore": True}, "issues": ["blood"]}
         _, status = self.write()

@@ -324,6 +324,8 @@ def diagnose(v: Version, bar: float, fresh_left: int, stuck: set[str], last: str
     """The showrunner's call for an episode: fix the deepest problem first."""
     if v.issues:
         return "repair", "free checks failed: " + "; ".join(v.issues[:2])
+    if v.flags and last != "soften":
+        return "soften", "editors flagged " + ", ".join(v.flags) + ": take it off screen, keep the scene"
     floor = min(v.scores.values())
     if fresh_left and floor <= 5:
         return "redraft", f"the draft is far off (lowest score {floor:g}): write it again"
@@ -397,7 +399,9 @@ def rewrite_shots(ctx: Context, bible: dict[str, Any], v: Version, journal: Log)
 
 def revise(ctx: Context, bible: dict[str, Any], v: Version) -> dict[str, Any]:
     notes = v.issues + [f"raise {c} (editors' median {s:g})" for c, s in v.scores.items()
-                        if s < settings(ctx)["min_score"]] + v.flags + v.note_lines()
+                        if s < settings(ctx)["min_score"]] + [
+        f"content flag '{f.replace('_', ' ')}': keep the scene and its dread but imply it - cut away, show the "
+        "reaction, no method or wound on screen" for f in v.flags] + v.note_lines()
     return ctx.router.one("reviser").generate_json("drama_revise", prompts.SYSTEM_WRITER,
                                                    prompts.revise_episode(bible, v.episode, notes), schemas.EPISODE)
 
