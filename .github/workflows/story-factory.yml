@@ -27,6 +27,10 @@ on:
         description: Optional comma-separated provider:model list to test instead of the configured roles
         type: string
         default: ""
+      ping_timeout:
+        description: Seconds to wait for each model in the test call
+        type: string
+        default: "120"
       config:
         description: Model setup
         type: choice
@@ -69,6 +73,7 @@ jobs:
       SERIES: ${{ inputs.series }}
       CONFIG: ${{ inputs.config }}
       PING_MODELS: ${{ inputs.ping_models }}
+      PING_TIMEOUT: ${{ inputs.ping_timeout }}
       BENCH_AGAINST: ${{ inputs.bench_against }}
       BENCH_PITCHES: ${{ inputs.bench_pitches }}
       OVERRIDES: ${{ inputs.overrides }}
@@ -103,9 +108,9 @@ jobs:
         continue-on-error: true
         run: |
           if [ -n "$PING_MODELS" ]; then
-            python -m story_factory --config "$CONFIG" ping --models "$PING_MODELS"
+            python -m story_factory --config "$CONFIG" ping --timeout "${PING_TIMEOUT:-120}" --models "$PING_MODELS"
           else
-            python -m story_factory --config "$CONFIG" ping
+            python -m story_factory --config "$CONFIG" ping --timeout "${PING_TIMEOUT:-120}"
           fi
 
       - name: Restore the story database from the last run
