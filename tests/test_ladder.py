@@ -328,5 +328,16 @@ class CraftCheckTests(unittest.TestCase):
         self.assertEqual(pipeline.annotate(ctx, story, script), ([], []))
 
 
+
+class SceneCastTests(unittest.TestCase):
+    def test_scene_characters_snap_to_cast_names(self):
+        cast = [{"name": "Delano Marchetti", "look": "x"}, {"name": "The Storyteller", "look": "y"}]
+        scenes = [{"characters": ["Delano (Memory)", "Del", "The Storyteller", "Nurse", "The Woman"]}]
+        pipeline.snap_cast(scenes, cast)
+        self.assertEqual(scenes[0]["characters"], ["Delano Marchetti", "The Storyteller", "Nurse", "The Woman"])
+        pipeline.snap_cast(scenes, cast, drop_unknown=True)
+        self.assertEqual(scenes[0]["characters"], ["Delano Marchetti", "The Storyteller"])
+
+
 if __name__ == "__main__":
     unittest.main()

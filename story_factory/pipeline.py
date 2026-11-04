@@ -1497,6 +1497,45 @@ def _real_issue(text: Any) -> bool:
     return bool(text) and not NOT_AN_ISSUE.match(text)
 
 
+QUALIFIER = re.compile(r"\s*[\(\[][^\)\]]*[\)\]]")
+
+
+def snap_cast(scenes: Any, cast: Any, drop_unknown: bool = False) -> Any:
+    """Point every scene's characters at cast names: "Delano (Memory)" or "Del" is the cast's
+    "Delano Marchetti". With `drop_unknown`, names that match nobody are dropped (the scene's
+    visual description still says what to draw)."""
+    if not isinstance(scenes, list) or not isinstance(cast, list):
+        return scenes
+    names = [str(m.get("name", "")) for m in cast if isinstance(m, dict) and str(m.get("name", "")).strip()]
+    exact = {dedup.normalize(n): n for n in names}
+    firsts: dict[str, list[str]] = {}
+    for n in names:
+        firsts.setdefault(dedup.normalize(n).split()[0], []).append(n)
+
+    def match(name: str) -> str | None:
+        if dedup.normalize(name) in exact:
+            return exact[dedup.normalize(name)]
+        base = dedup.normalize(QUALIFIER.sub("", name))
+        if base in exact:
+            return exact[base]
+        first = base.split()[0] if base else ""
+        if first in ("the", "a", "an", "old", "young", "mr", "mrs", "ms", "dr"):
+            return None  # "The Woman" is not "The Storyteller"
+        candidates = firsts.get(first, [])
+        if len(candidates) == 1:
+            return candidates[0]
+        nicknames = [n for n in names if first and len(first) >= 3
+                     and dedup.normalize(n).split()[0].startswith(first)]
+        return nicknames[0] if len(nicknames) == 1 else None
+
+    for scene in scenes:
+        if not isinstance(scene, dict) or not isinstance(scene.get("characters"), list):
+            continue
+        snapped = [match(str(c)) or (None if drop_unknown else str(c)) for c in scene["characters"]]
+        scene["characters"] = list(dict.fromkeys(c for c in snapped if c))
+    return scenes
+
+
 def plan_scenes(ctx: Context, kind: str, narration: str,
                 bible: dict | None = None) -> tuple[list | None, list[dict], list[str]]:
     """Returns (scenes, cast, problems). Recurring characters keep their canon look."""
@@ -1505,10 +1544,12 @@ def plan_scenes(ctx: Context, kind: str, narration: str,
     canon = dict(db.known_looks(ctx.conn))
     base = prompts.scene_plan(narration, scene_range, key_range, list(canon.items()), bible)
     issues: list[str] = []
-    for _ in range(2):
+    for attempt in range(2):
         prompt = base if not issues else base + "\nFIX THESE PROBLEMS:\n" + "\n".join(issues)
         plan = planner.generate_json("scene_plan", prompts.SYSTEM_EDITOR, prompt, schemas.SCENES)
-        scenes, cast = snap_scenes(narration, plan.get("scenes"), kind), plan.get("cast") or []
+        cast = plan.get("cast") or []
+        # Bookkeeping is repaired in code; on the last try, uncast extras are dropped.
+        scenes = snap_cast(snap_scenes(narration, plan.get("scenes"), kind), cast, drop_unknown=attempt == 1)
         issues = scene_issues(narration, scenes, kind, cast)
         if not issues:
             by_norm = {dedup.normalize(name): look for name, look in canon.items()}
