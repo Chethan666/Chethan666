@@ -221,7 +221,7 @@ DEFAULTS: dict[str, Any] = {
         "model_args": {
             "portrait": {"image_size": {"width": 1080, "height": 1920}, "num_images": 1},
             "shot": {"image_size": {"width": 1080, "height": 1920}, "num_images": 1},
-            "motion": {"duration": "5", "resolution": "720p"},
+            "motion": {"duration": "5", "resolution": "720p", "aspect_ratio": "9:16"},
         },
         # Estimated USD per picture, or per second of moving clip (third-party figures;
         # check fal.ai's pricing pages). The cap stops moving clips, not the episode.
