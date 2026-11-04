@@ -160,6 +160,15 @@ class EpisodeTests(unittest.TestCase):
         issues = pipeline.episode_issues(episode(bad_speaker=True), BIBLE)
         self.assertTrue(any("Stranger" in p for p in issues))  # the writer is told which name is wrong
 
+    def test_an_episode_too_short_for_its_screen_time_is_sent_back(self):
+        short = episode(20)
+        for s in short["shots"]:
+            s["line"] = "Go." if s["line"] else ""
+        issues = pipeline.episode_issues(short, BIBLE, 90)
+        self.assertTrue(any("too short" in i for i in issues))
+        self.assertFalse(any("too short" in i for i in pipeline.episode_issues(episode(), BIBLE, 90)))
+        self.assertTrue(any("shots; write 24-32" in i for i in pipeline.episode_issues(episode(14), BIBLE, 90)))
+
     def test_near_miss_names_are_snapped_to_the_bible(self):
         ep = episode()
         ep["shots"][0].update(speaker="Lena (V.O.)", characters=["lena"], location="the Chapel")

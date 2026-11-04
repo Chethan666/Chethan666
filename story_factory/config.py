@@ -260,8 +260,12 @@ DEFAULTS: dict[str, Any] = {
             "fal-ai/bytedance/seedream/v4/edit": 0.03,
             "fal-ai/bytedance/seedance/v1/lite/image-to-video": 0.036,
         },
-        "max_usd_per_episode": 3.0,
-        "max_motion_shots": 3,
+        # Every shot is a real clip (most important first); the cap stops clips, not the episode.
+        "max_usd_per_episode": 4.5,
+        "max_motion_shots": 40,
+        "parallel_motion": 4,
+        # Clip lengths the motion model accepts (seconds); each shot gets the shortest that covers it.
+        "motion_durations": [5],
         "parallel_images": 4,
         # Voices: every character gets a fixed Kokoro voice (free). With BOSON_API_KEY set,
         # Boson speaks every line, cloned from a short clip of that voice (kept with the series),

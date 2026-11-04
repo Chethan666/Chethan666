@@ -99,7 +99,19 @@ class Fal:
         spec = _request(url)
         schemas = spec.get("components", {}).get("schemas", {})
         inputs = next((v for k, v in schemas.items() if k.endswith("Input")), {})
-        return {"fields": sorted(inputs.get("properties", {})), "required": inputs.get("required", [])}
+        props = inputs.get("properties", {})
+
+        def choices(spec: dict[str, Any]) -> Any:
+            for option in [spec] + list(spec.get("anyOf", []) or spec.get("allOf", [])):
+                if isinstance(option, dict) and option.get("$ref"):
+                    option = schemas.get(option["$ref"].rsplit("/", 1)[-1], {})
+                if isinstance(option, dict) and option.get("enum"):
+                    return option["enum"]
+            return {k: spec[k] for k in ("default", "minimum", "maximum") if k in spec} or None
+
+        options = {k: choices(v) for k, v in props.items() if isinstance(v, dict)}
+        return {"fields": sorted(props), "required": inputs.get("required", []),
+                "options": {k: v for k, v in options.items() if v}}
 
 
 def first_url(result: dict[str, Any], kind: str) -> str:

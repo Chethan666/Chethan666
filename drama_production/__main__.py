@@ -50,6 +50,9 @@ def main(argv: list[str] | None = None) -> int:
                 info = fal.schema(endpoint)
                 print(f"{role:<9} {endpoint}\n          inputs: {', '.join(info['fields'])}\n"
                       f"          required: {', '.join(info['required'])}")
+                for field in ("duration", "resolution", "aspect_ratio", "num_frames"):
+                    if field in info.get("options", {}):
+                        print(f"          {field}: {info['options'][field]}")
                 unknown = set(d["model_args"].get(role, {})) - set(info["fields"]) if info["fields"] else set()
                 if unknown:
                     print(f"          WARNING: configured arguments the model doesn't list: {sorted(unknown)}")

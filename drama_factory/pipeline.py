@@ -248,14 +248,23 @@ def _place(name: str, places: list[str]) -> str:
     return hits[0] if len(hits) == 1 else name
 
 
-def episode_issues(ep: dict[str, Any], bible: dict[str, Any]) -> list[str]:
+def screen_seconds(shots: list[dict[str, Any]]) -> float:
+    """Rough screen time: a line takes its words at about 2.6 a second plus a breath; a silent shot ~2.5 s."""
+    total = 0.0
+    for s in shots:
+        words = len(str(s.get("line", "")).split())
+        total += words / 2.6 + 0.6 if words else (3.0 if s.get("shot") == "establishing" else 2.5)
+    return total
+
+
+def episode_issues(ep: dict[str, Any], bible: dict[str, Any], seconds: float = 90.0) -> list[str]:
     """Free checks: enough shots, known characters and places, mostly dialogue, short lines.
     Near-miss names are snapped to the cast first."""
     snap_names(ep, bible)
     shots = ep.get("shots") or []
     issues = []
-    if not 10 <= len(shots) <= 32:
-        issues.append(f"{len(shots)} shots; write 14-26")
+    if not 20 <= len(shots) <= 36:
+        issues.append(f"{len(shots)} shots; write 24-32")
     names = {c["name"].lower() for c in bible.get("cast", [])}
     places = {loc["name"].lower() for loc in bible.get("locations", [])}
     strangers = {c for s in shots for c in s.get("characters", []) if c.lower() not in names}
@@ -273,8 +282,11 @@ def episode_issues(ep: dict[str, Any], bible: dict[str, Any]) -> list[str]:
         spoken = sum(1 for s in shots if str(s.get("line", "")).strip())
         issues.append(f"this is a dialogue drama: at least half the shots carry a spoken line "
                       f"(only {spoken} of {len(shots)} do)")
-    if sum(1 for s in shots if s.get("motion")) > 4:
-        issues.append("mark at most four shots as motion")
+    target = float(seconds)
+    estimate = screen_seconds(shots)
+    if shots and estimate < 0.75 * target:
+        issues.append(f"too short: about {estimate:.0f} s of screen time; aim for {target:.0f} s with more shots "
+                      "and fuller lines")
     if any(len(str(s.get("line", "")).split()) > 24 for s in shots):
         issues.append("keep every line under 20 words")
     if shots and not str(shots[0].get("line", "") or shots[0].get("action", "")).strip():
@@ -308,7 +320,7 @@ class Version:
 
 
 def judge(ctx: Context, bible: dict[str, Any], ep: dict[str, Any], family: str) -> Version:
-    v = Version(ep, family, episode_issues(ep, bible))
+    v = Version(ep, family, episode_issues(ep, bible, settings(ctx)["episode_seconds"]))
     if v.issues:
         return v
     reviews = ctx.router.panel(lambda j: j.generate_json("drama_review", prompts.SYSTEM_EDITOR,
@@ -364,7 +376,7 @@ def draft_contest(ctx: Context, bible: dict[str, Any], number: int, previous: li
     strip = lambda e: {k: v for k, v in e.items() if not k.startswith("_")}  # noqa: E731
     ranked = tournament.rank(drafts, lambda a, b: _judges(ctx, [a["_family"], b["_family"]]),
                              _compare("drama_compare_episodes", lambda a, b: prompts.compare_episodes(strip(a), strip(b))),
-                             ctx.router.parallel, prior=lambda e: -len(episode_issues(e, bible)))
+                             ctx.router.parallel, prior=lambda e: -len(episode_issues(e, bible, d["episode_seconds"])))
     best = ranked[0].item
     journal.note("draft_contest", drafts=len(drafts), winner=best["_author"], points=[r.points for r in ranked],
                  fresh=bool(avoid))
@@ -542,7 +554,7 @@ def write_episode(ctx: Context, series_id: int, number: int | None = None) -> tu
             if not flags or attempt == 1:
                 break
             fixed = revise(ctx, bible, Version(ep, best.family, flags=flags))
-            if not episode_issues(fixed, bible):
+            if not episode_issues(fixed, bible, d["episode_seconds"]):
                 ep = fixed
         if flags:
             status, reason = "rejected", "final check: " + ", ".join(flags)

@@ -68,7 +68,7 @@ class Costs:
     """Estimated spend on paid media, logged to the shared costs table, with a cap per episode."""
 
     def __init__(self, conn: Any, cfg: dict, cap: float):
-        self.conn, self.prices, self.cap, self.spent = conn, cfg.get("prices", {}), cap, 0.0
+        self.conn, self.prices, self.cap, self.spent, self.held = conn, cfg.get("prices", {}), cap, 0.0, 0.0
         self.lock = threading.Lock()
 
     def charge(self, task: str, model: str, units: float = 1.0) -> None:
@@ -77,6 +77,19 @@ class Costs:
             self.spent += usd
             db.record_cost(self.conn, pipeline="drama", task=task, model=model, input_units=0,
                            output_units=int(units), usd=usd)
+
+    def reserve(self, model: str, units: float = 1.0) -> bool:
+        """Hold budget for a job before it starts (jobs run in parallel); `release` gives it back."""
+        usd = float(self.prices.get(model, 0.0)) * units
+        with self.lock:
+            if self.cap and self.held + self.spent + usd > self.cap:
+                return False
+            self.held += usd
+            return True
+
+    def release(self, model: str, units: float = 1.0) -> None:
+        with self.lock:
+            self.held = max(0.0, self.held - float(self.prices.get(model, 0.0)) * units)
 
     def allows(self, model: str, units: float = 1.0) -> bool:
         return not self.cap or self.spent + float(self.prices.get(model, 0.0)) * units <= self.cap
@@ -159,20 +172,30 @@ class Producer:
         costs.charge("shot", model)
         return download(first_url(result, "image"), path)
 
-    def motion(self, shot: dict[str, Any], picture: Path, path: Path, costs: Costs) -> Path | None:
+    def clip_seconds(self, needed: float) -> int:
+        """The shortest clip length the model offers that covers the shot (else its longest)."""
+        offered = sorted(int(x) for x in self.d.get("motion_durations") or
+                         [self.args.get("motion", {}).get("duration", 5)])
+        return next((x for x in offered if x >= needed - 0.5), offered[-1])
+
+    def motion(self, shot: dict[str, Any], picture: Path, path: Path, costs: Costs,
+               needed: float = 5.0) -> Path | None:
         model = self.models.get("motion")
-        seconds = float(self.args.get("motion", {}).get("duration", 5))
-        if not model or not costs.allows(model, seconds):
+        seconds = self.clip_seconds(needed)
+        if not model or not costs.reserve(model, seconds):
             return None
-        args = dict(self.args.get("motion", {}), image_url=data_uri(picture),
-                    prompt=f"{shot.get('action', '')}. Subtle, realistic motion, cinematic camera, no cuts.")
+        args = dict(self.args.get("motion", {}), image_url=data_uri(picture), prompt=motion_prompt(shot),
+                    duration=str(seconds))
         try:
             result = self.fal.run(model, args)
+            download(first_url(result, "video"), path)
         except MediaError as exc:
             log.warning("Motion clip skipped: %s", exc)
             return None
+        finally:
+            costs.release(model, seconds)
         costs.charge("motion", model, seconds)
-        return download(first_url(result, "video"), path)
+        return path
 
     # --- voices ---------------------------------------------------------------
     def cast_voices(self, bible: dict[str, Any]) -> dict[str, str]:
@@ -233,9 +256,11 @@ class Producer:
         w, h = self.w, self.h
         fill = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}"
         if moving is not None:
-            _ffmpeg(["-i", str(moving), "-vf", f"{fill},fps={FPS},tpad=stop_mode=clone:stop_duration={seconds},"
-                     f"trim=duration={seconds:.3f},{look}", "-an", "-c:v", "libx264", "-preset", "veryfast",
-                     "-crf", "19", name], work)
+            length = _length(moving) or seconds
+            stretch = min(max(seconds / length, 1.0), 1.3)  # slow a short clip a little, then hold its end
+            _ffmpeg(["-i", str(moving), "-vf", f"setpts={stretch:.4f}*PTS,{fill},fps={FPS},"
+                     f"tpad=stop_mode=clone:stop_duration={seconds},trim=duration={seconds:.3f},{look}", "-an",
+                     "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", name], work)
             return name
         kind = shot.get("shot", "medium")
         if kind in ("close_up", "extreme_close_up", "insert"):
@@ -275,16 +300,7 @@ class Producer:
 
         with ThreadPoolExecutor(max_workers=int(self.d.get("parallel_images", 4))) as pool:
             pictures = list(pool.map(picture, enumerate(shots)))
-        # Moving clips for the key beats (within the episode's budget).
-        moving: dict[int, Path] = {}
-        wanted = [i for i, s in enumerate(shots) if s.get("motion")][: int(self.d.get("max_motion_shots", 3))]
-        for i in wanted:
-            target = cache / f"motion_{i:03d}_{_digest(shots[i].get('action'), pictures[i].name)}.mp4"
-            clip = target if target.exists() else self.motion(shots[i], pictures[i], target, costs)
-            if clip is not None:
-                moving[i] = clip
-
-        # Voices, then each shot lasts as long as its line.
+        # Voices first: each shot lasts as long as its line, and its clip is made that long.
         voices = self.cast_voices(bible)
         rate = 24_000
         lines: list[np.ndarray] = []
@@ -295,13 +311,32 @@ class Producer:
                 if r != rate:
                     audio = np.interp(np.linspace(0, audio.size - 1, int(audio.size * rate / r)),
                                       np.arange(audio.size), audio).astype(np.float32)
-                lead = np.zeros(int(0.12 * rate), dtype=np.float32)
-                tail = np.zeros(int(0.28 * rate), dtype=np.float32)
-                lines.append(np.concatenate([lead, audio, tail]))
+                lead = np.zeros(int(0.15 * rate), dtype=np.float32)
+                tail = np.zeros(int(0.45 * rate), dtype=np.float32)
+                piece = np.concatenate([lead, audio, tail])
+                least = int(2.0 * rate)  # a cut never comes before the viewer has taken the shot in
+                if piece.size < least:
+                    piece = np.concatenate([piece, np.zeros(least - piece.size, dtype=np.float32)])
+                lines.append(piece)
             else:
-                hold = {"establishing": 2.2, "insert": 1.4, "wide": 1.8}.get(shot.get("shot", ""), 1.6)
+                hold = {"establishing": 3.0, "insert": 2.0, "wide": 2.8}.get(shot.get("shot", ""), 2.5)
                 lines.append(np.zeros(int(hold * rate), dtype=np.float32))
             durations.append(lines[-1].size / rate)
+
+        # Every shot moves: real clips, the most important first, in parallel, within the budget.
+        order = motion_order(shots)[: int(self.d.get("max_motion_shots", len(shots)))]
+
+        def film(i: int) -> tuple[int, Path | None]:
+            key = _digest(motion_prompt(shots[i]), pictures[i].name, self.clip_seconds(durations[i]))
+            target = cache / f"motion_{i:03d}_{key}.mp4"
+            if target.exists():
+                return i, target
+            return i, self.motion(shots[i], pictures[i], target, costs, durations[i])
+
+        with ThreadPoolExecutor(max_workers=int(self.d.get("parallel_motion", 4))) as pool:
+            moving = {i: clip for i, clip in pool.map(film, order) if clip is not None}
+        log.info("Moving shots: %d of %d", len(moving), len(shots))
+
         track = np.concatenate(lines)
         starts = np.cumsum([0.0] + durations[:-1]).tolist()
         speech = [(s + 0.12, s + d - 0.28) for s, d, shot in zip(starts, durations, shots) if shot.get("line")]
@@ -328,6 +363,40 @@ class Producer:
             shutil.rmtree(work, ignore_errors=True)
             shutil.rmtree(cache, ignore_errors=True)  # made: the video holds it now
         return meta
+
+
+def motion_prompt(shot: dict[str, Any]) -> str:
+    """What the image-to-video model is asked for: the shot's movement, and a speaker who talks."""
+    talk = ""
+    if shot.get("speaker") and str(shot.get("line", "")).strip() and not shot.get("inner_voice"):
+        talk = (f" {shot['speaker']} is speaking, with natural mouth, jaw and face movement and a "
+                f"{shot.get('emotion', 'tense')} expression; small natural gestures.")
+    elif shot.get("inner_voice"):
+        talk = " The character is silent, lost in thought; only the eyes and breath move."
+    return (f"{shot.get('action', '')}.{talk} Realistic, cinematic, natural human motion, gentle camera "
+            "movement, keep every face, outfit and the location exactly as in the image, no cuts, no text.")
+
+
+def motion_order(shots: list[dict[str, Any]]) -> list[int]:
+    """Which shots get their clip first if the budget runs short: marked motion, the hook and the
+    cliffhanger, spoken close shots, then the rest in story order."""
+    last = len(shots) - 1
+    close = ("close_up", "extreme_close_up", "over_shoulder", "medium")
+
+    def rank(i: int) -> tuple:
+        s = shots[i]
+        return (not s.get("motion"), i not in (0, last), not (s.get("line") and s.get("shot") in close), i)
+
+    return sorted(range(len(shots)), key=rank)
+
+
+def _length(path: Path) -> float:
+    result = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+                             str(path)], capture_output=True, text=True)
+    try:
+        return float(result.stdout.strip())
+    except ValueError:
+        return 0.0
 
 
 def _digest(*parts: Any) -> str:

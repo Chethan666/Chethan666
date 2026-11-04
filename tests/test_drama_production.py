@@ -35,19 +35,19 @@ BIBLE = {
 }
 
 
-def shots(n: int = 14, bad_speaker: bool = False) -> list[dict]:
+def shots(n: int = 26, bad_speaker: bool = False) -> list[dict]:
     out = []
     for i in range(n):
         speaker = ("Stranger" if bad_speaker and i == 2 else ["Lena", "Adrian"][i % 2]) if i % 4 != 3 else ""
         out.append({"shot": ["close_up", "over_shoulder", "medium", "insert"][i % 4],
                     "location": ["Ward 7", "Chapel"][i % 2], "characters": ["Lena", "Adrian"] if i % 4 != 3 else [],
                     "action": "Lena stares at the ring", "speaker": speaker,
-                    "line": f"Line number {i} is said here." if speaker else "",
+                    "line": f"Line number {i} is said here, slowly, with a little weight." if speaker else "",
                     "emotion": "tense", "inner_voice": i == 2, "motion": i == 5})
     return out
 
 
-def episode(n: int = 14, **kw) -> dict:
+def episode(n: int = 26, **kw) -> dict:
     s = shots(n, **kw)
     return {"title": "The Ring", "hook_line": s[0]["line"], "cliffhanger": "You married a dead man.", "shots": s}
 
@@ -110,7 +110,7 @@ class ProductionTests(unittest.TestCase):
             probe = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
                                     "stream=width,height", "-of", "csv=p=0", str(video)], capture_output=True, text=True)
             self.assertEqual(probe.stdout.strip(), "270,480")  # vertical 9:16
-            self.assertEqual(meta["shots"], 14)
+            self.assertEqual(meta["shots"], 26)
             self.assertEqual(meta["moving_shots"], 1)
             self.assertEqual(set(meta["voices"]), {"Lena", "Adrian"})
             self.assertNotEqual(meta["voices"]["Lena"], meta["voices"]["Adrian"])
