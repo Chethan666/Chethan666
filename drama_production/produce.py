@@ -295,7 +295,8 @@ class Producer:
         cache = self.assets / "episodes" / f"{row['number']:02d}"
         cache.mkdir(parents=True, exist_ok=True)
         costs = Costs(self.conn, self.d, float(self.d.get("max_usd_per_episode", 3.0)))
-        refs = self.references(series["id"], bible, costs)
+        # References are made once for the whole series, so they are logged but don't use this episode's cap.
+        refs = self.references(series["id"], bible, Costs(self.conn, self.d, 0.0))
 
         # Pictures for every shot, in parallel.
         def picture(job: tuple[int, dict[str, Any]]) -> Path:
