@@ -150,6 +150,7 @@ class BosonVoice:
         """Which voice names the API accepts, by speaking a short line with each (the preview is free).
         A wrong name's error usually lists the valid ones, so one deliberate miss is included."""
         found: dict[str, str] = {}
+        reference = b""
         for name in [""] + list(names) + ["not-a-voice-xyz"]:
             body: dict[str, Any] = {"model": self.model, "input": text, "response_format": "wav"}
             if name:
@@ -158,6 +159,18 @@ class BosonVoice:
                 audio = _request(f"{self.URL}/speech", method="POST", headers=self.headers, body=body,
                                  timeout=120, raw=True)
                 found[name or "(default)"] = f"OK, {len(audio)} bytes"
+                reference = reference or audio
             except MediaError as exc:
                 found[name or "(default)"] = f"refused: {str(exc)[-400:]}"
+        if reference:  # cloning: the default voice's own audio as the reference, in two encodings
+            raw = base64.b64encode(reference).decode()
+            for label, value in (("clone base64", raw), ("clone data-uri", "data:audio/wav;base64," + raw)):
+                body = {"model": self.model, "input": "Someone has been sleeping in my bed.",
+                        "response_format": "wav", "ref_audio": value, "ref_text": text}
+                try:
+                    audio = _request(f"{self.URL}/speech", method="POST", headers=self.headers, body=body,
+                                     timeout=180, raw=True)
+                    found[label] = f"OK, {len(audio)} bytes"
+                except MediaError as exc:
+                    found[label] = f"refused: {str(exc)[-400:]}"
         return found
