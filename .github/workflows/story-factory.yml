@@ -4,6 +4,10 @@
 #   mode=story: also researches Wikipedia and generates one real story
 #   mode=bench: blind-compares the writing of `config` against `bench_against` on fixed pitches
 #   mode=recheck: runs the legend recognition test on approved retellings that never had it
+#   mode=drama-check: lists what each configured fal.ai model expects, and the Boson voices (no spend)
+#   mode=drama-series: writes a new short-drama series bible
+#   mode=drama-write: writes the next episodes (story_id = how many, default 3)
+#   mode=drama-video: makes the next approved episode's vertical video (story_id = an episode id), saved as drama-<run>
 #   mode=video: pipeline 2 turns the next approved story (or story_id) into a video, saved as
 #               an artifact named video-<run number> for 14 days
 # The story database carries over between runs (saved as an artifact, restored at the
@@ -18,7 +22,7 @@ on:
       mode:
         description: "check = tests and model access only; story = generate one story; video = make the next approved story's video; bench = compare two model setups; recheck = re-check approved legends"
         type: choice
-        options: [check, story, video, bench, recheck]
+        options: [check, story, video, drama-check, drama-series, drama-write, drama-video, bench, recheck]
         default: check
       series:
         description: Series to generate in story mode
@@ -44,7 +48,7 @@ on:
         options: [config.aws-open.toml, config.aws-top.toml, config.aws-only.toml, config.example.toml]
         default: config.example.toml
       story_id:
-        description: "video mode: a story number to render (default: the next approved story)"
+        description: "video: a story number; drama-video: an episode id; drama-write: how many episodes (default 3)"
         type: string
         default: ""
       overrides:
@@ -75,6 +79,8 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      FAL_KEY: ${{ secrets.FAL_KEY }}
+      BOSON_API_KEY: ${{ secrets.BOSON_API_KEY }}
       MODE: ${{ inputs.mode }}
       SERIES: ${{ inputs.series }}
       CONFIG: ${{ inputs.config }}
@@ -121,7 +127,7 @@ jobs:
           fi
 
       - name: Restore the story database from the last run
-        if: env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video'
+        if: env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video' || startsWith(env.MODE, 'drama-')
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -139,14 +145,14 @@ jobs:
           python -m story_factory --config "$CONFIG" "${SETS[@]}" generate "$SERIES"
 
       - name: Cache the narrator voice model
-        if: env.MODE == 'video'
+        if: env.MODE == 'video' || env.MODE == 'drama-video'
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
           key: kokoro-82m-v1
 
       - name: Install video tools
-        if: env.MODE == 'video'
+        if: env.MODE == 'video' || env.MODE == 'drama-video'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
@@ -170,6 +176,31 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
+      - name: Short drama series
+        if: startsWith(env.MODE, 'drama-')
+        run: |
+          SETS=()
+          for kv in $OVERRIDES; do SETS+=(--set "$kv"); done
+          D=(python -m drama --config "$CONFIG" "${SETS[@]}")
+          case "$MODE" in
+            drama-check)  "${D[@]}" check ;;
+            drama-series) "${D[@]}" series ;;
+            drama-write)  "${D[@]}" write --count "${STORY_ID:-3}" ;;
+            drama-video)  if [ -n "$STORY_ID" ]; then "${D[@]}" produce --episode "$STORY_ID"; else "${D[@]}" produce; fi ;;
+          esac 2>&1 | tee drama-output.txt
+          status=${PIPESTATUS[0]}
+          { echo "## $MODE"; echo '```'; tail -c 60000 drama-output.txt; echo '```'; "${D[@]}" status; } >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+
+      - name: Save the episode video
+        if: always() && env.MODE == 'drama-video'
+        uses: actions/upload-artifact@v6
+        with:
+          name: drama-${{ github.run_number }}
+          path: out/
+          retention-days: 14
+          if-no-files-found: ignore
+
       - name: Re-check approved retold legends
         if: env.MODE == 'recheck'
         run: python -m story_factory --config "$CONFIG" recheck | tee -a "$GITHUB_STEP_SUMMARY"
@@ -189,7 +220,7 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Save the story database
-        if: always() && (env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video')
+        if: always() && (env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video' || startsWith(env.MODE, 'drama-'))
         uses: actions/upload-artifact@v6
         with:
           # The next run restores the newest one; each run re-saves it, so it never expires in use.

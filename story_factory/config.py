@@ -206,6 +206,40 @@ DEFAULTS: dict[str, Any] = {
     # voices: am_michael, am_fenrir, am_onyx, bm_george, bm_lewis... lang "a" is US
     # English, "b" British English.
     "video": {"voice": "am_michael", "lang": "a", "speed": 0.92},
+    # Short drama series (vertical 9:16 episodes told in dialogue). Model names are fal.ai
+    # endpoint ids; check them with `python -m drama check` before spending anything.
+    "drama": {
+        "genre": "supernatural thriller",
+        "episodes_per_series": 12,
+        "episode_seconds": 90,
+        "min_score": 7,
+        "models": {
+            "portrait": "fal-ai/bytedance/seedream/v4/text-to-image",
+            "shot": "fal-ai/bytedance/seedream/v4/edit",
+            "motion": "fal-ai/bytedance/seedance/v1/lite/image-to-video",
+        },
+        "model_args": {
+            "portrait": {"image_size": {"width": 1080, "height": 1920}, "num_images": 1},
+            "shot": {"image_size": {"width": 1080, "height": 1920}, "num_images": 1},
+            "motion": {"duration": "5", "resolution": "720p"},
+        },
+        # Estimated USD per picture, or per second of moving clip (third-party figures;
+        # check fal.ai's pricing pages). The cap stops moving clips, not the episode.
+        "prices": {
+            "fal-ai/bytedance/seedream/v4/text-to-image": 0.03,
+            "fal-ai/bytedance/seedream/v4/edit": 0.03,
+            "fal-ai/bytedance/seedance/v1/lite/image-to-video": 0.036,
+        },
+        "max_usd_per_episode": 3.0,
+        "max_motion_shots": 3,
+        "parallel_images": 4,
+        # Voices: Kokoro (free) unless Boson voice ids are listed by gender, e.g.
+        # boson_voices = {female = ["..."], male = ["..."]} (see `python -m drama check`).
+        "boson_model": "higgs-tts-3",
+        "boson_voices": {},
+        "voices": {},
+        "keep_work": False,
+    },
     "dedup": {
         "title_similarity": 0.85,
         "synopsis_lexical_similarity": 0.30,

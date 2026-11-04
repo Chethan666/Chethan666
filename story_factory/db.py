@@ -118,6 +118,32 @@ CREATE TABLE IF NOT EXISTS learnings (
     insights TEXT NOT NULL
 );
 
+-- Short-form drama series (vertical micro-drama): one bible, many short episodes.
+CREATE TABLE IF NOT EXISTS series (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL,
+    genre TEXT,
+    status TEXT NOT NULL,            -- active | finished | rejected
+    bible TEXT NOT NULL,             -- JSON: premise, cast with fixed looks and voices, arc, outlines
+    review TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS episodes (
+    id INTEGER PRIMARY KEY,
+    series_id INTEGER NOT NULL REFERENCES series (id),
+    number INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    status TEXT NOT NULL,            -- approved | rejected | produced | published
+    script TEXT NOT NULL,            -- JSON: scenes of shots with speaker lines
+    review TEXT,
+    production TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE (series_id, number)
+);
+
 CREATE TABLE IF NOT EXISTS costs (
     id INTEGER PRIMARY KEY,
     at TEXT NOT NULL,
