@@ -14,11 +14,17 @@ SHOTS        (fal.ai, reference-based editing) every shot's picture from those r
              framed as the script asks: establishing, close-up, over-the-shoulder, insert...
 MOTION       (fal.ai, image-to-video) real moving clips for the key beats, at most
              `max_motion_shots`, within `max_usd_per_episode`
-VOICES       one fixed voice per character: Boson Higgs TTS once its voices are listed in
-             `boson_voices`, otherwise Kokoro (free); thoughts are softer with a little room
+VOICES       one fixed voice per character, picked from Kokoro's voices by gender. With
+             BOSON_API_KEY set, Boson Higgs Audio v3 speaks every line, cloned from a short
+             clip of that voice (made once per series and kept with it), so each character
+             sounds the same in every episode; a refused line is read by Kokoro instead.
+             Thoughts are softer with a little room
 EDIT         a cut on every line like TV; slow camera moves on stills by framing; a film look
              (grade, vignette, grain); big subtitles (thoughts in italics); a sound bed
 → episode.mp4, thumbnail.png, metadata.json (the episode is marked produced)
+
+Paid pictures and clips for an episode are kept with the series until the episode is
+made, so a failed run never pays for them twice.
 ```
 
 ## Keys

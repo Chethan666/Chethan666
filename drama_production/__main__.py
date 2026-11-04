@@ -79,17 +79,15 @@ def main(argv: list[str] | None = None) -> int:
     if row is None:
         print("No approved episode waiting", file=sys.stderr)
         return 1
-    use_boson = args.voice == "boson" or (args.voice == "auto" and d.get("boson_voices") and os.environ.get("BOSON_API_KEY"))
-    if use_boson:
-        voices = BosonVoice(d["boson_model"])
-        if d.get("boson_voices"):
-            d["voice_pool"] = d["boson_voices"]
-    else:
-        from .voices import KokoroVoice
-        voices = KokoroVoice("am_michael", cfg["video"].get("lang", "a"), 1.0)
+    from .voices import KokoroVoice
+
+    voices = KokoroVoice("am_michael", cfg["video"].get("lang", "a"), 1.0)  # every character's fixed voice
+    boson = None
+    if args.voice == "boson" or (args.voice == "auto" and os.environ.get("BOSON_API_KEY")):
+        boson = BosonVoice(d["boson_model"])  # expressive delivery, cloned from each fixed voice
     assets = Path(cfg["database"]).parent / "series" / str(row["series_id"])
     try:
-        meta = Producer(conn, cfg, assets, Fal(), voices).produce(row["id"], Path(args.out))
+        meta = Producer(conn, cfg, assets, Fal(), voices, boson=boson).produce(row["id"], Path(args.out))
     except Exception as exc:  # record and report; the episode stays approved to retry
         log.exception("Episode production failed")
         conn.execute("UPDATE episodes SET production = ?, updated_at = ? WHERE id = ?",

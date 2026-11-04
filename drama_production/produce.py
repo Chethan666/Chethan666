@@ -47,6 +47,8 @@ FRAMING = {
 }
 KOKORO_VOICES = {"female": ["af_heart", "bf_emma", "af_nicole", "af_sarah", "bf_isabella", "af_bella"],
                  "male": ["am_michael", "bm_george", "am_fenrir", "bm_lewis", "am_puck", "am_echo"]}
+REFERENCE_TEXT = ("I have lived in this city my whole life, and I have never once seen the river this still. "
+                  "Tell me exactly what you saw, and don't leave anything out.")
 EMOTION_SPEED = {"whisper": 0.9, "sad": 0.92, "cold": 0.95, "calm": 0.97, "warm": 0.97, "pleading": 1.0,
                  "tense": 1.02, "mocking": 1.0, "afraid": 1.06, "angry": 1.08, "shocked": 1.05}
 
@@ -107,13 +109,15 @@ def shot_prompt(shot: dict[str, Any], bible: dict[str, Any]) -> str:
 
 class Producer:
     def __init__(self, conn: Any, cfg: dict, assets: Path, fal: Fal | None, voices: Any,
-                 size: tuple[int, int] = (W, H)):
+                 size: tuple[int, int] = (W, H), boson: BosonVoice | None = None):
         self.conn, self.cfg = conn, cfg
         self.w, self.h = size
         self.d = cfg.get("drama_video", {})
         self.assets = assets.resolve()  # FFmpeg runs inside the work folder: every path must be absolute
         self.fal = fal
-        self.voices = voices
+        self.voices = voices  # Kokoro (or the silent stand-in): every character's fixed voice
+        self.boson = boson  # when set, speaks every line, cloned from that fixed voice
+        self.boson_failures = 0
         self.models = self.d.get("models", {})
         self.args = self.d.get("model_args", {})
 
@@ -174,7 +178,7 @@ class Producer:
     def cast_voices(self, bible: dict[str, Any]) -> dict[str, str]:
         """One fixed voice per character: configured ones first, then a pool by gender."""
         chosen = dict(self.d.get("voices", {}))
-        pools = {k: list(v) for k, v in (self.d.get("voice_pool") or KOKORO_VOICES).items()}
+        pools = {k: list(v) for k, v in KOKORO_VOICES.items()}
         used = set(chosen.values())
         for c in bible.get("cast", []):
             if c["name"] in chosen:
@@ -185,12 +189,27 @@ class Producer:
             used.add(pick)
         return chosen
 
+    def reference(self, voice: str) -> Path:
+        """A short clip of a character's fixed voice, made once per series, for Boson to clone."""
+        path = self.assets / "voices" / f"{slug(voice)}.wav"
+        if not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            self.voices.voice = voice
+            soundfile.write(path, self.voices.say(REFERENCE_TEXT, 1.0), self.voices.sample_rate)
+        return path
+
     def line_audio(self, shot: dict[str, Any], voice: str, path: Path) -> tuple[np.ndarray, int]:
         text = str(shot.get("line", "")).strip()
-        if isinstance(self.voices, BosonVoice):
-            self.voices.speak(text, voice or None, path)
-            audio, rate = soundfile.read(path, dtype="float32", always_2d=False)
-        else:
+        audio = None
+        if self.boson is not None:
+            try:
+                self.boson.speak(text, None, path, reference=(self.reference(voice), REFERENCE_TEXT))
+                audio, rate = soundfile.read(path, dtype="float32", always_2d=False)
+            except (MediaError, RuntimeError) as exc:  # one refused line is read by the fixed voice instead
+                self.boson_failures += 1
+                log.warning("Boson refused a line; the fixed voice reads it: %s", exc)
+                audio = None
+        if audio is None:
             self.voices.voice = voice
             audio = self.voices.say(text, EMOTION_SPEED.get(str(shot.get("emotion", "")), 1.0))
             rate = self.voices.sample_rate
@@ -302,7 +321,8 @@ class Producer:
         meta = {"series": series["title"], "episode": row["number"], "title": script.get("title"),
                 "hook_line": script.get("hook_line"), "cliffhanger": script.get("cliffhanger"),
                 "seconds": round(sum(durations), 1), "shots": len(shots), "moving_shots": len(moving),
-                "voices": voices, "estimated_media_usd": round(costs.spent, 2)}
+                "voices": voices, "voice_engine": "boson (cloned)" if self.boson else "kokoro",
+                "boson_lines_refused": self.boson_failures, "estimated_media_usd": round(costs.spent, 2)}
         (out / "metadata.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False))
         if not self.d.get("keep_work"):
             shutil.rmtree(work, ignore_errors=True)

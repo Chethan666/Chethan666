@@ -132,12 +132,24 @@ class BosonVoice:
     def headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self.key}"}
 
-    def speak(self, text: str, voice: str | None, path: Path) -> Path:
+    def speak(self, text: str, voice: str | None, path: Path, reference: tuple[Path, str] | None = None,
+              tries: int = 3) -> Path:
+        """Speak `text` in a preset `voice`, or cloned from `reference` (a short clip and its words)."""
         body: dict[str, Any] = {"model": self.model, "input": text, "response_format": "wav"}
-        if voice:
+        if reference is not None:
+            body["ref_audio"] = base64.b64encode(reference[0].read_bytes()).decode()
+            body["ref_text"] = reference[1]
+        elif voice:
             body["voice"] = voice
-        path.write_bytes(_request(f"{self.URL}/speech", method="POST", headers=self.headers, body=body,
-                                  timeout=300, raw=True))
+        for attempt in range(tries):
+            try:
+                path.write_bytes(_request(f"{self.URL}/speech", method="POST", headers=self.headers, body=body,
+                                          timeout=300, raw=True))
+                return path
+            except MediaError as exc:  # the public preview is rate limited: wait and try again
+                if attempt == tries - 1 or not any(f"HTTP {c}" in str(exc) for c in (429, 500, 502, 503, 504)):
+                    raise
+                time.sleep(5 * 3 ** attempt)
         return path
 
     def voices(self) -> Any:

@@ -156,6 +156,44 @@ class ProductionTests(unittest.TestCase):
             os.chdir(here)
             shutil.rmtree(root, ignore_errors=True)
 
+    def test_boson_speaks_every_line_cloned_from_each_characters_fixed_voice(self):
+        import numpy as np
+        import soundfile
+
+        from drama_production.media import MediaError
+        from drama_production.produce import REFERENCE_TEXT, Producer
+        from drama_production.voices import SilentVoice
+
+        class FakeBoson:
+            def __init__(self):
+                self.calls = []
+
+            def speak(self, text, voice, path, reference=None):
+                self.calls.append((text, reference))
+                if len(self.calls) == 3:
+                    raise MediaError("HTTP 429: slow down")
+                soundfile.write(path, np.zeros(8000, dtype=np.float32), 16000)  # a different rate
+                return path
+
+        ctx, _ = make_context()
+        _, episode_id = add_episode(ctx.conn)
+        root = Path(tempfile.mkdtemp())
+        try:
+            boson = FakeBoson()
+            producer = Producer(ctx.conn, ctx.cfg, root / "assets", FakeFal(root), SilentVoice(), size=(270, 480),
+                                boson=boson)
+            meta = producer.produce(episode_id, root / "out")
+            spoken = [s for s in episode()["shots"] if s["line"]]
+            self.assertEqual(len(boson.calls), len(spoken))
+            references = {ref[0].name for _, ref in boson.calls}
+            self.assertEqual(len(references), 2)  # one clip per character, made once
+            self.assertTrue(all(ref[1] == REFERENCE_TEXT for _, ref in boson.calls))
+            self.assertEqual(meta["boson_lines_refused"], 1)  # that line was read by the fixed voice
+            self.assertEqual(meta["voice_engine"], "boson (cloned)")
+            self.assertTrue((root / "assets" / "voices").is_dir())
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
     def test_subtitles_mark_thoughts(self):
         from drama_production.produce import subtitles
 

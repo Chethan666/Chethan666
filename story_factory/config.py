@@ -263,10 +263,9 @@ DEFAULTS: dict[str, Any] = {
         "max_usd_per_episode": 3.0,
         "max_motion_shots": 3,
         "parallel_images": 4,
-        # Voices: Kokoro (free) unless Boson voice ids are listed by gender, e.g.
-        # boson_voices = {female = ["..."], male = ["..."]} (see the check).
-        "boson_model": "higgs-audio-v3-tts",
-        "boson_voices": {},
+        # Voices: every character gets a fixed Kokoro voice (free). With BOSON_API_KEY set,
+        # Boson speaks every line, cloned from a short clip of that voice (kept with the series),
+        # for more expressive acting; a refused line falls back to Kokoro.
         # Names `check` tries against the API (it reports which ones it accepts).
         "boson_probe_voices": ["jake", "emma", "belinda", "mabel", "chadwick", "vex", "en_man", "en_woman"],
         "voices": {},
