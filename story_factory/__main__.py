@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import tomllib
 import logging
 import random
 import sys
@@ -30,6 +31,28 @@ def _story_json(row) -> dict:
 
 PING_SCHEMA = {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"],
                "additionalProperties": False}
+
+
+def apply_overrides(cfg: dict, items: list[str]) -> dict:
+    """`section.key=value` pairs; the value is read as TOML (8, true, "text") or else as text."""
+    for item in items:
+        key, sep, raw = item.partition("=")
+        if not sep or not key.strip():
+            raise SystemExit(f"--set needs KEY=VALUE, got {item!r}")
+        try:
+            value = tomllib.loads(f"v = {raw.strip()}")["v"]
+        except tomllib.TOMLDecodeError:
+            value = raw.strip()
+        *path, last = key.strip().split(".")
+        node = cfg
+        for part in path:
+            if not isinstance(node.get(part), dict):
+                raise SystemExit(f"--set: unknown config section {part!r}")
+            node = node[part]
+        if last not in node:
+            raise SystemExit(f"--set: unknown config key {key!r}")
+        node[last] = value
+    return cfg
 
 
 def report(conn, row) -> str:
@@ -86,6 +109,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="story_factory", description="Hollow Lines story pipeline")
     parser.add_argument("--config", help="TOML config file (default: ./config.toml if present)")
     parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
+                        help="override one config value for this run, e.g. --set quality.min_score=8")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("init", help="create the database and seed the story world")
@@ -131,7 +156,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
-    cfg = load_config(args.config)
+    cfg = apply_overrides(load_config(args.config), args.set)
 
     if args.command == "init":
         db.connect(cfg["database"])

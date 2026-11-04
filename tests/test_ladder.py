@@ -339,5 +339,17 @@ class SceneCastTests(unittest.TestCase):
         self.assertEqual(scenes[0]["characters"], ["Delano Marchetti", "The Storyteller"])
 
 
+
+class OverrideTests(unittest.TestCase):
+    def test_set_overrides_one_value(self):
+        from story_factory.__main__ import apply_overrides
+        from tests.fakes import test_config
+        cfg = apply_overrides(test_config(), ["quality.min_score=8", "quality.surprise_test=false"])
+        self.assertEqual(cfg["quality"]["min_score"], 8)
+        self.assertIs(cfg["quality"]["surprise_test"], False)
+        with self.assertRaises(SystemExit):
+            apply_overrides(test_config(), ["quality.no_such_key=1"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -37,6 +37,10 @@ on:
         type: choice
         options: [config.aws-open.toml, config.aws-only.toml, config.example.toml]
         default: config.example.toml
+      overrides:
+        description: "Optional config overrides, space-separated KEY=VALUE (e.g. quality.min_score=8)"
+        type: string
+        default: ""
       bench_pitches:
         description: "bench mode: how many fixed pitches (1-3)"
         type: choice
@@ -67,6 +71,7 @@ jobs:
       PING_MODELS: ${{ inputs.ping_models }}
       BENCH_AGAINST: ${{ inputs.bench_against }}
       BENCH_PITCHES: ${{ inputs.bench_pitches }}
+      OVERRIDES: ${{ inputs.overrides }}
     steps:
       - uses: actions/checkout@v5
 
@@ -116,7 +121,10 @@ jobs:
 
       - name: Generate one story
         if: env.MODE == 'story'
-        run: python -m story_factory --config "$CONFIG" generate "$SERIES"
+        run: |
+          SETS=()
+          for kv in $OVERRIDES; do SETS+=(--set "$kv"); done
+          python -m story_factory --config "$CONFIG" "${SETS[@]}" generate "$SERIES"
 
       - name: Re-check approved retold legends
         if: env.MODE == 'recheck'

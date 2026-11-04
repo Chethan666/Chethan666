@@ -1618,7 +1618,7 @@ def ending_lab(ctx: Context, story: Story, script: dict[str, Any]) -> dict[str, 
     except LLMError as exc:
         log.warning("Ending lab skipped: %s", exc)
         return script
-    limit = 2 * len(ending.split()) + 10
+    limit = 3 * len(ending.split()) + 20  # a fuller ending is fine; a new story isn't
     offered = [e.strip() for e in result.get("endings", []) if isinstance(e, str) and e.strip()]
     candidates = [ending] + list(dict.fromkeys(e for e in offered if e != ending and len(e.split()) <= limit))
     if len(candidates) == 1:

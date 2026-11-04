@@ -139,6 +139,10 @@ the story bible, writing in parts and the bible check.
 saved (an Actions artifact kept 90 days and re-saved every run), so repeat prevention, the
 shelf, the shared world and the hero history all carry over.
 
+**One-off overrides**: `--set section.key=value` changes one config value for a run, e.g.
+`python -m story_factory --set quality.min_score=8 generate sixty_seconds` (workflow input
+`overrides`, space-separated).
+
 **Re-checking legends**: `python -m story_factory recheck` (workflow mode `recheck`) runs the
 recognition test on approved retellings that never had it. One that most judges don't
 recognize goes back to `rejected` with its script kept, and its legend is free to be retold.
