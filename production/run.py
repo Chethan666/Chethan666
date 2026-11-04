@@ -43,6 +43,7 @@ def produce(story: dict[str, Any], out_dir: Path, narrator: voice.Voice, router:
     `options` is the config's [video] section; `animator` turns chosen scenes into moving clips."""
     options = options or {}
     started = time.time()
+    out_dir = out_dir.resolve()  # FFmpeg runs inside the work folder: every path must be absolute
     out_dir.mkdir(parents=True, exist_ok=True)
     work = out_dir / "work"
     work.mkdir(exist_ok=True)

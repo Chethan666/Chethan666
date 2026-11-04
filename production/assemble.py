@@ -82,7 +82,7 @@ def moving_clip(work: Path, index: int, seconds: float, camera: str, light: str,
     flicker = ",eq=eval=frame:brightness='-0.07*gt(random(1),0.82)'" if light == "flicker" else ""
     end_fade = f",fade=t=out:st={max(played - fade, 0):.2f}:d={fade:.2f}" if played >= seconds - 0.05 else ""
     head = f"moving_{index:03d}.mp4"
-    _run(["-i", str(video), "-vf", f"setpts={stretch:.4f}*PTS,{fill},fps={FPS}{flicker},"
+    _run(["-i", str(video.resolve()), "-vf", f"setpts={stretch:.4f}*PTS,{fill},fps={FPS}{flicker},"
           f"fade=t=in:st=0:d={fade:.2f}{end_fade},format=yuv420p", "-t", f"{played:.3f}", "-an",
           "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-threads", "2", "-r", str(FPS), head], work)
     rest = seconds - played

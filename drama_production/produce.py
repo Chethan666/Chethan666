@@ -10,6 +10,7 @@ subtitles and a sound bed.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -110,7 +111,7 @@ class Producer:
         self.conn, self.cfg = conn, cfg
         self.w, self.h = size
         self.d = cfg.get("drama_video", {})
-        self.assets = assets
+        self.assets = assets.resolve()  # FFmpeg runs inside the work folder: every path must be absolute
         self.fal = fal
         self.voices = voices
         self.models = self.d.get("models", {})
@@ -236,16 +237,22 @@ class Producer:
         series = self.conn.execute("SELECT * FROM series WHERE id = ?", (row["series_id"],)).fetchone()
         bible, script = json.loads(series["bible"]), json.loads(row["script"])
         shots = script.get("shots") or []
-        out = out_root / f"series-{series['id']}-ep-{row['number']:02d}"
+        out = out_root.resolve() / f"series-{series['id']}-ep-{row['number']:02d}"
         work = out / "work"
         work.mkdir(parents=True, exist_ok=True)
+        # Paid media for this episode is kept with the series until the episode is made, so a
+        # failed run never pays for the same picture or clip twice. Names carry a hash of what
+        # was asked for, so a rewritten shot gets a new picture.
+        cache = self.assets / "episodes" / f"{row['number']:02d}"
+        cache.mkdir(parents=True, exist_ok=True)
         costs = Costs(self.conn, self.d, float(self.d.get("max_usd_per_episode", 3.0)))
         refs = self.references(series["id"], bible, costs)
 
         # Pictures for every shot, in parallel.
         def picture(job: tuple[int, dict[str, Any]]) -> Path:
             i, shot = job
-            return self.picture(shot, bible, refs, work / f"shot_{i:03d}.png", costs)
+            path = cache / f"shot_{i:03d}_{_digest(shot_prompt(shot, bible), shot.get('characters'))}.png"
+            return path if path.exists() else self.picture(shot, bible, refs, path, costs)
 
         with ThreadPoolExecutor(max_workers=int(self.d.get("parallel_images", 4))) as pool:
             pictures = list(pool.map(picture, enumerate(shots)))
@@ -253,7 +260,8 @@ class Producer:
         moving: dict[int, Path] = {}
         wanted = [i for i, s in enumerate(shots) if s.get("motion")][: int(self.d.get("max_motion_shots", 3))]
         for i in wanted:
-            clip = self.motion(shots[i], pictures[i], work / f"motion_{i:03d}.mp4", costs)
+            target = cache / f"motion_{i:03d}_{_digest(shots[i].get('action'), pictures[i].name)}.mp4"
+            clip = target if target.exists() else self.motion(shots[i], pictures[i], target, costs)
             if clip is not None:
                 moving[i] = clip
 
@@ -298,7 +306,12 @@ class Producer:
         (out / "metadata.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False))
         if not self.d.get("keep_work"):
             shutil.rmtree(work, ignore_errors=True)
+            shutil.rmtree(cache, ignore_errors=True)  # made: the video holds it now
         return meta
+
+
+def _digest(*parts: Any) -> str:
+    return hashlib.sha1(json.dumps(parts, sort_keys=True, default=str).encode()).hexdigest()[:10]
 
 
 def subtitles(shots: list[dict[str, Any]], starts: list[float], durations: list[float],

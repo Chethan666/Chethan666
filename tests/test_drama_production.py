@@ -128,6 +128,34 @@ class ProductionTests(unittest.TestCase):
         finally:
             shutil.rmtree(root, ignore_errors=True)
 
+    def test_relative_folders_work_and_a_retry_after_a_failure_pays_for_nothing_again(self):
+        import os
+        from unittest import mock
+
+        from drama_production.produce import Producer
+        from drama_production.voices import SilentVoice
+
+        ctx, _ = make_context()
+        _, episode_id = add_episode(ctx.conn)
+        root = Path(tempfile.mkdtemp())
+        here = os.getcwd()
+        try:
+            os.chdir(root)  # the workflow passes relative folders
+            fal = FakeFal(root)
+            producer = Producer(ctx.conn, ctx.cfg, Path("data/series/1"), fal, SilentVoice(), size=(270, 480))
+            with mock.patch.object(Producer, "clip", side_effect=RuntimeError("the edit broke")):
+                with self.assertRaises(RuntimeError):
+                    producer.produce(episode_id, Path("out"))
+            paid = len(fal.calls)
+            self.assertGreater(paid, 0)
+            producer.produce(episode_id, Path("out"))
+            self.assertEqual(len(fal.calls), paid)  # pictures and clips came from the episode's cache
+            self.assertTrue((root / "out" / "series-1-ep-01" / "episode.mp4").exists())
+            self.assertFalse((root / "data/series/1/episodes/01").exists())  # cleared once the episode is made
+        finally:
+            os.chdir(here)
+            shutil.rmtree(root, ignore_errors=True)
+
     def test_subtitles_mark_thoughts(self):
         from drama_production.produce import subtitles
 

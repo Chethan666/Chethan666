@@ -206,14 +206,19 @@ class WholeVideoTests(unittest.TestCase):
                                "yuv420p", "gen.mp4"], work)
                 return {2: work / "gen.mp4"}
 
+        import os
+        here = os.getcwd()
         try:
-            summary = run.produce(story, out, voice.SilentVoice(), None, "360", animator=FakeAnimator())
+            os.chdir(out)  # relative folders, as in the workflow
+            summary = run.produce(story, Path("made"), voice.SilentVoice(), None, "360", animator=FakeAnimator())
+            out = out / "made"
             self.assertEqual(summary["moving_scenes"], [2])
             self.assertEqual(summary["quoted_lines"], 1)
             self.assertIn("Marisol", summary["character_voices"])
             self.assertTrue((out / "video.mp4").stat().st_size > 0)
         finally:
-            shutil.rmtree(out, ignore_errors=True)
+            os.chdir(here)
+            shutil.rmtree(out.parent if out.name == "made" else out, ignore_errors=True)
 
 
 @unittest.skipUnless(HAVE_VIDEO_LIBS and shutil.which("ffmpeg"), "needs the video libraries and FFmpeg")
