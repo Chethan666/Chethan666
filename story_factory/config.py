@@ -266,6 +266,7 @@ DEFAULTS: dict[str, Any] = {
         # Voices: every character gets a fixed Kokoro voice (free). With BOSON_API_KEY set,
         # Boson speaks every line, cloned from a short clip of that voice (kept with the series),
         # for more expressive acting; a refused line falls back to Kokoro.
+        "boson_model": "higgs-audio-v3-tts",
         # Names `check` tries against the API (it reports which ones it accepts).
         "boson_probe_voices": ["jake", "emma", "belinda", "mabel", "chadwick", "vex", "en_man", "en_woman"],
         "voices": {},

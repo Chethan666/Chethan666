@@ -194,6 +194,14 @@ class ProductionTests(unittest.TestCase):
         finally:
             shutil.rmtree(root, ignore_errors=True)
 
+    def test_the_default_config_has_every_setting_the_command_line_reads(self):
+        from story_factory.config import load_config
+
+        d = load_config(None)["drama_video"]
+        for key in ("models", "model_args", "prices", "max_usd_per_episode", "max_motion_shots", "boson_model"):
+            self.assertIn(key, d)
+        self.assertEqual(d["boson_model"], "higgs-audio-v3-tts")
+
     def test_subtitles_mark_thoughts(self):
         from drama_production.produce import subtitles
 
