@@ -401,6 +401,12 @@ class BacklogTests(unittest.TestCase):
         self.assertEqual(len({r["title_norm"] for r in live}), len(live))
         self.assertEqual(len({r["recipe_sig"] for r in live}), len(live))
 
+    def test_fill_writes_no_shorts_by_default(self):
+        ctx, _ = make_context()
+        ctx.cfg["backlog"] = dict(ctx.cfg["backlog"], hollow_world=1, legends_retold=0)
+        outcomes = pipeline.fill_backlog(ctx, max_new=5)
+        self.assertEqual([o.series for o in outcomes], ["hollow_world"])
+
     def test_fill_stops_at_budget(self):
         ctx, brain = make_context()
 

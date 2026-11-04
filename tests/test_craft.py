@@ -313,6 +313,7 @@ class ScenePlanRepairTests(unittest.TestCase):
 class ChannelGrowthTests(unittest.TestCase):
     def test_long_episodes_get_a_teaser_short_with_scenes(self):
         ctx, brain = make_context()
+        ctx.cfg["quality"]["teaser_shorts"] = True
         outcome = pipeline.generate_story(ctx, "hollow_world")
         packaging = json.loads(db.get_story(ctx.conn, outcome.story_id)["packaging"])
         teaser = packaging["teaser_short"]
@@ -323,11 +324,18 @@ class ChannelGrowthTests(unittest.TestCase):
 
     def test_a_broken_teaser_is_left_out_without_blocking(self):
         ctx, brain = make_context()
+        ctx.cfg["quality"]["teaser_shorts"] = True
         brain.overrides["teaser_short"] = lambda prompt, spec: {"body": "Too short.", "outro": "No question."}
         outcome = pipeline.generate_story(ctx, "hollow_world")
         self.assertEqual(outcome.status, "approved", outcome.detail)
         self.assertIsNone(json.loads(db.get_story(ctx.conn, outcome.story_id)["packaging"])["teaser_short"])
         self.assertEqual(len(brain.tasks("teaser_short")), 2)
+
+    def test_teasers_are_off_by_default_while_shorts_are_off(self):
+        ctx, brain = make_context()
+        outcome = pipeline.generate_story(ctx, "hollow_world")
+        self.assertNotIn("teaser_short", json.loads(db.get_story(ctx.conn, outcome.story_id)["packaging"]))
+        self.assertEqual(brain.tasks("teaser_short"), [])
 
     def test_shorts_get_no_teaser(self):
         ctx, brain = make_context()

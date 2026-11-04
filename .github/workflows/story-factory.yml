@@ -21,8 +21,8 @@ on:
       series:
         description: Series to generate in story mode
         type: choice
-        options: [sixty_seconds, hollow_world, legends_retold]
-        default: sixty_seconds
+        options: [hollow_world, legends_retold]
+        default: hollow_world
       ping_models:
         description: Optional comma-separated provider:model list to test instead of the configured roles
         type: string

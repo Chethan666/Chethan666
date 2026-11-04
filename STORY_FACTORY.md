@@ -82,7 +82,10 @@ Its goal is the best possible story, not the cheapest. Every step either creates
                     → APPROVED, waiting for pipeline 2
 ```
 
-Shorts go through the same room with shorter targets.
+Shorts are switched off for now: the backlog asks for no standalone Shorts
+(`[backlog] sixty_seconds = 0`) and long episodes get no teaser Short
+(`teaser_shorts = false`). The Shorts code is kept and tested, so setting either back
+turns them on again; they go through the same room with shorter targets.
 
 ## Who does what
 

@@ -79,7 +79,8 @@ DEFAULTS: dict[str, Any] = {
         # Approved stories to keep ready for the production pipeline.
         "hollow_world": 4,
         "legends_retold": 2,
-        "sixty_seconds": 8,
+        # Shorts are switched off for now: no standalone Shorts are written.
+        "sixty_seconds": 0,
     },
     "lengths": {
         # About 140 spoken words per minute: 1,200 words is roughly 8.5 minutes.
@@ -128,8 +129,8 @@ DEFAULTS: dict[str, Any] = {
         # Packaging limits: a thumbnail must read at phone size.
         "thumbnail_brief_max_words": 45,
         "thumbnail_text_max_words": 4,
-        # Every long episode also gets a 60-second teaser Short pointing to it.
-        "teaser_shorts": True,
+        # A 60-second teaser Short pointing to each long episode (off while Shorts are off).
+        "teaser_shorts": False,
         # Recent heroes the story bible must differ from.
         "recent_heroes": 12,
         # Long episodes: every writer plans (story bible + outline) and judges pick the
