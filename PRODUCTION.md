@@ -86,9 +86,10 @@ Nothing goes to YouTube until a person has watched it:
    in `overrides`).
 3. Run **mode = video-publish** with the story's number. It uploads the video as **private**
    with its title, description and chapters, tags, captions, first thumbnail and the comment
-   question. Put a time in `overrides` (e.g. `2026-11-20T17:00:00Z`) to schedule it instead.
-   In YouTube Studio: pin the comment, add the end-screen elements over the last 20 s, start
-   a Test & Compare with the other two thumbnails, and upload the Shorts.
+   question, and the Shorts (private too, each linking to the full video). Put a time in
+   `overrides` (e.g. `2026-11-20T17:00:00Z`) to schedule them instead. In YouTube Studio: pin
+   the comment, add the end-screen elements over the last 20 s, and start a Test & Compare
+   with the other two thumbnails.
 4. **mode = video-stats** reads every published video's views, likes, comments and average
    view percentage into the performance table that the story factory learns from.
 
@@ -181,5 +182,3 @@ English; `"b"` is British), `speed = 0.92`.
 ## Later
 
 - A daily scheduled run of `video-stats`, once videos are live.
-- Uploading the Shorts automatically (they are made with every video; for now they are
-  uploaded by hand from YouTube Studio or the app).

@@ -152,4 +152,17 @@ def publish(yt: YouTube, folder: Path, privacy: str = "private", publish_at: str
         except YouTubeError as exc:  # the video is up; a missing extra is reported, not fatal
             log.warning("%s failed: %s", step, exc)
             done.setdefault("failed", []).append(f"{step}: {str(exc)[:200]}")
+    # The Shorts, each pointing to the full story, uploaded private alongside it.
+    done["shorts"] = []
+    for k, name in enumerate(meta.get("shorts", []), 1):
+        path = folder / name
+        if not path.exists():
+            continue
+        short = {"title": f"{str(meta.get('title', ''))[:80]} (part {k}) #shorts",
+                 "description": f"The full story: https://youtu.be/{video_id}\n\n#shorts #horror #scarystories",
+                 "tags": list(meta.get("tags", []))[:20] + ["shorts"], "made_for_kids": False}
+        try:
+            done["shorts"].append(yt.upload(path, short, privacy, publish_at))
+        except YouTubeError as exc:
+            done.setdefault("failed", []).append(f"short {k}: {str(exc)[:200]}")
     return done
