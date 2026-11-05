@@ -71,7 +71,7 @@ on:
         default: "2"
 
 permissions:
-  contents: read
+  contents: write  # only to push review images to the review-media branch
   actions: read  # to find the story database saved by the previous run
 
 concurrency:
@@ -185,6 +185,14 @@ jobs:
           status=${PIPESTATUS[0]}
           { echo '## Video'; echo '```'; tail -c 60000 video-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           exit $status
+
+      - name: Share review images
+        if: always() && (env.MODE == 'video' || env.MODE == 'video-bakeoff')
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: .github/scripts/share-review.sh
 
       - name: Save the video
         if: always() && (env.MODE == 'video' || env.MODE == 'video-bakeoff')
