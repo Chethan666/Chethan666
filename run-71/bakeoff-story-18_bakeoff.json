@@ -1,0 +1,363 @@
+{
+  "story": 18,
+  "pictures": {
+    "shot 35 shot": {
+      "model": "fal-ai/nano-banana-pro/edit",
+      "picture": "An extreme close-up on Mira's right eye, filling the frame. Reflected deep in her dark pupil is the tiny, precise, blinking red dot of the message light from desk 704. It is the only red in the entire scene.",
+      "chalk_check": [
+        true,
+        "ok"
+      ],
+      "vision_check": [
+        false,
+        "There are two red accents in the image, instead of the required single red accent. Also, there is an additional white dot within the pupil that is not requested."
+      ]
+    },
+    "shot 35 shot_alt": {
+      "model": "fal-ai/nano-banana-2/edit",
+      "picture": "An extreme close-up on Mira's right eye, filling the frame. Reflected deep in her dark pupil is the tiny, precise, blinking red dot of the message light from desk 704. It is the only red in the entire scene.",
+      "chalk_check": [
+        true,
+        "ok"
+      ],
+      "vision_check": [
+        true,
+        "The image perfectly matches all the requirements: it's a chalk-on-black drawing of an eye with a single red accent in the pupil, no other colors, no text, and clearly depicts the requested shot."
+      ]
+    },
+    "shot 35 shot_cheap": {
+      "model": "fal-ai/bytedance/seedream/v4.5/edit",
+      "picture": "An extreme close-up on Mira's right eye, filling the frame. Reflected deep in her dark pupil is the tiny, precise, blinking red dot of the message light from desk 704. It is the only red in the entire scene.",
+      "chalk_check": [
+        true,
+        "ok"
+      ],
+      "vision_check": [
+        false,
+        "The image contains an additional stick figure person that is not part of the requested extreme close-up of the eye. The close-up should fill the frame."
+      ]
+    },
+    "shot 37 shot": {
+      "model": "fal-ai/nano-banana-pro/edit",
+      "picture": "Mira stands facing the camera, her body rigid. Her eyes are wide and fixed on something past the camera's left shoulder. Her hands are clenched at her sides. A desk with a blinking red light is out of focus behind her left shoulder.",
+      "chalk_check": [
+        true,
+        "ok"
+      ],
+      "vision_check": [
+        false,
+        "Mira's hands are not clenched at her sides, but relaxed."
+      ]
+    },
+    "shot 37 shot_alt": {
+      "model": "fal-ai/nano-banana-2/edit",
+      "picture": "Mira stands facing the camera, her body rigid. Her eyes are wide and fixed on something past the camera's left shoulder. Her hands are clenched at her sides. A desk with a blinking red light is out of focus behind her left shoulder.",
+      "chalk_check": [
+        true,
+        "ok"
+      ],
+      "vision_check": [
+        false,
+        "Mira's eyes are not wide and fixed on something past the camera's left shoulder; her hands are not clenched at her sides."
+      ]
+    },
+    "shot 37 shot_cheap": {
+      "model": "fal-ai/bytedance/seedream/v4.5/edit",
+      "picture": "Mira stands facing the camera, her body rigid. Her eyes are wide and fixed on something past the camera's left shoulder. Her hands are clenched at her sides. A desk with a blinking red light is out of focus behind her left shoulder.",
+      "chalk_check": [
+        true,
+        "ok"
+      ],
+      "vision_check": [
+        true,
+        "All conditions are met. The image is a chalk-on-black drawing, uses only white and a red accent, has no text, is a single panel, has simple stick figures, and accurately depicts the requested shot."
+      ]
+    },
+    "shot 41 shot": {
+      "model": "fal-ai/nano-banana-pro/edit",
+      "picture": "Extreme close-up on the blinking red message light itself. It fills the frame, pulsing like a slow, mechanical heartbeat against the black plastic.",
+      "chalk_check": [
+        true,
+        "ok"
+      ],
+      "vision_check": [
+        false,
+        "The image clearly does not show an extreme close-up on the blinking red message light. The red circle is central but it's part of a wider shot showing other elements."
+      ]
+    },
+    "shot 41 shot_alt": {
+      "model": "fal-ai/nano-banana-2/edit",
+      "picture": "Extreme close-up on the blinking red message light itself. It fills the frame, pulsing like a slow, mechanical heartbeat against the black plastic.",
+      "chalk_check": [
+        true,
+        "ok"
+      ],
+      "vision_check": [
+        true,
+        "The image perfectly matches the description of a chalk-on-black drawing with one red accent, depicting the extreme close-up of a pulsing red light. It avoids all specified failure conditions."
+      ]
+    },
+    "shot 41 shot_cheap": {
+      "model": "fal-ai/bytedance/seedream/v4.5/edit",
+      "picture": "Extreme close-up on the blinking red message light itself. It fills the frame, pulsing like a slow, mechanical heartbeat against the black plastic.",
+      "chalk_check": [
+        true,
+        "ok"
+      ],
+      "vision_check": [
+        false,
+        "The image is a photo, not a chalk-on-black drawing, and it contains grey shading and words."
+      ]
+    },
+    "shot 36 shot": {
+      "model": "fal-ai/nano-banana-pro/edit",
+      "picture": "Wide shot looking down a long aisle of empty, identical desks. Desk 704 is in the middle distance. A tiny blinking red dot is visible on its phone. In the deep background, a dark doorway.",
+      "chalk_check": [
+        true,
+        "ok"
+      ],
+      "vision_check": [
+        false,
+        "The shot contains stick figures with faces and two stick figures are present in the foreground, distracting from the requested scene. The red accent is used on multiple parts (phone, girl's face) rath"
+      ]
+    },
+    "shot 36 shot_alt": {
+      "model": "fal-ai/nano-banana-2/edit",
+      "picture": "Wide shot looking down a long aisle of empty, identical desks. Desk 704 is in the middle distance. A tiny blinking red dot is visible on its phone. In the deep background, a dark doorway.",
+      "chalk_check": [
+        true,
+        "ok"
+      ],
+      "vision_check": [
+        false,
+        "The image contains multiple red accents and numerous stick figures, not an empty aisle of desks."
+      ]
+    },
+    "shot 36 shot_cheap": {
+      "model": "fal-ai/bytedance/seedream/v4.5/edit",
+      "picture": "Wide shot looking down a long aisle of empty, identical desks. Desk 704 is in the middle distance. A tiny blinking red dot is visible on its phone. In the deep background, a dark doorway.",
+      "chalk_check": [
+        true,
+        "ok"
+      ],
+      "vision_check": [
+        false,
+        "The image contains written numbers \"704\" on the desk."
+      ]
+    }
+  },
+  "clips": {
+    "shot 35 hero": {
+      "model": "bytedance/seedance-2.0/fast/image-to-video",
+      "motion": "Her pupil dilates slightly with each red pulse.",
+      "chalk_checks": [
+        [
+          true,
+          "ok"
+        ],
+        [
+          true,
+          "ok"
+        ],
+        [
+          true,
+          "ok"
+        ]
+      ]
+    },
+    "shot 35 hero_alt": {
+      "model": "fal-ai/kling-video/v3/pro/image-to-video",
+      "motion": "Her pupil dilates slightly with each red pulse.",
+      "chalk_checks": [
+        [
+          true,
+          "ok"
+        ],
+        [
+          true,
+          "ok"
+        ],
+        [
+          true,
+          "ok"
+        ]
+      ]
+    },
+    "shot 35 medium": {
+      "model": "fal-ai/bytedance/seedance/v1/lite/image-to-video",
+      "motion": "Her pupil dilates slightly with each red pulse.",
+      "chalk_checks": [
+        [
+          true,
+          "ok"
+        ],
+        [
+          true,
+          "ok"
+        ],
+        [
+          true,
+          "ok"
+        ]
+      ]
+    },
+    "shot 37 hero": {
+      "model": "bytedance/seedance-2.0/fast/image-to-video",
+      "motion": "A single, slow tear tracks down her cheek.",
+      "chalk_checks": [
+        [
+          true,
+          "ok"
+        ],
+        [
+          true,
+          "ok"
+        ],
+        [
+          true,
+          "ok"
+        ]
+      ]
+    },
+    "shot 37 hero_alt": {
+      "model": "fal-ai/kling-video/v3/pro/image-to-video",
+      "motion": "A single, slow tear tracks down her cheek.",
+      "chalk_checks": [
+        [
+          true,
+          "ok"
+        ],
+        [
+          true,
+          "ok"
+        ],
+        [
+          true,
+          "ok"
+        ]
+      ]
+    },
+    "shot 37 medium": {
+      "model": "fal-ai/bytedance/seedance/v1/lite/image-to-video",
+      "motion": "A single, slow tear tracks down her cheek.",
+      "chalk_checks": [
+        [
+          true,
+          "ok"
+        ],
+        [
+          true,
+          "ok"
+        ],
+        [
+          true,
+          "ok"
+        ]
+      ]
+    }
+  },
+  "voices": {
+    "Brian": {
+      "seconds": 35.4
+    },
+    "George": {
+      "seconds": 39.4
+    },
+    "kokoro": {
+      "seconds": 32.6
+    }
+  },
+  "sound": {
+    "music_dread": "ok",
+    "sting": "ok"
+  },
+  "usd": 7.43,
+  "usd_by_task": {
+    "style_frame": 0.15,
+    "character_sheet": 0.75,
+    "bakeoff_shot": 0.6,
+    "vision": 0.02,
+    "bakeoff_shot_alt": 0.32,
+    "bakeoff_shot_cheap": 0.16,
+    "bakeoff_hero": 2.42,
+    "bakeoff_hero_alt": 2.24,
+    "bakeoff_medium": 0.36,
+    "bakeoff_voice": 0.1,
+    "bakeoff_music": 0.3,
+    "bakeoff_sfx": 0.01
+  },
+  "shots": [
+    {
+      "index": 35,
+      "scene": 11,
+      "t0": 159.01641666666666,
+      "t1": 162.62975,
+      "text": "The red light on extension 704 blinks.",
+      "framing": "extreme_close",
+      "picture": "An extreme close-up on Mira's right eye, filling the frame. Reflected deep in her dark pupil is the tiny, precise, blinking red dot of the message light from desk 704. It is the only red in the entire scene.",
+      "characters": [
+        "Mira"
+      ],
+      "camera": "still",
+      "motion": "Her pupil dilates slightly with each red pulse.",
+      "sound": "",
+      "scare": true,
+      "importance": 5,
+      "tier": "still",
+      "directed": true
+    },
+    {
+      "index": 37,
+      "scene": 11,
+      "t0": 165.766875,
+      "t1": 172.65733333333333,
+      "text": "You see it reflected in Mira's worried eyes before you see it yourself.",
+      "framing": "medium",
+      "picture": "Mira stands facing the camera, her body rigid. Her eyes are wide and fixed on something past the camera's left shoulder. Her hands are clenched at her sides. A desk with a blinking red light is out of focus behind her left shoulder.",
+      "characters": [
+        "Mira"
+      ],
+      "camera": "pan_left",
+      "motion": "A single, slow tear tracks down her cheek.",
+      "sound": "The kettle whistle builds to a peak.",
+      "scare": true,
+      "importance": 5,
+      "tier": "still",
+      "directed": true
+    },
+    {
+      "index": 41,
+      "scene": 12,
+      "t0": 187.97918749999997,
+      "t1": 193.4410833333333,
+      "text": "has been waiting for you to finally look at it.",
+      "framing": "extreme_close",
+      "picture": "Extreme close-up on the blinking red message light itself. It fills the frame, pulsing like a slow, mechanical heartbeat against the black plastic.",
+      "characters": [],
+      "camera": "push_in",
+      "motion": "The light pulses, patient, dominant, final.",
+      "sound": "The soundscape reaches a sustained, unbearable peak.",
+      "scare": true,
+      "importance": 5,
+      "tier": "still",
+      "directed": true
+    },
+    {
+      "index": 36,
+      "scene": 11,
+      "t0": 162.62975,
+      "t1": 165.766875,
+      "text": "It has been blinking since February.",
+      "framing": "wide",
+      "picture": "Wide shot looking down a long aisle of empty, identical desks. Desk 704 is in the middle distance. A tiny blinking red dot is visible on its phone. In the deep background, a dark doorway.",
+      "characters": [],
+      "camera": "pull_out",
+      "motion": "The red dot pulses steadily in the vast darkness.",
+      "sound": "A deep, carrier-wave hum seeps through.",
+      "scare": false,
+      "importance": 4,
+      "tier": "still",
+      "directed": true
+    }
+  ]
+}
