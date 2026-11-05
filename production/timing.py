@@ -211,9 +211,10 @@ def srt(cues: list[Cue]) -> str:
     return "\n".join(f"{i}\n{_stamp(c.start)} --> {_stamp(c.end)}\n{c.text}\n" for i, c in enumerate(cues, 1))
 
 
-def ass(cues: list[Cue], width: int, height: int, font: str = "DejaVu Sans") -> str:
+def ass(cues: list[Cue], width: int, height: int, font: str = "DejaVu Sans", size_ratio: float = 0.052,
+        margin_ratio: float = 0.07) -> str:
     """Burned-in captions: white on a soft dark box, low in the frame, readable on phones."""
-    size = round(height * 0.052)
+    size = round(height * size_ratio)
 
     def t(seconds: float) -> str:
         cs = int(round(seconds * 100))
@@ -229,7 +230,7 @@ def ass(cues: list[Cue], width: int, height: int, font: str = "DejaVu Sans") -> 
         "Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, "
         "Alignment, MarginL, MarginR, MarginV, Encoding",
         f"Style: Caption,{font},{size},&H00F2F2F2,&H00F2F2F2,&H00101010,&H90000000,1,0,0,0,100,100,0,0,"
-        f"1,{max(2, size // 14)},0,2,80,80,{round(height * 0.07)},1",
+        f"1,{max(2, size // 14)},0,2,80,80,{round(height * margin_ratio)},1",
         "", "[Events]", "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ]
     for c in cues:

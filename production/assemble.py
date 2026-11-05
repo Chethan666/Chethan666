@@ -27,7 +27,7 @@ def _run(args: list[str], cwd: Path) -> None:
         raise RuntimeError(f"ffmpeg failed: {result.stderr.strip()[-800:]}")
 
 
-def camera_filter(camera: str, seconds: float, size: tuple[int, int], light: str) -> str:
+def camera_filter(camera: str, seconds: float, size: tuple[int, int], light: str, fades: bool = True) -> str:
     W, H = size
     n = max(int(seconds * FPS), 1)
     centre = "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)'"
@@ -37,7 +37,10 @@ def camera_filter(camera: str, seconds: float, size: tuple[int, int], light: str
         "pan_left": f"z='1.1':x='(iw-iw/zoom)*(1-on/{n})':y='ih/2-(ih/zoom/2)'",
         "pan_right": f"z='1.1':x='(iw-iw/zoom)*on/{n}':y='ih/2-(ih/zoom/2)'",
         "shake": "z='1.05':x='(iw-iw/zoom)/2+5*sin(on*1.9)':y='(ih-ih/zoom)/2+4*cos(on*2.7)'",
+        "tilt_up": f"z='1.1':x='iw/2-(iw/zoom/2)':y='(ih-ih/zoom)*(1-on/{n})'",
+        "tilt_down": f"z='1.1':x='iw/2-(iw/zoom/2)':y='(ih-ih/zoom)*on/{n}'",
     }
+    moves["handheld"] = moves["shake"]
     parts = [f"fps={FPS}"]
     if camera in moves:
         # Upscale first so the slow zoom doesn't wobble on whole-pixel steps.
@@ -46,8 +49,9 @@ def camera_filter(camera: str, seconds: float, size: tuple[int, int], light: str
     if light == "flicker":
         parts.append("eq=eval=frame:brightness='-0.07*gt(random(1),0.82)'")
     fade = min(0.35, seconds / 4)
-    parts += [f"fade=t=in:st=0:d={fade:.2f}", f"fade=t=out:st={max(seconds - fade, 0):.2f}:d={fade:.2f}",
-              "format=yuv420p"]
+    if fades:
+        parts += [f"fade=t=in:st=0:d={fade:.2f}", f"fade=t=out:st={max(seconds - fade, 0):.2f}:d={fade:.2f}"]
+    parts.append("format=yuv420p")
     return ",".join(parts)
 
 

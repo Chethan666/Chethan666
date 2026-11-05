@@ -227,7 +227,8 @@ DEFAULTS: dict[str, Any] = {
         "models": {
             "sheet": "fal-ai/nano-banana-pro",           # the style frame and character sheets
             "shot": "fal-ai/nano-banana-pro/edit",       # every shot, from the sheets
-            "shot_cheap": "fal-ai/bytedance/seedream/v4.5/edit",  # retries and the bake-off
+            "shot_cheap": "fal-ai/bytedance/seedream/v4.5/edit",  # the redraw when a picture fails
+            "shot_alt": "fal-ai/nano-banana-2/edit",            # compared in the bake-off
             "hero": "bytedance/seedance-2.0/fast/image-to-video",
             "hero_alt": "fal-ai/kling-video/v3/pro/image-to-video",
             "medium": "fal-ai/bytedance/seedance/v1/lite/image-to-video",
@@ -236,20 +237,25 @@ DEFAULTS: dict[str, Any] = {
             "sfx": "fal-ai/elevenlabs/sound-effects/v2",
             "music": "fal-ai/elevenlabs/music",
             "thumbnail": "fal-ai/nano-banana-pro/edit",
+            "vision": "fal-ai/any-llm/vision",           # checks every picture and clip frame
         },
         # Extra arguments per model role (checked against each model's inputs by `check`).
         "model_args": {
             "sheet": {"aspect_ratio": "16:9", "num_images": 1},
-            "shot": {"aspect_ratio": "16:9", "num_images": 1},
-            "shot_cheap": {"image_size": {"width": 1920, "height": 1080}, "num_images": 1},
+            "shot": {"aspect_ratio": "16:9", "num_images": 1, "resolution": "2K"},
+            "shot_cheap": {"image_size": "landscape_16_9", "num_images": 1},
+            "shot_alt": {"aspect_ratio": "16:9", "num_images": 1, "resolution": "2K"},
             "hero": {"resolution": "720p", "aspect_ratio": "16:9", "generate_audio": False},
-            "hero_alt": {"aspect_ratio": "16:9", "generate_audio": False},
+            "hero_alt": {"generate_audio": False, "negative_prompt": "colour, colors, realistic, 3d, shading, "
+                         "faces, text, blur, distortion, morphing"},
             "medium": {"resolution": "720p", "aspect_ratio": "16:9"},
             "voice": {"stability": 0.5},
-            "thumbnail": {"aspect_ratio": "16:9", "num_images": 1},
+            "thumbnail": {"aspect_ratio": "16:9", "num_images": 1, "resolution": "2K"},
+            "vision": {"model": "google/gemini-2.5-flash"},
         },
         # Clip lengths each motion model accepts, in seconds (from `check`).
-        "durations": {"hero": [4, 5, 6, 7, 8, 9, 10, 11, 12], "hero_alt": [5, 10],
+        "durations": {"hero": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+                      "hero_alt": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
                       "medium": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]},
         # Estimated USD per picture, per second of clip or audio, or per 1,000 characters of speech.
         "prices": {
@@ -261,6 +267,7 @@ DEFAULTS: dict[str, Any] = {
             "fal-ai/bytedance/seedance/v1/lite/image-to-video": 0.036,
             "fal-ai/elevenlabs/tts/eleven-v3": 0.10, "fal-ai/mmaudio-v2": 0.002,
             "fal-ai/elevenlabs/sound-effects/v2": 0.002, "fal-ai/elevenlabs/music": 0.01,
+            "fal-ai/any-llm/vision": 0.002,
         },
         # Shots: 3-6 s each; how many become clips, by tier (the rest are living stills).
         "shot_min_seconds": 3.0, "shot_max_seconds": 6.5,

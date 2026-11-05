@@ -91,6 +91,13 @@ def speed_for(offset: int, spans: list[tuple[int, int]], scenes: list[dict[str, 
     return 1.0
 
 
+def delivery_for(offset: int, spans: list[tuple[int, int]], scenes: list[dict[str, Any]]) -> str:
+    for (start, end), scene in zip(spans, scenes):
+        if start <= offset < end:
+            return str(scene.get("delivery", "steady"))
+    return "steady"
+
+
 def narrate(voice: Voice, narration: str, pauses: list[dict[str, Any]], pronunciations: list[dict[str, Any]],
             scenes: list[dict[str, Any]], spans: list[tuple[int, int]], lines: list[Any] | None = None,
             cast_voices: dict[str, Voice] | None = None) -> tuple[np.ndarray, Timeline]:
@@ -104,11 +111,24 @@ def narrate(voice: Voice, narration: str, pauses: list[dict[str, Any]], pronunci
     lead_in = np.zeros(int(0.6 * rate), dtype=np.float32)  # a breath before the first word
     pieces.append(lead_in)
     t += len(lead_in) / rate
+    plan = []  # (chunk, reader, text): what each voice reads
     for chunk in chunks:
         reader = cast_voices.get(chunk.speaker, voice) if chunk.speaker != "narrator" else voice
         text = respell(chunk.text, pronunciations)
         if reader is not voice:
             text = text.strip("“”\"").strip() or text
+        elif getattr(voice, "expressive", False):  # an expressive voice performs the scene's delivery
+            from .speech import tagged
+            text = tagged(text, delivery_for(chunk.start, spans, scenes))
+        plan.append((chunk, reader, text))
+    readers: dict[int, tuple[Any, list[str]]] = {}
+    for _, reader, text in plan:
+        readers.setdefault(id(reader), (reader, []))[1].append(text)
+    for reader, texts in readers.values():  # paid voices read every chunk at once, in parallel
+        if hasattr(reader, "prepare"):
+            reader.prepare(texts)
+    for chunk, reader, text in plan:
+        if reader is not voice:
             audio = _resample(reader.say(text, 1.0), reader.sample_rate, rate)
         else:
             audio = voice.say(text, speed_for(chunk.start, spans, scenes))

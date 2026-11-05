@@ -31,6 +31,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("check", help="list what each studio model on fal.ai expects (no spend)")
+    b = sub.add_parser("bakeoff", help="the same shots through every candidate model, side by side")
+    b.add_argument("--story", type=int, help="a story id (default: the newest approved or produced long story)")
+    b.add_argument("--out", default="out")
+    b.add_argument("--max-usd", type=float, default=10.0)
     p = sub.add_parser("produce", help="make the video for one approved story")
     p.add_argument("--story", type=int, help="a chosen story (its status is left unchanged)")
     p.add_argument("--out", default="out", help="output folder")
@@ -41,6 +45,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="direct scenes from keywords only (no model calls)")
     p.add_argument("--keep-work", action="store_true", help="keep the scene pictures and clips")
     p.add_argument("--no-motion", action="store_true", help="drawn scenes only (no paid moving clips)")
+    p.add_argument("--drawn", action="store_true", help="the drawn pipeline even when FAL_KEY is set")
+    p.add_argument("--max-usd", type=float, help="studio spending cap for this video")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
@@ -48,6 +54,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "check":
         return check(cfg.get("studio", {}))
     conn = db.connect(cfg["database"])
+    if args.command == "bakeoff":
+        return bakeoff(args, cfg, conn)
     video_cfg = cfg.get("video", {})
 
     if args.story:
@@ -81,9 +89,21 @@ def main(argv: list[str] | None = None) -> int:
                             float(video_cfg.get("motion_usd_per_second", 0.0)),
                             float(video_cfg.get("motion_max_usd", 0.0)), int(video_cfg["motion_scenes"]))
     out_dir = Path(args.out) / f"story-{story['id']}"
+    studio_cfg = dict(cfg.get("studio", {}))
+    if args.max_usd is not None:
+        studio_cfg["max_usd"] = args.max_usd
+    use_studio = (studio_cfg.get("enabled") and os.environ.get("FAL_KEY") and not args.drawn
+                  and not args.no_motion)
     try:
-        summary = run.produce(story, out_dir, narrator, router, args.resolution, args.keep_work, video_cfg,
-                              animator)
+        if use_studio:
+            from drama_production.media import Fal
+
+            from . import studio
+            animator = None
+            summary = studio.produce(story, out_dir, narrator, router, studio_cfg, Fal(), conn, args.keep_work)
+        else:
+            summary = run.produce(story, out_dir, narrator, router, args.resolution, args.keep_work, video_cfg,
+                                  animator)
     except Exception as exc:  # report, and hand a claimed story back to the queue
         log.exception("Production failed")
         info = {"error": str(exc)[:500], "run": os.environ.get("GITHUB_RUN_ID")}
@@ -93,9 +113,32 @@ def main(argv: list[str] | None = None) -> int:
     if animator is not None and animator.spent:
         db.record_cost(conn, pipeline="video", task="motion", model=animator.model, input_units=0,
                        output_units=len(summary.get("moving_scenes", [])), usd=animator.spent)
-    summary.update(run=os.environ.get("GITHUB_RUN_ID"), voice=args.voice)
+    summary.update(run=os.environ.get("GITHUB_RUN_ID"), run_number=os.environ.get("GITHUB_RUN_NUMBER"),
+                   narrator_fallback=args.voice)
     db.update_story(conn, story["id"], production=summary, **({"status": "produced"} if claimed else {}))
     print(json.dumps(summary, indent=2))
+    return 0
+
+
+def bakeoff(args: argparse.Namespace, cfg: dict, conn) -> int:
+    from drama_production.media import Fal
+
+    from . import bakeoff as bake
+    row = db.get_story(conn, args.story) if args.story else conn.execute(
+        "SELECT * FROM stories WHERE kind = 'long' AND status IN ('approved', 'produced') "
+        "ORDER BY id DESC LIMIT 1").fetchone()
+    if row is None:
+        print("No story to test with", file=sys.stderr)
+        return 1
+    story = dict(row)
+    print(f"Bake-off with story #{story['id']}: {story['title']}", flush=True)
+    video_cfg = cfg.get("video", {})
+    kokoro = voice.KokoroVoice(video_cfg.get("voice", "am_michael"), video_cfg.get("lang", "a"),
+                               float(video_cfg.get("speed", 0.92)))
+    studio_cfg = dict(cfg.get("studio", {}), max_usd=args.max_usd)
+    report = bake.run(story, Path(args.out) / f"bakeoff-story-{story['id']}", kokoro, Router(cfg, conn), studio_cfg,
+                      Fal(), conn)
+    print(json.dumps(report, indent=2, ensure_ascii=False)[:20000])
     return 0
 
 
