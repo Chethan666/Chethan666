@@ -16,6 +16,7 @@
 #   mode=video-publish: uploads an approved video (story_id) to YouTube as private; set the time in
 #               `overrides` (e.g. 2026-11-20T17:00:00Z) to schedule it instead
 #   mode=video-stats: reads every published video's YouTube stats into the performance table
+#   mode=video-share: re-shares an earlier video run's review images (story_id = that run's id)
 #   mode=video-check: pipeline 2 lists what each studio model on fal.ai expects (no spend)
 #   mode=video: pipeline 2 turns the next approved story (or story_id) into a video, saved as
 #               an artifact named video-<run number> for 14 days
@@ -31,7 +32,7 @@ on:
       mode:
         description: "check = tests and model access only; story = generate one story; video = make the next approved story's video; bench = compare two model setups; recheck = re-check approved legends"
         type: choice
-        options: [check, story, video, video-check, video-bakeoff, video-approve, video-reject, video-publish, video-stats, drama-check, drama-series, drama-write, drama-video, bench, recheck]
+        options: [check, story, video, video-check, video-bakeoff, video-approve, video-reject, video-publish, video-stats, video-share, drama-check, drama-series, drama-write, drama-video, bench, recheck]
         default: check
       series:
         description: Series to generate in story mode
@@ -223,6 +224,20 @@ jobs:
           status=${PIPESTATUS[0]}
           { echo "## $MODE"; echo '```'; cat channel-output.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           exit $status
+
+      - name: Share an earlier run's review images
+        if: env.MODE == 'video-share'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          command -v ffmpeg >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; }
+          artifact=$(gh api "repos/$REPO/actions/runs/$STORY_ID/artifacts" --jq \
+            '[.artifacts[] | select(.name | startswith("video-"))] | first | .id // empty')
+          number=$(gh api "repos/$REPO/actions/runs/$STORY_ID" --jq .run_number)
+          gh api "repos/$REPO/actions/artifacts/$artifact/zip" > "$RUNNER_TEMP/v.zip"
+          mkdir -p out && unzip -o -q "$RUNNER_TEMP/v.zip" -d out
+          GITHUB_RUN_NUMBER=$number .github/scripts/share-review.sh
 
       - name: Studio model check
         if: env.MODE == 'video-check'
