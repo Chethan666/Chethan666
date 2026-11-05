@@ -112,6 +112,8 @@ def produce(story: dict[str, Any], out_dir: Path, kokoro: Any, router: Any, cfg:
     # 4. Clips.
     clipper = Clips(studio, cfg, work / "clips", parallel) if studio is not None else None
     clips = clipper.run(shots, pictures) if clipper is not None else {}
+    if studio is not None:
+        studio.stop_on_empty = False  # from here on, a dry account means free fallbacks, not a lost video
 
     # 5. The programme: cold open, title, story, end screen.
     cold = edit.pick_cold_open(shots, scenes) if cfg.get("cold_open", True) else []
@@ -207,6 +209,7 @@ def produce(story: dict[str, Any], out_dir: Path, kokoro: Any, router: Any, cfg:
         "sound": score.report, "cold_open_shots": cold, "chapters": len(chapters),
         "thumbnails": len(thumbs), "shorts": len(shorts_made),
         "usd": round(budget.spent, 2), "usd_by_task": {k: round(v, 2) for k, v in sorted(budget.by_task.items())},
+        "fal_balance_ran_out": bool(studio and studio.balance_ran_out),
         "review": "pending", "render_minutes": round((time.time() - started) / 60, 1),
     }
     (out_dir / "report.json").write_text(json.dumps(summary, indent=2))

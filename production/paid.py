@@ -25,6 +25,15 @@ class OverBudget(MediaError):
     pass
 
 
+class BalanceEmpty(RuntimeError):
+    """The fal.ai account has run out of credit: stop the video rather than finish it in fallbacks."""
+
+
+def _empty_balance(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return "exhausted balance" in text or "user is locked" in text
+
+
 class Budget:
     def __init__(self, cap: float, prices: dict[str, float], conn: Any = None):
         self.cap, self.prices, self.conn = cap, prices, conn
@@ -74,6 +83,8 @@ class Studio:
         self.fal, self.budget, self.cache, self.cfg = fal, budget, cache, cfg
         self.models: dict[str, str] = cfg.get("models", {})
         self.args: dict[str, dict] = cfg.get("model_args", {})
+        self.stop_on_empty = True  # an empty balance stops the video while pictures and clips are made
+        self.balance_ran_out = False
         cache.mkdir(parents=True, exist_ok=True)
 
     def model(self, role: str) -> str:
@@ -99,6 +110,12 @@ class Studio:
                 download(url, cached)
             except MediaError as exc:
                 self.budget.settle(usd, task, model, ok=False)
+                if _empty_balance(exc):
+                    self.balance_ran_out = True
+                    if not self.stop_on_empty:  # the expensive work is done: finish with free fallbacks
+                        raise MediaError(f"fal.ai balance is empty ({task})") from exc
+                    raise BalanceEmpty("fal.ai balance is empty: top it up at fal.ai/dashboard/billing, "
+                                       "then run the video again (paid so far: $%.2f)" % self.budget.spent) from exc
                 last = exc
                 log.warning("%s (%s) attempt %d failed: %s", task, model, attempt + 1, str(exc)[:300])
                 if "422" in str(exc) or "content" in str(exc).lower():
@@ -146,11 +163,13 @@ def vision_check(studio: Studio, image: Path, picture: str, task: str = "vision"
         usd = studio.budget.reserve(model)
     except OverBudget:
         return True, "no budget left for checks"
-    prompt = (f"The shot should show: {picture}\n\nLook at the image. Fail it if ANY of these is true: it is "
-              "not a chalk-on-black drawing (photo, painting, 3D, colour illustration, grey shading); it uses "
-              "colours other than white chalk and one red accent; it contains written words, letters or a "
-              "watermark; it is a collage or several panels; the stick figures have realistic or detailed faces; "
-              "it clearly does not show what the shot should show. Reply exactly as JSON: "
+    prompt = (f"The shot should show: {picture}\n\nLook at the image. Judge only the drawing style, not small "
+              "details of the content. Fail it ONLY if one of these is clearly true: it is a photograph, a 3D "
+              "render or a painted, fully coloured illustration instead of a chalk drawing on a dark board; large "
+              "areas use a colour other than white chalk and red (green, blue, yellow...); it contains readable "
+              "words or a watermark (a short number is fine); it is split into several panels; or it shows "
+              "something entirely unrelated to the shot. Small extra details, a second red detail, simple "
+              "facial expressions, slightly different poses or framing are all fine. Reply exactly as JSON: "
               '{"ok": true or false, "reason": "short reason"}')
     try:
         result = studio.fal.run(model, dict(studio.args.get("vision", {}), prompt=prompt, system_prompt=VISION_SYSTEM,

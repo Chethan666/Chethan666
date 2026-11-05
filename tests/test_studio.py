@@ -142,9 +142,13 @@ def chalk_picture(path, size=(640, 360), colour=False):
 class FakeFal:
     """Answers every studio model with local files, as if fal.ai had made them."""
 
-    def __init__(self, folder: Path, colour_clips=False, fail_hero=False):
+    def __init__(self, folder: Path, colour_clips=False, fail_hero=False, broke_after=None, colour_pictures=0):
         self.calls = []
         self.fail_hero = fail_hero
+        self.broke_after = broke_after  # calls before the account runs dry
+        self.colour_pictures = colour_pictures  # how many shot pictures come back in colour
+        self.colour_image = folder / "colour.png"
+        chalk_picture(self.colour_image, colour=True)
         self.image = folder / "fake.png"
         chalk_picture(self.image)
         self.video = folder / "fake.mp4"
@@ -160,6 +164,9 @@ class FakeFal:
         from drama_production.media import MediaError
 
         self.calls.append((endpoint, dict((k, v) for k, v in args.items() if not str(v).startswith("data:"))))
+        if self.broke_after is not None and len(self.calls) > self.broke_after:
+            raise MediaError('POST https://queue.fal.run/x: HTTP 403: {"detail":"User is locked. Reason: '
+                             'Exhausted balance. Top up your balance at fal.ai/dashboard/billing."}')
         if "any-llm" in endpoint:
             return {"output": '{"ok": true, "reason": "fine"}'}
         if "seedance-2.0" in endpoint and self.fail_hero:
@@ -170,6 +177,9 @@ class FakeFal:
             return {"video": {"url": self.video.as_uri()}}
         if "elevenlabs" in endpoint:
             return {"audio": {"url": self.audio.as_uri()}}
+        if "edit" in endpoint and "Shot:" in args.get("prompt", "") and self.colour_pictures > 0:
+            self.colour_pictures -= 1
+            return {"images": [{"url": self.colour_image.as_uri()}]}
         return {"images": [{"url": self.image.as_uri()}]}
 
 
@@ -255,6 +265,19 @@ class StudioTests(unittest.TestCase):
         self.assertTrue((out / "video.mp4").exists())
         self.assertGreater(summary["pictures"]["drawn_in_code"], 0)
 
+
+    def test_an_empty_fal_balance_stops_the_video_with_a_clear_message(self):
+        from production.paid import BalanceEmpty
+
+        with self.assertRaises(BalanceEmpty) as caught:
+            self.run_studio(lambda root: FakeFal(root, broke_after=6))
+        self.assertIn("top it up", str(caught.exception))
+
+    def test_a_shot_whose_pictures_all_fail_borrows_a_neighbour_instead_of_the_code_drawing(self):
+        # one worker, so the first shot gets both colour pictures (its draw and its redraw)
+        summary, _ = self.run_studio(lambda root: FakeFal(root, colour_pictures=2), studio_cfg(parallel=1))
+        self.assertEqual(summary["pictures"]["drawn_in_code"], 1)
+        self.assertEqual(summary["pictures"]["reused_neighbour"], 1)
 
     def test_the_bake_off_compares_every_model_on_the_same_shots(self):
         from production import bakeoff, voice

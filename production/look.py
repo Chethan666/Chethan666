@@ -92,7 +92,8 @@ class Look:
         self.studio, self.work, self.cast, self.red, self.parallel = studio, work, cast, red, parallel
         self.style_frame: Path | None = None
         self.sheets: dict[str, Path] = {}
-        self.report: dict[str, Any] = {"redrawn": 0, "drawn_in_code": 0, "vision_failures": []}
+        self.report: dict[str, Any] = {"redrawn": 0, "drawn_in_code": 0, "reused_neighbour": 0, "vision_failures": []}
+        self.drawn: set[int] = set()
         work.mkdir(parents=True, exist_ok=True)
 
     # --- once per story -----------------------------------------------------------
@@ -153,6 +154,7 @@ class Look:
         names = [n for n in shot.characters if n in self.sheets][:3]
         images = ([data_uri(self.style_frame)] if self.style_frame else []) + [data_uri(self.sheets[n]) for n in names]
         prompt = self.prompt(shot, names)
+        fallback: Path | None = None  # a generated picture in the chalk look that the vision check doubted
         for attempt, role in enumerate(("shot", "shot_cheap")):
             if role not in self.studio.models:
                 continue
@@ -170,17 +172,26 @@ class Look:
             except MediaError as exc:
                 log.warning("Shot %d picture (%s) failed: %s", shot.index, role, str(exc)[:200])
                 continue
-            fit(raw, out)
-            ok, why = chalk_check(out)
+            candidate = self.work / f"fit_{shot.index:03d}_{attempt}.png"
+            fit(raw, candidate)
+            ok, why = chalk_check(candidate)
             if ok:
-                ok, why = vision_check(self.studio, out, shot.picture, task="vision_picture")
+                fallback = fallback or candidate
+                ok, why = vision_check(self.studio, candidate, shot.picture, task="vision_picture")
             if ok:
+                candidate.replace(out)
                 return out
             self.report["vision_failures"].append(f"shot {shot.index}: {why}")
             self.report["redrawn"] += 1
             log.info("Shot %d picture rejected (%s); redrawing", shot.index, why)
-        # Last resort: the code renderer, from the scene's keywords.
+        if fallback is not None:  # in the chalk look, if not perfect: better than any drawn fallback
+            self.report["kept_doubted"] = self.report.get("kept_doubted", 0) + 1
+            fallback.replace(out)
+            return out
+        # Last resort: the code renderer, from the scene's keywords (replaced by a neighbouring
+        # generated picture in `pictures` when there is one).
         self.report["drawn_in_code"] += 1
+        self.drawn.add(shot.index)
         spec = director.guess(scene, cast_names)
         paper, grain = draw.make_paper(W, H)
         draw.scene_frames(spec, looks, (W, H), paper, grain, seed=shot.index, variants=1)[0].save(out)
@@ -193,4 +204,16 @@ class Look:
             return shot.index, self.picture(shot, scene, cast_names, looks)
 
         with ThreadPoolExecutor(max_workers=self.parallel) as pool:
-            return dict(pool.map(one, shots))
+            made = dict(pool.map(one, shots))
+        # A shot left to the code renderer borrows the nearest generated picture of its scene (the
+        # edit gives it a different camera move), so the look never drops to the plain drawing.
+        good = [s for s in shots if s.index not in self.drawn]
+        for s in shots:
+            if s.index not in self.drawn:
+                continue
+            near = sorted((g for g in good if g.scene == s.scene), key=lambda g: abs(g.index - s.index))
+            if near:
+                made[s.index] = made[near[0].index]
+                self.report["reused_neighbour"] += 1
+        self.report["vision_failures"] = self.report["vision_failures"][:30]
+        return made
