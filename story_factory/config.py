@@ -271,8 +271,8 @@ DEFAULTS: dict[str, Any] = {
         },
         # Shots: 3-6 s each; how many become clips, by tier (the rest are living stills).
         "shot_min_seconds": 3.0, "shot_max_seconds": 6.5,
-        "hero_shots": 24, "medium_shots": 40,
-        "parallel": 4,
+        "hero_shots": 20, "medium_shots": 40,
+        "parallel": 6,
         # Narrator and cast voices on ElevenLabs v3 (names from `check`); Kokoro if a line fails.
         "narrator_voice": "Brian",
         "cast_voices": {"man": ["George", "Daniel", "Callum"], "woman": ["Charlotte", "Alice", "Lily"],

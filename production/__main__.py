@@ -31,6 +31,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("check", help="list what each studio model on fal.ai expects (no spend)")
+    a = sub.add_parser("approve", help="a person has watched the video: approve it for publishing (or reject it)")
+    a.add_argument("--story", type=int, required=True)
+    a.add_argument("--reject", metavar="REASON", help="reject instead, with the reason")
+    u = sub.add_parser("publish", help="upload an approved video to YouTube (private or scheduled)")
+    u.add_argument("--story", type=int, required=True)
+    u.add_argument("--dir", required=True, help="the video's folder (video.mp4, metadata.json, ...)")
+    u.add_argument("--privacy", choices=("private", "unlisted"), default="private")
+    u.add_argument("--at", help="schedule: an RFC 3339 time, e.g. 2026-11-20T17:00:00Z")
+    sub.add_parser("stats", help="read every published video's YouTube stats into the performance table")
     b = sub.add_parser("bakeoff", help="the same shots through every candidate model, side by side")
     b.add_argument("--story", type=int, help="a story id (default: the newest approved or produced long story)")
     b.add_argument("--out", default="out")
@@ -56,6 +65,8 @@ def main(argv: list[str] | None = None) -> int:
     conn = db.connect(cfg["database"])
     if args.command == "bakeoff":
         return bakeoff(args, cfg, conn)
+    if args.command in ("approve", "publish", "stats"):
+        return channel(args, conn)
     video_cfg = cfg.get("video", {})
 
     if args.story:
@@ -117,6 +128,46 @@ def main(argv: list[str] | None = None) -> int:
                    narrator_fallback=args.voice)
     db.update_story(conn, story["id"], production=summary, **({"status": "produced"} if claimed else {}))
     print(json.dumps(summary, indent=2))
+    return 0
+
+
+def channel(args: argparse.Namespace, conn) -> int:
+    """The human review gate, publishing, and stats."""
+    from . import youtube
+
+    if args.command == "stats":
+        rows = conn.execute("SELECT id, video_id FROM stories WHERE video_id IS NOT NULL AND video_id != ''").fetchall()
+        if not rows:
+            print("No published videos yet")
+            return 0
+        stats = youtube.YouTube().stats([r["video_id"] for r in rows])
+        for r in rows:
+            s = stats.get(r["video_id"])
+            if s:
+                db.record_performance(conn, r["id"], **s)
+                print(f"story #{r['id']} {r['video_id']}: {s}")
+        return 0
+    row = db.get_story(conn, args.story)
+    if row is None:
+        print(f"No story #{args.story}", file=sys.stderr)
+        return 1
+    production = json.loads(row["production"] or "{}") if isinstance(row["production"], str) else {}
+    if args.command == "approve":
+        production["review"] = "rejected" if args.reject else "approved"
+        if args.reject:
+            production["review_note"] = args.reject
+        db.update_story(conn, args.story, production=production)
+        print(f"Story #{args.story}: {production['review']}")
+        return 0
+    if production.get("review") != "approved":
+        print(f"Story #{args.story} is not approved yet (review: {production.get('review', 'none')}). "
+              "Watch preview_60s.mp4 and the contact sheet, then run mode video-approve.", file=sys.stderr)
+        return 1
+    done = youtube.publish(youtube.YouTube(), Path(args.dir), args.privacy, args.at)
+    production["youtube"] = done
+    db.update_story(conn, args.story, production=production, video_id=done["video_id"], status="published",
+                    published_at=db.now())
+    print(json.dumps(done, indent=2))
     return 0
 
 

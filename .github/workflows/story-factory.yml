@@ -11,6 +11,11 @@
 #   mode=drama-video: pipeline 4 makes the next approved episode's vertical video (story_id = an episode id), saved as drama-<run>
 #   mode=video-bakeoff: pipeline 2 runs a few shots of a story (story_id, or the newest) through every
 #               candidate model side by side (capped at $10), saved as video-<run number>
+#   mode=video-approve / video-reject: after watching a video (story_id), approve it for publishing or not
+#               (video-reject takes the reason in `overrides`)
+#   mode=video-publish: uploads an approved video (story_id) to YouTube as private; set the time in
+#               `overrides` (e.g. 2026-11-20T17:00:00Z) to schedule it instead
+#   mode=video-stats: reads every published video's YouTube stats into the performance table
 #   mode=video-check: pipeline 2 lists what each studio model on fal.ai expects (no spend)
 #   mode=video: pipeline 2 turns the next approved story (or story_id) into a video, saved as
 #               an artifact named video-<run number> for 14 days
@@ -26,7 +31,7 @@ on:
       mode:
         description: "check = tests and model access only; story = generate one story; video = make the next approved story's video; bench = compare two model setups; recheck = re-check approved legends"
         type: choice
-        options: [check, story, video, video-check, video-bakeoff, drama-check, drama-series, drama-write, drama-video, bench, recheck]
+        options: [check, story, video, video-check, video-bakeoff, video-approve, video-reject, video-publish, video-stats, drama-check, drama-series, drama-write, drama-video, bench, recheck]
         default: check
       series:
         description: Series to generate in story mode
@@ -76,7 +81,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 240
     env:
       AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
@@ -85,6 +90,10 @@ jobs:
       YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
       FAL_KEY: ${{ secrets.FAL_KEY }}
       BOSON_API_KEY: ${{ secrets.BOSON_API_KEY }}
+      # YouTube publishing (OAuth for the channel; see PRODUCTION.md). Optional until you publish.
+      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
       MODE: ${{ inputs.mode }}
       SERIES: ${{ inputs.series }}
       CONFIG: ${{ inputs.config }}
@@ -131,7 +140,7 @@ jobs:
           fi
 
       - name: Restore the story database from the last run
-        if: env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video' || env.MODE == 'video-bakeoff' || startsWith(env.MODE, 'drama-')
+        if: env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video' || startsWith(env.MODE, 'video-') || startsWith(env.MODE, 'drama-')
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -186,6 +195,27 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
+      - name: Review, publish and stats
+        if: contains(fromJSON('["video-approve", "video-reject", "video-publish", "video-stats"]'), env.MODE)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          P2=(python -m production --config "$CONFIG")
+          case "$MODE" in
+            video-approve) "${P2[@]}" approve --story "$STORY_ID" ;;
+            video-reject)  "${P2[@]}" approve --story "$STORY_ID" --reject "${OVERRIDES:-no reason given}" ;;
+            video-stats)   "${P2[@]}" stats ;;
+            video-publish)
+              .github/scripts/fetch-video.sh "$STORY_ID"
+              AT=()
+              if [ -n "$OVERRIDES" ]; then AT=(--at "$OVERRIDES"); fi
+              "${P2[@]}" publish --story "$STORY_ID" --dir "out/story-$STORY_ID" "${AT[@]}" ;;
+          esac 2>&1 | tee channel-output.txt
+          status=${PIPESTATUS[0]}
+          { echo "## $MODE"; echo '```'; cat channel-output.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit $status
+
       - name: Studio model check
         if: env.MODE == 'video-check'
         run: |
@@ -239,7 +269,7 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Save the story database
-        if: always() && (env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video' || env.MODE == 'video-bakeoff' || startsWith(env.MODE, 'drama-'))
+        if: always() && (env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video' || startsWith(env.MODE, 'video-') || startsWith(env.MODE, 'drama-'))
         uses: actions/upload-artifact@v6
         with:
           # The next run restores the newest one; each run re-saves it, so it never expires in use.
