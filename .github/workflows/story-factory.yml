@@ -9,6 +9,7 @@
 #   mode=drama-write: pipeline 3 writes the next episodes (story_id = how many, default 3)
 #   mode=drama-check: pipeline 4 lists what each configured fal.ai model expects, and the Boson voices (no spend)
 #   mode=drama-video: pipeline 4 makes the next approved episode's vertical video (story_id = an episode id), saved as drama-<run>
+#   mode=video-check: pipeline 2 lists what each studio model on fal.ai expects (no spend)
 #   mode=video: pipeline 2 turns the next approved story (or story_id) into a video, saved as
 #               an artifact named video-<run number> for 14 days
 # The story database carries over between runs (saved as an artifact, restored at the
@@ -23,7 +24,7 @@ on:
       mode:
         description: "check = tests and model access only; story = generate one story; video = make the next approved story's video; bench = compare two model setups; recheck = re-check approved legends"
         type: choice
-        options: [check, story, video, drama-check, drama-series, drama-write, drama-video, bench, recheck]
+        options: [check, story, video, video-check, drama-check, drama-series, drama-write, drama-video, bench, recheck]
         default: check
       series:
         description: Series to generate in story mode
@@ -176,6 +177,14 @@ jobs:
           path: out/
           retention-days: 14
           if-no-files-found: ignore
+
+      - name: Studio model check
+        if: env.MODE == 'video-check'
+        run: |
+          SETS=()
+          for kv in $OVERRIDES; do SETS+=(--set "$kv"); done
+          python -m production --config "$CONFIG" "${SETS[@]}" check 2>&1 | tee video-check.txt
+          { echo '## Studio models'; echo '```'; tail -c 60000 video-check.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Short drama series
         if: startsWith(env.MODE, 'drama-')

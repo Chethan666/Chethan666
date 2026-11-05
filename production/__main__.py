@@ -2,6 +2,7 @@
 
     python -m production --config config.aws-open.toml produce            # next approved long story
     python -m production --config config.aws-open.toml produce --story 12 # a chosen story, status unchanged
+    python -m production --config config.aws-open.toml check              # what each studio model expects (no spend)
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import sys
 from pathlib import Path
 
 from story_factory import db
+from story_factory.__main__ import apply_overrides
 from story_factory.config import load_config
 from story_factory.router import Router
 
@@ -25,8 +27,10 @@ log = logging.getLogger("production")
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="production", description="Hollow Lines video pipeline")
     parser.add_argument("--config", help="TOML config file")
+    parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE")
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("check", help="list what each studio model on fal.ai expects (no spend)")
     p = sub.add_parser("produce", help="make the video for one approved story")
     p.add_argument("--story", type=int, help="a chosen story (its status is left unchanged)")
     p.add_argument("--out", default="out", help="output folder")
@@ -40,7 +44,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
-    cfg = load_config(args.config)
+    cfg = apply_overrides(load_config(args.config), args.set)
+    if args.command == "check":
+        return check(cfg.get("studio", {}))
     conn = db.connect(cfg["database"])
     video_cfg = cfg.get("video", {})
 
@@ -91,6 +97,50 @@ def main(argv: list[str] | None = None) -> int:
     db.update_story(conn, story["id"], production=summary, **({"status": "produced"} if claimed else {}))
     print(json.dumps(summary, indent=2))
     return 0
+
+
+# Other names a model may go by, tried by `check` so a wrong ID can be corrected.
+ALTERNATES = [
+    "fal-ai/nano-banana-pro", "fal-ai/nano-banana-pro/edit", "fal-ai/nano-banana-2", "fal-ai/nano-banana-2/edit",
+    "fal-ai/bytedance/seedream/v4.5/text-to-image", "fal-ai/bytedance/seedream/v4.5/edit",
+    "bytedance/seedance-2.0/image-to-video", "bytedance/seedance-2.0/fast/image-to-video",
+    "bytedance/seedance-2.0/image-to-video-fast", "fal-ai/bytedance/seedance/v2/image-to-video",
+    "fal-ai/kling-video/v3/pro/image-to-video", "fal-ai/kling-video/v3/standard/image-to-video",
+    "fal-ai/kling-video/v3/turbo/pro/image-to-video", "fal-ai/kling-video/o3/standard/image-to-video",
+    "fal-ai/elevenlabs/tts/eleven-v3", "fal-ai/elevenlabs/tts/multilingual-v2",
+    "fal-ai/mmaudio-v2", "fal-ai/mmaudio-v2/text-to-audio", "fal-ai/elevenlabs/sound-effects/v2",
+    "fal-ai/elevenlabs/sound-effects", "fal-ai/elevenlabs/music", "fal-ai/stable-audio-25/text-to-audio",
+    "fal-ai/minimax-music/v2", "fal-ai/lyria2", "beatoven/music-generation", "fal-ai/ace-step/prompt-to-audio",
+    "openrouter/router/vision", "fal-ai/any-llm/vision", "fal-ai/imageutils/depth",
+]
+
+
+def check(studio: dict) -> int:
+    """Every studio model's inputs and choices, from fal's public descriptions. No spend."""
+    from drama_production.media import Fal
+
+    print("FAL_KEY:", "set" if os.environ.get("FAL_KEY") else "MISSING (add it as a GitHub Actions secret)")
+    fal = Fal(key=os.environ.get("FAL_KEY") or "not-needed-to-read-schemas")
+    failed = 0
+    roles = dict(studio.get("models", {}))
+    seen = set(roles.values())
+    roles.update({f"(alt) {e}": e for e in ALTERNATES if e not in seen})
+    for role, endpoint in roles.items():
+        try:
+            info = fal.schema(endpoint)
+        except Exception as exc:  # noqa: BLE001 - a report, not a run
+            failed += not role.startswith("(alt)")
+            print(f"{role:<12} {endpoint}  NOT FOUND: {str(exc)[:160]}")
+            continue
+        print(f"{role:<12} {endpoint}\n    inputs: {', '.join(info['fields'])}\n"
+              f"    required: {', '.join(info['required'])}")
+        for field, choices in info.get("options", {}).items():
+            print(f"    {field}: {json.dumps(choices)[:1500]}")
+        args = studio.get("model_args", {}).get(role, {})
+        unknown = set(args) - set(info["fields"]) if info["fields"] else set()
+        if unknown:
+            print(f"    WARNING: configured arguments the model doesn't list: {sorted(unknown)}")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

@@ -217,6 +217,67 @@ DEFAULTS: dict[str, Any] = {
         "motion_args": {"duration": "5", "resolution": "720p", "aspect_ratio": "16:9"},
         "motion_usd_per_second": 0.036,
     },
+    # Pipeline 2, studio mode (with FAL_KEY): every shot a generated chalk picture, key shots
+    # as real clips, an expressive narrator, a scored soundtrack, and a broadcast edit.
+    # Without the key, or with `enabled = false`, the drawn pipeline above runs instead.
+    "studio": {
+        "enabled": True,
+        # Spending cap per video (estimates from `prices`); work past it falls back to free steps.
+        "max_usd": 45.0,
+        "models": {
+            "sheet": "fal-ai/nano-banana-pro",           # the style frame and character sheets
+            "shot": "fal-ai/nano-banana-pro/edit",       # every shot, from the sheets
+            "shot_cheap": "fal-ai/bytedance/seedream/v4.5/edit",  # retries and the bake-off
+            "hero": "bytedance/seedance-2.0/fast/image-to-video",
+            "hero_alt": "fal-ai/kling-video/v3/pro/image-to-video",
+            "medium": "fal-ai/bytedance/seedance/v1/lite/image-to-video",
+            "voice": "fal-ai/elevenlabs/tts/eleven-v3",
+            "foley": "fal-ai/mmaudio-v2",
+            "sfx": "fal-ai/elevenlabs/sound-effects/v2",
+            "music": "fal-ai/elevenlabs/music",
+            "thumbnail": "fal-ai/nano-banana-pro/edit",
+        },
+        # Extra arguments per model role (checked against each model's inputs by `check`).
+        "model_args": {
+            "sheet": {"aspect_ratio": "16:9", "num_images": 1},
+            "shot": {"aspect_ratio": "16:9", "num_images": 1},
+            "shot_cheap": {"image_size": {"width": 1920, "height": 1080}, "num_images": 1},
+            "hero": {"resolution": "720p", "aspect_ratio": "16:9", "generate_audio": False},
+            "hero_alt": {"aspect_ratio": "16:9", "generate_audio": False},
+            "medium": {"resolution": "720p", "aspect_ratio": "16:9"},
+            "voice": {"stability": 0.5},
+            "thumbnail": {"aspect_ratio": "16:9", "num_images": 1},
+        },
+        # Clip lengths each motion model accepts, in seconds (from `check`).
+        "durations": {"hero": [4, 5, 6, 7, 8, 9, 10, 11, 12], "hero_alt": [5, 10],
+                      "medium": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]},
+        # Estimated USD per picture, per second of clip or audio, or per 1,000 characters of speech.
+        "prices": {
+            "fal-ai/nano-banana-pro": 0.15, "fal-ai/nano-banana-pro/edit": 0.15,
+            "fal-ai/nano-banana-2/edit": 0.08, "fal-ai/bytedance/seedream/v4.5/edit": 0.04,
+            "bytedance/seedance-2.0/fast/image-to-video": 0.2419,
+            "bytedance/seedance-2.0/image-to-video": 0.3024,
+            "fal-ai/kling-video/v3/pro/image-to-video": 0.224,
+            "fal-ai/bytedance/seedance/v1/lite/image-to-video": 0.036,
+            "fal-ai/elevenlabs/tts/eleven-v3": 0.10, "fal-ai/mmaudio-v2": 0.002,
+            "fal-ai/elevenlabs/sound-effects/v2": 0.002, "fal-ai/elevenlabs/music": 0.01,
+        },
+        # Shots: 3-6 s each; how many become clips, by tier (the rest are living stills).
+        "shot_min_seconds": 3.0, "shot_max_seconds": 6.5,
+        "hero_shots": 24, "medium_shots": 40,
+        "parallel": 4,
+        # Narrator and cast voices on ElevenLabs v3 (names from `check`); Kokoro if a line fails.
+        "narrator_voice": "Brian",
+        "cast_voices": {"man": ["George", "Daniel", "Callum"], "woman": ["Charlotte", "Alice", "Lily"],
+                        "old_man": ["Bill"], "old_woman": ["Dorothy"], "boy": ["Liam"], "girl": ["Laura"]},
+        # The edit.
+        "cold_open": True, "title_seconds": 2.0, "end_screen_seconds": 20.0,
+        "burn_captions": False,  # long videos upload captions.srt instead; Shorts always burn them
+        "shorts": 3, "short_max_seconds": 55.0,
+        "thumbnails": 3,
+        # Audio loudness for YouTube.
+        "loudness_lufs": -14.0,
+    },
     # Pipeline 3: the drama writers' room (series bibles and dialogue episodes).
     "drama": {
         "genre": "supernatural thriller",
