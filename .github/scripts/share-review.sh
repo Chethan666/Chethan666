@@ -8,22 +8,22 @@ dest=$RUNNER_TEMP/review/run-$GITHUB_RUN_NUMBER
 mkdir -p "$dest"
 [ -d "$src" ] || { echo "Nothing to share"; exit 0; }
 shrink() {  # picture -> JPEG at most 1280 px wide
-  ffmpeg -hide_banner -loglevel error -y -i "$1" -vf "scale='min(1280,iw)':-2" -q:v 4 "$2" || true
+  ffmpeg -nostdin -hide_banner -loglevel error -y -i "$1" -vf "scale='min(1280,iw)':-2" -q:v 4 "$2" || true
 }
 find "$src" -type f \( -name '*.png' -o -name '*.jpg' \) ! -path '*/work/*' | while read -r f; do
   name=$(echo "${f#$src/}" | tr '/' '_'); shrink "$f" "$dest/${name%.*}.jpg"
 done
 find "$src" -type f -name 'video.mp4' | while read -r v; do
   dir=$(dirname "${v#$src/}" | tr '/' '_')
-  ffmpeg -hide_banner -loglevel error -y -i "$v" -vf "fps=1/20,scale=640:-2,tile=4x3" -q:v 5 "$dest/${dir}_filmstrip_%02d.jpg" || true
+  ffmpeg -nostdin -hide_banner -loglevel error -y -i "$v" -vf "fps=1/20,scale=640:-2,tile=4x3" -q:v 5 "$dest/${dir}_filmstrip_%02d.jpg" || true
 done
 find "$src" -type f -name 'short_*.mp4' | while read -r v; do
   name=$(echo "${v#$src/}" | tr '/' '_')
-  ffmpeg -hide_banner -loglevel error -y -ss 5 -i "$v" -frames:v 1 -vf scale=360:-2 "$dest/${name%.*}.jpg" || true
+  ffmpeg -nostdin -hide_banner -loglevel error -y -ss 5 -i "$v" -frames:v 1 -vf scale=360:-2 "$dest/${name%.*}.jpg" || true
 done
 find "$src" -type f -name '*.mp4' -path '*bakeoff*' | while read -r v; do
   name=$(echo "${v#$src/}" | tr '/' '_')
-  ffmpeg -hide_banner -loglevel error -y -i "$v" -vf "fps=2,scale=320:-2,tile=5x2" -frames:v 1 -q:v 5 "$dest/${name%.*}_strip.jpg" || true
+  ffmpeg -nostdin -hide_banner -loglevel error -y -i "$v" -vf "fps=2,scale=320:-2,tile=5x2" -frames:v 1 -q:v 5 "$dest/${name%.*}_strip.jpg" || true
 done
 find "$src" -type f \( -name 'report.json' -o -name 'bakeoff.json' -o -name 'shots.json' -o -name 'metadata.json' \) \
   ! -path '*/work/*' | while read -r f; do cp "$f" "$dest/$(echo "${f#$src/}" | tr '/' '_')"; done

@@ -96,6 +96,19 @@ class Look:
         work.mkdir(parents=True, exist_ok=True)
 
     # --- once per story -----------------------------------------------------------
+    def extra_cast(self, shots: list[Shot], limit: int = 3) -> None:
+        """Characters the shot list names often but the cast list lacks get a sheet too, described
+        from the first shot that shows them, so they look the same in every shot."""
+        known = {str(c.get("name", "")).lower() for c in self.cast}
+        counts: dict[str, int] = {}
+        for s in shots:
+            for n in s.characters:
+                if n.lower() not in known and n.lower() not in ("figure", "shadow"):
+                    counts[n] = counts.get(n, 0) + 1
+        for name, _ in sorted(counts.items(), key=lambda kv: -kv[1])[:limit]:
+            first = next(s for s in shots if name in s.characters)
+            self.cast.append({"name": name, "look": f"as in this moment: {first.picture[:200]}"})
+
     def references(self, scenes: list[dict[str, Any]]) -> None:
         place = next((str(s.get("location")) for s in scenes if s.get("location")), "a lonely place at night")
         mood = next((str(s.get("visual")) for s in scenes if s.get("visual")), "")
@@ -105,7 +118,7 @@ class Look:
                           "No figures in this picture."}, "image", self.work / "style_frame.png", "style_frame")
         except MediaError as exc:
             log.warning("No style frame (pictures will be drawn from the text alone): %s", exc)
-        for c in self.cast[:5]:
+        for c in self.cast[:7]:
             name, looks = str(c.get("name", "")), str(c.get("look", ""))
             if not name:
                 continue
@@ -130,8 +143,9 @@ class Look:
             notes.append("Reference image 1 shows the drawing style only: copy its chalk look, not its content.")
         for k, name in enumerate(refs, 2 if self.style_frame else 1):
             notes.append(f"Reference image {k} is the character sheet of {name}: draw {name} exactly like it.")
+        empty = "" if shot.characters else " No people or stick figures anywhere in this shot."
         return (f"{style(self.red)} {' '.join(notes)} Shot: {FRAMING_TEXT.get(shot.framing, shot.framing)}. "
-                f"{shot.picture}")
+                f"{shot.picture}{empty}")
 
     def picture(self, shot: Shot, scene: dict[str, Any], cast_names: list[str],
                 looks: dict[str, Any]) -> Path:

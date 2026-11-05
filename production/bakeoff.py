@@ -58,7 +58,8 @@ def run(story: dict[str, Any], out: Path, kokoro: Any, router: Any, cfg: dict[st
     best = sorted(near, key=lambda s: (-(s.importance + 2 * s.scare), s.index))[:4]
 
     # Pictures.
-    look = Look(studio, work / "look", cast, red, parallel=4)
+    look = Look(studio, work / "look", list(cast), red, parallel=4)
+    look.extra_cast(near)
     look.references(scenes)
     for name, path in [("style_frame", look.style_frame)] + [(f"sheet {n}", p) for n, p in look.sheets.items()]:
         if path:

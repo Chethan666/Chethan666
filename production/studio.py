@@ -96,7 +96,8 @@ def produce(story: dict[str, Any], out_dir: Path, kokoro: Any, router: Any, cfg:
     looks.setdefault("The Storyteller", director.features("The Storyteller", STORYTELLER_LOOK))
     look = None
     if studio is not None:
-        look = Look(studio, work / "look", cast, red, parallel)
+        look = Look(studio, work / "look", list(cast), red, parallel)
+        look.extra_cast(shots)
         look.references(scenes)
         pictures = look.pictures(shots, scenes, cast_names, looks)
     else:
