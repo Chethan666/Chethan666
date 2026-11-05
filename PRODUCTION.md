@@ -76,6 +76,17 @@ opening through two ElevenLabs voices and Kokoro, plus a music cue and a stinger
 with their checks and costs (capped at $10). `mode = video-check` lists what every configured
 model accepts, at no cost.
 
+The first bake-off (run 71, story 18, $7.43) settled the defaults: Nano Banana Pro draws the
+cleanest chalk-on-blackboard pictures with expressive stick figures; Nano Banana 2 crowds
+the frame; Seedream 4.5 drifts into grey, shaded realism (it stays only as the redraw).
+Seedance 2.0 and Kling 3 both keep the chalk look in motion (a tear running down a cheek, a
+pupil pulsing red); Seedance 2.0 also adds the camera move, so it leads and Kling backs it up.
+
+Every video and bake-off run also pushes small review images (comparison sheets, the
+contact sheet, thumbnails, a frame every 20 s, clip strips, the reports) to the
+`review-media` branch under `run-<number>/`, so a run can be judged without downloading
+the artifact; `mode = video-share` with a run id does the same for an earlier run.
+
 ### Review, then publish
 
 Nothing goes to YouTube until a person has watched it:
