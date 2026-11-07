@@ -267,13 +267,23 @@ def run_job(vast: Vast, job: dict[str, Any], worker: Path, local_out: Path, max_
     offers = vast.offers()
     if not offers:
         raise VastError("no suitable 80 GB GPU offer on Vast.ai right now")
-    offer = offers[0]
-    price = _num(offer.get("dph_total"))
-    hours = min(max_usd / price if price else 3.0, max_hours)
-    log.info("Best offer: %s at $%.2f/h; time limit %.1f h from the $%.2f cap", offer.get("gpu_name"), price,
-             hours, max_usd)
     vast.ssh_key()
-    machine = vast.rent(offer, disk)
+    machine = None
+    for offer in offers[:6]:  # a cheap offer is often taken between the search and the rent
+        price = _num(offer.get("dph_total"))
+        if price * 0.5 > max_usd:
+            continue
+        try:
+            machine = vast.rent(offer, disk)
+            break
+        except VastError as exc:
+            log.warning("Offer %s (%s) not rented: %s", offer.get("id"), offer.get("gpu_name"), exc)
+    if machine is None:
+        vast.forget_key()
+        raise VastError("none of the best offers could be rented right now; try again in a few minutes")
+    price = machine.price
+    hours = min(max_usd / price if price else 3.0, max_hours)
+    log.info("Rented %s at $%.2f/h; time limit %.1f h from the $%.2f cap", machine.gpu, price, hours, max_usd)
     report: dict[str, Any] = {"gpu": machine.gpu, "price_per_hour": price, "instance": machine.id}
     try:
         vast.wait(machine)
