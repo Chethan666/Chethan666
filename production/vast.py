@@ -34,6 +34,24 @@ QUERIES = (
 )
 
 
+DOWNLOAD_GB = 150  # the models (Qwen-Image-Edit, Wan 2.2, MMAudio) plus the software
+HOURS = 2.5  # a typical run
+MAX_DOWNLOAD_USD = 1.0  # hosts charging more than this for the downloads are skipped
+
+
+def download_usd(offer: dict[str, Any]) -> float:
+    """What the host charges for downloading the models (some hosts bill internet traffic per TB)."""
+    per_tb = _num(offer.get("internet_down_cost_per_tb"), -1)
+    if per_tb < 0:
+        per_tb = _num(offer.get("inet_down_cost"), 0.0) * 1000  # per GB
+    return per_tb * DOWNLOAD_GB / 1000
+
+
+def expected_cost(offer: dict[str, Any]) -> float:
+    """Rent for a typical run plus the download charge: the true price of an offer."""
+    return _num(offer.get("dph_total"), 99) * HOURS + download_usd(offer) + _num(offer.get("storage_total_cost"), 0.0)
+
+
 class VastError(RuntimeError):
     pass
 
@@ -105,9 +123,9 @@ class Vast:
             found = found if isinstance(found, list) else found.get("offers", []) if isinstance(found, dict) else []
             # x86 machines only (DGX Spark / GB10 boxes are ARM and can't run the image).
             found = [o for o in found if str(o.get("cpu_arch", "amd64")).lower() in ("amd64", "x86_64")
-                     and "GB10" not in str(o.get("gpu_name", ""))]
+                     and "GB10" not in str(o.get("gpu_name", "")) and download_usd(o) <= MAX_DOWNLOAD_USD]
             if found:
-                return sorted(found, key=lambda o: _num(o.get("dph_total"), 99))
+                return sorted(found, key=expected_cost)
         return []
 
     # --- one machine --------------------------------------------------------------------
@@ -271,6 +289,11 @@ def remote_script(job: dict[str, Any]) -> str:
 def run_job(vast: Vast, job: dict[str, Any], worker: Path, local_out: Path, max_usd: float,
             disk: int = 300, max_hours: float = 3.4) -> dict[str, Any]:
     """Rent the cheapest suitable machine, run the job, bring back the results, destroy the machine."""
+    credit = vast.balance()
+    if credit is not None:
+        if credit < 1.0:
+            raise VastError(f"Vast.ai credit is ${credit:.2f}: add credit at cloud.vast.ai/billing, then run again")
+        max_usd = min(max_usd, credit - 0.5)  # never plan to spend more than the account holds
     offers = vast.offers()
     if not offers:
         raise VastError("no suitable 80 GB GPU offer on Vast.ai right now")

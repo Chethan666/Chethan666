@@ -68,6 +68,10 @@ class FakeRun:
         if args[:2] == ["search", "offers"]:
             out = json.dumps([{"id": 2, "gpu_name": "H100 SXM", "dph_total": 2.4, "cpu_arch": "amd64"},
                               {"id": 3, "gpu_name": "GB10", "dph_total": 0.5, "cpu_arch": "arm64"},
+                              {"id": 4, "gpu_name": "RTX PRO 6000", "dph_total": 1.2, "cpu_arch": "amd64",
+                               "internet_down_cost_per_tb": 20.0},
+                              {"id": 5, "gpu_name": "RTX PRO 6000", "dph_total": 1.3, "cpu_arch": "amd64",
+                               "internet_down_cost_per_tb": 4.0},
                               {"id": 1, "gpu_name": "H100 NVL", "dph_total": 1.9, "cpu_arch": "amd64"}])
         elif args[:2] == ["create", "instance"]:
             out = "Started. " + json.dumps({"success": True, "new_contract": 777})
@@ -84,11 +88,24 @@ class VastCliTests(unittest.TestCase):
 
         run = FakeRun()
         vast = Vast(key="k", run=run, label="hollow-lines-9")
-        self.assertEqual([o["id"] for o in vast.offers()], [1, 2])  # cheapest first, ARM boxes left out
+        # ARM boxes and hosts that charge a lot for downloads are left out; the rest by true cost
+        # (rent plus download charge): 1.3 h-rate + $0.60 download beats 1.9 h-rate with free downloads
+        self.assertEqual([o["id"] for o in vast.offers()], [5, 1, 2])
         self.assertEqual(vast.balance(), 19.5)
         machine = vast.rent({"id": 1, "gpu_name": "H100 NVL", "dph_total": 1.9})
         self.assertEqual((machine.id, machine.price), (777, 1.9))
         self.assertEqual(vast.cleanup_label(), 1)
+
+    def test_an_empty_account_stops_before_anything_is_rented(self):
+        from production.vast import Vast, VastError, run_job
+
+        run = FakeRun()
+        vast = Vast(key="k", run=run)
+        vast.balance = lambda: 0.0
+        with self.assertRaises(VastError) as caught:
+            run_job(vast, {}, Path("w"), Path("o"), 6.0)
+        self.assertIn("add credit", str(caught.exception))
+        self.assertFalse(any("create" in c for c in run.calls))
         self.assertIn(["vastai", "destroy", "instance", "777", "-y", "--api-key", "k"], run.calls)
         self.assertTrue(all(c[-2:] == ["--api-key", "k"] for c in run.calls))
 

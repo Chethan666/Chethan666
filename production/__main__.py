@@ -146,7 +146,7 @@ def _label() -> str:
 
 
 def vast_admin(command: str) -> int:
-    from .vast import Vast
+    from .vast import Vast, download_usd, expected_cost
 
     vast = Vast(label=_label())
     if command == "vast-cleanup":
@@ -170,7 +170,8 @@ def vast_admin(command: str) -> int:
         print(f"  id {o.get('id')}  {o.get('gpu_name')}  ${float(o.get('dph_total') or 0):.2f}/h  "
               f"gpu_ram {o.get('gpu_ram')}  cpu_ram {o.get('cpu_ram')}  disk {o.get('disk_space')}  "
               f"down {o.get('inet_down')}  reliability {o.get('reliability2', o.get('reliability'))}  "
-              f"cuda {o.get('cuda_max_good')}")
+              f"cuda {o.get('cuda_max_good')}  downloads ~${download_usd(o):.2f}  "
+              f"typical run ~${expected_cost(o):.2f}")
     if offers:
         print("Offer fields:", ", ".join(sorted(offers[0])))
     return 0
