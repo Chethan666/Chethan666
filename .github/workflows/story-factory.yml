@@ -17,6 +17,9 @@
 #               `overrides` (e.g. 2026-11-20T17:00:00Z) to schedule it instead
 #   mode=video-stats: reads every published video's YouTube stats into the performance table
 #   mode=video-share: re-shares an earlier video run's review images (story_id = that run's id)
+#   mode=video-vast: a 40-60 s piece of a story (story_id, or the newest) made with open models on a rented
+#               Vast.ai GPU (capped by `overrides`, e.g. vast.max_usd=12; default $12), saved as video-<run number>
+#   mode=video-vast-check: the Vast.ai balance and the best GPU offers (no spend)
 #   mode=video-check: pipeline 2 lists what each studio model on fal.ai expects (no spend)
 #   mode=video: pipeline 2 turns the next approved story (or story_id) into a video, saved as
 #               an artifact named video-<run number> for 14 days
@@ -32,7 +35,7 @@ on:
       mode:
         description: "check = tests and model access only; story = generate one story; video = make the next approved story's video; bench = compare two model setups; recheck = re-check approved legends"
         type: choice
-        options: [check, story, video, video-check, video-bakeoff, video-approve, video-reject, video-publish, video-stats, video-share, drama-check, drama-series, drama-write, drama-video, bench, recheck]
+        options: [check, story, video, video-vast, video-vast-check, video-check, video-bakeoff, video-approve, video-reject, video-publish, video-stats, video-share, drama-check, drama-series, drama-write, drama-video, bench, recheck]
         default: check
       series:
         description: Series to generate in story mode
@@ -95,6 +98,7 @@ jobs:
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      VAST_API_KEY: ${{ secrets.VAST_API_KEY }}
       MODE: ${{ inputs.mode }}
       SERIES: ${{ inputs.series }}
       CONFIG: ${{ inputs.config }}
@@ -159,22 +163,30 @@ jobs:
           python -m story_factory --config "$CONFIG" "${SETS[@]}" generate "$SERIES"
 
       - name: Cache the narrator voice model
-        if: env.MODE == 'video' || env.MODE == 'video-bakeoff' || env.MODE == 'drama-video'
+        if: env.MODE == 'video' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast' || env.MODE == 'drama-video'
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
           key: kokoro-82m-v1
 
       - name: Install video tools
-        if: env.MODE == 'video' || env.MODE == 'video-bakeoff' || env.MODE == 'drama-video'
+        if: env.MODE == 'video' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast' || env.MODE == 'drama-video'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements-video.txt
 
+      - name: Vast.ai tools
+        if: startsWith(env.MODE, 'video-vast')
+        run: pip install vastai
+
+      - name: Vast.ai balance and offers
+        if: env.MODE == 'video-vast-check'
+        run: python -m production --config "$CONFIG" vast-check | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Make the video
-        if: env.MODE == 'video' || env.MODE == 'video-bakeoff'
+        if: env.MODE == 'video' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast'
         run: |
           ARGS=()
           if [ -n "$STORY_ID" ]; then ARGS+=(--story "$STORY_ID"); fi
@@ -182,13 +194,18 @@ jobs:
           for kv in $OVERRIDES; do SETS+=(--set "$kv"); done
           COMMAND=produce
           if [ "$MODE" = video-bakeoff ]; then COMMAND=bakeoff; fi
-          python -m production --config "$CONFIG" "${SETS[@]}" "$COMMAND" "${ARGS[@]}" | tee video-summary.txt
+          if [ "$MODE" = video-vast ]; then COMMAND=vast-video; fi
+          python -m production --config "$CONFIG" "${SETS[@]}" "$COMMAND" "${ARGS[@]}" 2>&1 | tee video-summary.txt
           status=${PIPESTATUS[0]}
           { echo '## Video'; echo '```'; tail -c 60000 video-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           exit $status
 
+      - name: Give back any Vast.ai machine this run rented
+        if: always() && env.MODE == 'video-vast'
+        run: python -m production --config "$CONFIG" vast-cleanup || true
+
       - name: Share review images
-        if: always() && (env.MODE == 'video' || env.MODE == 'video-bakeoff')
+        if: always() && (env.MODE == 'video' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast')
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -196,7 +213,7 @@ jobs:
         run: .github/scripts/share-review.sh
 
       - name: Save the video
-        if: always() && (env.MODE == 'video' || env.MODE == 'video-bakeoff')
+        if: always() && (env.MODE == 'video' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast')
         uses: actions/upload-artifact@v6
         with:
           name: video-${{ github.run_number }}

@@ -40,6 +40,12 @@ def main(argv: list[str] | None = None) -> int:
     u.add_argument("--privacy", choices=("private", "unlisted"), default="private")
     u.add_argument("--at", help="schedule: an RFC 3339 time, e.g. 2026-11-20T17:00:00Z")
     sub.add_parser("stats", help="read every published video's YouTube stats into the performance table")
+    v = sub.add_parser("vast-video", help="a 40-60 s piece made with open models on a rented Vast.ai GPU")
+    v.add_argument("--story", type=int, help="a story id (default: the newest approved or produced long story)")
+    v.add_argument("--out", default="out")
+    v.add_argument("--max-usd", type=float, help="the GPU rental cap for this video (default vast.max_usd)")
+    sub.add_parser("vast-check", help="Vast.ai balance and the best GPU offers (no spend)")
+    sub.add_parser("vast-cleanup", help="destroy any Vast.ai machine this run left behind")
     b = sub.add_parser("bakeoff", help="the same shots through every candidate model, side by side")
     b.add_argument("--story", type=int, help="a story id (default: the newest approved or produced long story)")
     b.add_argument("--out", default="out")
@@ -62,9 +68,13 @@ def main(argv: list[str] | None = None) -> int:
     cfg = apply_overrides(load_config(args.config), args.set)
     if args.command == "check":
         return check(cfg.get("studio", {}))
+    if args.command in ("vast-check", "vast-cleanup"):
+        return vast_admin(args.command)
     conn = db.connect(cfg["database"])
     if args.command == "bakeoff":
         return bakeoff(args, cfg, conn)
+    if args.command == "vast-video":
+        return vast_video(args, cfg, conn)
     if args.command in ("approve", "publish", "stats"):
         return channel(args, conn)
     video_cfg = cfg.get("video", {})
@@ -127,6 +137,54 @@ def main(argv: list[str] | None = None) -> int:
     summary.update(run=os.environ.get("GITHUB_RUN_ID"), run_number=os.environ.get("GITHUB_RUN_NUMBER"),
                    narrator_fallback=args.voice)
     db.update_story(conn, story["id"], production=summary, **({"status": "produced"} if claimed else {}))
+    print(json.dumps(summary, indent=2))
+    return 0
+
+
+def _label() -> str:
+    return f"hollow-lines-{os.environ.get('GITHUB_RUN_ID', 'local')}"
+
+
+def vast_admin(command: str) -> int:
+    from .vast import Vast
+
+    vast = Vast(label=_label())
+    if command == "vast-cleanup":
+        print(f"Destroyed {vast.cleanup_label()} leftover machine(s) labelled {vast.label}")
+        return 0
+    print("Balance:", vast.balance())
+    offers = vast.offers()
+    print(f"{len(offers)} suitable offers; the cheapest:")
+    for o in offers[:8]:
+        print(f"  id {o.get('id')}  {o.get('gpu_name')}  ${float(o.get('dph_total') or 0):.2f}/h  "
+              f"gpu_ram {o.get('gpu_ram')}  cpu_ram {o.get('cpu_ram')}  disk {o.get('disk_space')}  "
+              f"down {o.get('inet_down')}  reliability {o.get('reliability2', o.get('reliability'))}  "
+              f"cuda {o.get('cuda_max_good')}")
+    if offers:
+        print("Offer fields:", ", ".join(sorted(offers[0])))
+    return 0
+
+
+def vast_video(args: argparse.Namespace, cfg: dict, conn) -> int:
+    from . import vastvideo
+    from .vast import Vast
+
+    row = db.get_story(conn, args.story) if args.story else conn.execute(
+        "SELECT * FROM stories WHERE kind = 'long' AND status IN ('approved', 'produced') "
+        "ORDER BY id DESC LIMIT 1").fetchone()
+    if row is None:
+        print("No story to make", file=sys.stderr)
+        return 1
+    story = dict(row)
+    print(f"Open-model video on Vast.ai from story #{story['id']}: {story['title']}", flush=True)
+    video_cfg = cfg.get("video", {})
+    kokoro = voice.KokoroVoice(video_cfg.get("voice", "am_michael"), video_cfg.get("lang", "a"),
+                               float(video_cfg.get("speed", 0.92)))
+    vcfg = dict(cfg.get("vast", {}))
+    if args.max_usd is not None:
+        vcfg["max_usd"] = args.max_usd
+    summary = vastvideo.produce(story, Path(args.out) / f"vast-story-{story['id']}", kokoro, Router(cfg, conn), vcfg,
+                                Vast(label=_label()), Path(__file__).with_name("vast_worker.py"), conn)
     print(json.dumps(summary, indent=2))
     return 0
 
