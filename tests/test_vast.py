@@ -95,6 +95,8 @@ class VastCliTests(unittest.TestCase):
         machine = vast.rent({"id": 1, "gpu_name": "H100 NVL", "dph_total": 1.9})
         self.assertEqual((machine.id, machine.price), (777, 1.9))
         self.assertEqual(vast.cleanup_label(), 1)
+        self.assertIn(["vastai", "destroy", "instance", "777", "-y", "--api-key", "k"], run.calls)
+        self.assertTrue(all(c[-2:] == ["--api-key", "k"] for c in run.calls))
 
     def test_an_empty_account_stops_before_anything_is_rented(self):
         from production.vast import Vast, VastError, run_job
@@ -106,8 +108,6 @@ class VastCliTests(unittest.TestCase):
             run_job(vast, {}, Path("w"), Path("o"), 6.0)
         self.assertIn("add credit", str(caught.exception))
         self.assertFalse(any("create" in c for c in run.calls))
-        self.assertIn(["vastai", "destroy", "instance", "777", "-y", "--api-key", "k"], run.calls)
-        self.assertTrue(all(c[-2:] == ["--api-key", "k"] for c in run.calls))
 
 
 @unittest.skipUnless(HAVE, "video libraries or ffmpeg not installed")
