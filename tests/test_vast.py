@@ -24,7 +24,7 @@ class ExcerptTests(unittest.TestCase):
         picked = excerpt(scenes)
         self.assertEqual(picked[-1], 5)
         self.assertEqual(picked, sorted(picked))
-        self.assertTrue(85 <= 30 * len(picked) <= 155)
+        self.assertTrue(75 <= 30 * len(picked) <= 128)
         self.assertNotIn(7, picked)
 
     def test_the_job_names_every_sound_the_mixer_will_ask_for(self):
@@ -41,6 +41,18 @@ class ExcerptTests(unittest.TestCase):
         self.assertIn("{sheet:Marisol}", job["shots"][0]["picture_prompt"])
         self.assertIn("No people", job["shots"][1]["picture_prompt"])
         self.assertEqual(job["sheets"][0]["name"], "Marisol")
+
+
+class RemoteScriptTests(unittest.TestCase):
+    def test_the_remote_script_names_both_models_and_keeps_its_shell_syntax(self):
+        from production.vast import remote_script
+
+        text = remote_script({"picture_model": "Qwen/Qwen-Image-Edit-2509", "clip_model": "Wan-AI/W"})
+        self.assertIn("d('Qwen/Qwen-Image-Edit-2509')", text)
+        self.assertIn("d('Wan-AI/W')", text)
+        self.assertIn('step() { echo "$(date +%H:%M:%S) == $*"; }', text)
+        check = subprocess.run(["bash", "-n"], input=text, capture_output=True, text=True)
+        self.assertEqual(check.returncode, 0, check.stderr)
 
 
 class FakeRun:

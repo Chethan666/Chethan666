@@ -105,12 +105,13 @@ def pictures(job: dict, out: Path) -> None:
 
 def clips(job: dict, out: Path, shard: int = 0, shards: int = 1) -> None:
     import torch
-    from diffusers import WanImageToVideoPipeline
+    from diffusers import AutoencoderKLWan, WanImageToVideoPipeline
     from diffusers.utils import export_to_video
     from PIL import Image
 
     W, H = job.get("clip_size", [1280, 720])
-    pipe = WanImageToVideoPipeline.from_pretrained(job["clip_model"], torch_dtype=torch.bfloat16)
+    vae = AutoencoderKLWan.from_pretrained(job["clip_model"], subfolder="vae", torch_dtype=torch.float32)
+    pipe = WanImageToVideoPipeline.from_pretrained(job["clip_model"], vae=vae, torch_dtype=torch.bfloat16)
     pipe.enable_model_cpu_offload()
     log("clip model loaded")
     order = job.get("clip_order") or [s["index"] for s in job["shots"]]  # most important first
@@ -150,7 +151,8 @@ def audio(job: dict, out: Path) -> None:
         folder = out / "mm" / item["name"]
         folder.mkdir(parents=True, exist_ok=True)
         args = [sys.executable, "demo.py", "--prompt", item["prompt"], "--duration", str(item["duration"]),
-                "--output", str(folder), "--negative_prompt", item.get("negative", "music, speech, voices, talking")]
+                "--output", str(folder), "--negative_prompt", item.get("negative", "music, speech, voices, talking"),
+                "--skip_video_composite"]
         if item.get("video"):
             video = out / item["video"]
             if not video.exists():

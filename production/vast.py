@@ -237,10 +237,10 @@ step installing
 (apt-get update -qq && apt-get install -y -qq git ffmpeg) >/dev/null 2>&1
 pip install -q -U "git+https://github.com/huggingface/diffusers" transformers accelerate sentencepiece \\
   hf_transfer ftfy imageio imageio-ffmpeg peft "huggingface_hub[hf_transfer]" 2>&1 | tail -n 3
-step "downloading {picture_model}"
-python -c "from huggingface_hub import snapshot_download as d; d('{picture_model}')" 2>&1 | tail -n 2
-step "downloading {clip_model} in the background"
-(python -c "from huggingface_hub import snapshot_download as d; d('{clip_model}')" > clip_download.log 2>&1; touch CLIP_READY) &
+step "downloading @PICTURE_MODEL@"
+python -c "from huggingface_hub import snapshot_download as d; d('@PICTURE_MODEL@')" 2>&1 | tail -n 2
+step "downloading @CLIP_MODEL@ in the background"
+(python -c "from huggingface_hub import snapshot_download as d; d('@CLIP_MODEL@')" > clip_download.log 2>&1; touch CLIP_READY) &
 step pictures
 python vast_worker.py job.json pictures
 step "waiting for the clip model"
@@ -255,6 +255,10 @@ python vast_worker.py job.json audio
 step finished
 touch /workspace/job/DONE
 """
+
+
+def remote_script(job: dict[str, Any]) -> str:
+    return REMOTE_SCRIPT.replace("@PICTURE_MODEL@", job["picture_model"]).replace("@CLIP_MODEL@", job["clip_model"])
 
 
 def run_job(vast: Vast, job: dict[str, Any], worker: Path, local_out: Path, max_usd: float,
@@ -276,8 +280,7 @@ def run_job(vast: Vast, job: dict[str, Any], worker: Path, local_out: Path, max_
         job = dict(job, out="/workspace/job/out")
         work = Path(tempfile.mkdtemp(prefix="vastjob-"))
         (work / "job.json").write_text(json.dumps(job))
-        (work / "run.sh").write_text(REMOTE_SCRIPT.format(picture_model=job["picture_model"],
-                                                          clip_model=job["clip_model"]))
+        (work / "run.sh").write_text(remote_script(job))
         (work / "vast_worker.py").write_text(worker.read_text())
         vast.ssh(machine, "mkdir -p /workspace/job/out")
         vast.put(machine, [work / "job.json", work / "run.sh", work / "vast_worker.py"], "/workspace/job/")

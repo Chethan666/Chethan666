@@ -36,7 +36,7 @@ PICTURE_MODEL = "Qwen/Qwen-Image-Edit-2509"
 CLIP_MODEL = "Wan-AI/Wan2.2-I2V-A14B-Diffusers"
 
 
-def excerpt(scenes: list[dict[str, Any]], words: tuple[int, int] = (85, 135)) -> list[int]:
+def excerpt(scenes: list[dict[str, Any]], words: tuple[int, int] = (75, 118)) -> list[int]:
     """Consecutive scenes ending on the first key moment that is not the last scene, reaching back
     until the excerpt is long enough (about 40-60 s read aloud)."""
     if not scenes:
@@ -53,10 +53,10 @@ def excerpt(scenes: list[dict[str, Any]], words: tuple[int, int] = (85, 135)) ->
             chosen.insert(0, i)
             total += count[i]
             i -= 1
-        if total < words[0] and key + 1 < last and total + count[key + 1] <= words[1] + 20:
+        if total < words[0] and key + 1 < last and total + count[key + 1] <= words[1] + 10:
             chosen.append(key + 1)
             total += count[key + 1]
-        if words[0] <= total <= words[1] + 20:
+        if words[0] <= total <= words[1] + 10:
             return chosen
         if not best or abs(sum(count[j] for j in chosen) - sum(words) / 2) < abs(
                 sum(count[j] for j in best) - sum(words) / 2):

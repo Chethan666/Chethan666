@@ -38,6 +38,7 @@ else
   git checkout -q --orphan review-media
 fi
 git add "run-$GITHUB_RUN_NUMBER"
+if git diff --cached --quiet; then echo "Nothing to share"; exit 0; fi
 git commit -q -m "Review media for run $GITHUB_RUN_NUMBER"
 git push -q "$remote" HEAD:review-media
 echo "Shared $(ls "run-$GITHUB_RUN_NUMBER" | wc -l) files on the review-media branch"
