@@ -122,6 +122,7 @@ def build_job(shots: list[shotlist.Shot], scenes: list[dict[str, Any]], cast: li
         job["audio"].append({"name": f"room_{digest(p)}", "duration": 10,
                              "prompt": f"Night ambience of {p}: quiet, eerie room tone, no music, no voices."})
     job["audio"].append({"name": "sting", "duration": 3, "prompt": STING, "negative": "speech, voices"})
+    job["clip_order"] = [s.index for s in sorted(shots, key=lambda s: (-(s.importance + 2 * s.scare), s.index))]
     return job
 
 
@@ -172,7 +173,8 @@ def produce(story: dict[str, Any], out_dir: Path, kokoro: Any, router: Any, cfg:
     job = build_job(shots, scenes, cast, red, cfg)
     for s in shots:
         s.sound = ""  # each clip's own foley carries its sound
-    gpu = run_job(vast, job, worker, work / "gpu", float(cfg.get("max_usd", 12.0)))
+    gpu = run_job(vast, job, worker, work / "gpu", float(cfg.get("max_usd", 12.0)),
+                  max_hours=float(cfg.get("max_hours", 3.4)))
     made = work / "gpu" / "out"
 
     # 4. Pictures and clips, checked; any gap filled by a neighbour or, last, the code renderer.

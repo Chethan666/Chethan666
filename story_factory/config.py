@@ -288,8 +288,9 @@ DEFAULTS: dict[str, Any] = {
     # Pipeline 2 on open models: a 40-60 s piece made on a rented Vast.ai GPU (mode video-vast).
     "vast": {
         "max_usd": 12.0,  # the GPU rental cap; the job stops before it would pass it
+        "max_hours": 3.4,  # and the GitHub job's own time limit
         "picture_model": "Qwen/Qwen-Image-Edit-2509", "picture_steps": 40, "picture_tries": 3,
-        "clip_model": "Wan-AI/Wan2.2-I2V-A14B-Diffusers", "clip_steps": 30, "clip_size": [1280, 720],
+        "clip_model": "Wan-AI/Wan2.2-I2V-A14B-Diffusers", "clip_steps": 25, "clip_size": [1280, 720],
         "shot_min_seconds": 3.0, "shot_max_seconds": 6.0,
         "title_seconds": 2.0, "end_seconds": 5.0, "burn_captions": True, "loudness_lufs": -14.0,
     },

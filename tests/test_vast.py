@@ -54,8 +54,9 @@ class FakeRun:
         args = cmd[1:cmd.index("--api-key")]
         out = ""
         if args[:2] == ["search", "offers"]:
-            out = json.dumps([{"id": 2, "gpu_name": "H100 SXM", "dph_total": 2.4},
-                              {"id": 1, "gpu_name": "H100 NVL", "dph_total": 1.9}])
+            out = json.dumps([{"id": 2, "gpu_name": "H100 SXM", "dph_total": 2.4, "cpu_arch": "amd64"},
+                              {"id": 3, "gpu_name": "GB10", "dph_total": 0.5, "cpu_arch": "arm64"},
+                              {"id": 1, "gpu_name": "H100 NVL", "dph_total": 1.9, "cpu_arch": "amd64"}])
         elif args[:2] == ["create", "instance"]:
             out = "Started. " + json.dumps({"success": True, "new_contract": 777})
         elif args[:1] == ["show"] and args[1] == "user":
@@ -71,7 +72,7 @@ class VastCliTests(unittest.TestCase):
 
         run = FakeRun()
         vast = Vast(key="k", run=run, label="hollow-lines-9")
-        self.assertEqual(vast.offers()[0]["id"], 1)  # cheapest first
+        self.assertEqual([o["id"] for o in vast.offers()], [1, 2])  # cheapest first, ARM boxes left out
         self.assertEqual(vast.balance(), 19.5)
         machine = vast.rent({"id": 1, "gpu_name": "H100 NVL", "dph_total": 1.9})
         self.assertEqual((machine.id, machine.price), (777, 1.9))
@@ -89,7 +90,7 @@ class VastVideoTests(unittest.TestCase):
         self.addCleanup(shutil.rmtree, root, ignore_errors=True)
         seen = {}
 
-        def fake_job(vast, job, worker, local, max_usd):
+        def fake_job(vast, job, worker, local, max_usd, max_hours=3.4):
             seen["job"] = job
             out = local / "out"
             out.mkdir(parents=True)

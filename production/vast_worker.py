@@ -113,7 +113,9 @@ def clips(job: dict, out: Path, shard: int = 0, shards: int = 1) -> None:
     pipe = WanImageToVideoPipeline.from_pretrained(job["clip_model"], torch_dtype=torch.bfloat16)
     pipe.enable_model_cpu_offload()
     log("clip model loaded")
-    for shot in job["shots"][shard::shards]:
+    order = job.get("clip_order") or [s["index"] for s in job["shots"]]  # most important first
+    by_index = {s["index"]: s for s in job["shots"]}
+    for shot in [by_index[i] for i in order if i in by_index][shard::shards]:
         src = out / f"shot_{shot['index']:03d}.png"
         dst = out / f"clip_{shot['index']:03d}.mp4"
         if not src.exists() or dst.exists():

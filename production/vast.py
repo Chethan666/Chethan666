@@ -101,6 +101,9 @@ class Vast:
         for query in QUERIES:
             found = self.cli("search", "offers", query, "-o", "dph_total")
             found = found if isinstance(found, list) else found.get("offers", []) if isinstance(found, dict) else []
+            # x86 machines only (DGX Spark / GB10 boxes are ARM and can't run the image).
+            found = [o for o in found if str(o.get("cpu_arch", "amd64")).lower() in ("amd64", "x86_64")
+                     and "GB10" not in str(o.get("gpu_name", ""))]
             if found:
                 return sorted(found, key=lambda o: _num(o.get("dph_total"), 99))
         return []
@@ -219,7 +222,8 @@ class Vast:
             if "__DONE__" in lines:
                 return text
             if time.time() > deadline:
-                raise VastError("the GPU job ran past its time limit (the spending cap); stopping")
+                log.warning("Time limit reached (the spending cap): keeping what the GPU has made so far")
+                return text + "\n__STOPPED_AT_LIMIT__"
             time.sleep(poll)
 
 
@@ -254,14 +258,14 @@ touch /workspace/job/DONE
 
 
 def run_job(vast: Vast, job: dict[str, Any], worker: Path, local_out: Path, max_usd: float,
-            disk: int = 300) -> dict[str, Any]:
+            disk: int = 300, max_hours: float = 3.4) -> dict[str, Any]:
     """Rent the cheapest suitable machine, run the job, bring back the results, destroy the machine."""
     offers = vast.offers()
     if not offers:
         raise VastError("no suitable 80 GB GPU offer on Vast.ai right now")
     offer = offers[0]
     price = _num(offer.get("dph_total"))
-    hours = max_usd / price if price else 3.0
+    hours = min(max_usd / price if price else 3.0, max_hours)
     log.info("Best offer: %s at $%.2f/h; time limit %.1f h from the $%.2f cap", offer.get("gpu_name"), price,
              hours, max_usd)
     vast.ssh_key()
@@ -281,7 +285,9 @@ def run_job(vast: Vast, job: dict[str, Any], worker: Path, local_out: Path, max_
             vast.put(machine, [Path(name)], "/workspace/job/out/")
         vast.ssh(machine, "cd /workspace/job && nohup bash run.sh > run.log 2>&1 &")
         deadline = machine.started + hours * 3600 - 600  # keep 10 minutes for the download and teardown
-        report["log"] = vast.follow(machine, "/workspace/job/run.log", "/workspace/job/DONE", deadline)[-6000:]
+        text = vast.follow(machine, "/workspace/job/run.log", "/workspace/job/DONE", deadline)
+        report["stopped_at_limit"] = text.endswith("__STOPPED_AT_LIMIT__")
+        report["log"] = text[-6000:]
     finally:
         try:
             if machine.host:
