@@ -34,7 +34,7 @@ QUERIES = (
 )
 
 
-DOWNLOAD_GB = 150  # the models (Qwen-Image-Edit, Wan 2.2, MMAudio) plus the software
+DOWNLOAD_GB = 180  # measured: run 77 pulled 172 GB (Qwen-Image-Edit, Wan 2.2, software) before MMAudio
 HOURS = 2.5  # a typical run
 MAX_DOWNLOAD_USD = 1.0  # hosts charging more than this for the downloads are skipped
 
