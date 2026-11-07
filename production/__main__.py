@@ -153,6 +153,17 @@ def vast_admin(command: str) -> int:
         print(f"Destroyed {vast.cleanup_label()} leftover machine(s) labelled {vast.label}")
         return 0
     print("Balance:", vast.balance())
+    try:
+        user = vast.cli("show", "user")
+        print("Account:", {k: user.get(k) for k in ("credit", "balance", "balance_threshold", "has_billing",
+                                                    "billing_creditonly", "can_pay") if isinstance(user, dict)})
+        mine = vast.cli("show", "instances") or []
+        print(f"Your machines ({len(mine)}):")
+        for inst in mine:
+            print(f"  id {inst.get('id')} {inst.get('gpu_name')} status {inst.get('actual_status')} "
+                  f"label {inst.get('label')} ${float(inst.get('dph_total') or 0):.2f}/h")
+    except Exception as exc:  # noqa: BLE001 - a report
+        print("Account details unavailable:", exc)
     offers = vast.offers()
     print(f"{len(offers)} suitable offers; the cheapest:")
     for o in offers[:8]:

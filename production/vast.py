@@ -82,6 +82,8 @@ class Vast:
         if not raw:
             return result.stdout
         text = result.stdout.strip()
+        if not text and result.stderr.strip():
+            raise VastError(f"vastai {args[0]} {args[1] if len(args) > 1 else ''}: {result.stderr.strip()[-500:]}")
         try:
             return json.loads(text) if text else {}
         except ValueError:
@@ -122,7 +124,12 @@ class Vast:
                         "--direct", "--label", self.label)
         instance = made.get("new_contract") if isinstance(made, dict) else None
         if not instance:
-            raise VastError(f"rent failed: {str(made)[:300]}")
+            text = self.cli("create", "instance", str(offer["id"]), "--image", IMAGE, "--disk", str(disk), "--ssh",
+                            "--direct", "--label", self.label, raw=False) if not made else made
+            match = re.search(r"new_contract['\"]?\s*[:=]\s*(\d+)", str(text))
+            if not match:
+                raise VastError(f"rent failed: {str(text)[:400]}")
+            instance = match.group(1)
         machine = Machine(int(instance), _num(offer.get("dph_total")), str(offer.get("gpu_name", "?")))
         machine.started = time.time()
         log.info("Rented %s (instance %s) at $%.2f/h", machine.gpu, machine.id, machine.price)
