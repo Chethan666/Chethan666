@@ -114,6 +114,27 @@ using your own client), and keep the refresh token. Never paste these into a cha
 them. Until the app is verified by Google, uploads from it stay private, which is what we
 want anyway.
 
+## Open models on a rented GPU (Vast.ai)
+
+**mode = video-vast** (optionally a `story_id`) makes a 40–60 s piece with open models only,
+on a GPU rented from Vast.ai with the `VAST_API_KEY` secret:
+
+- **The excerpt**: the stretch of the story that builds up to its first key scare (never the
+  ending), so it plays as a teaser that ends on the hook, with a "what happened next?" card.
+- **Here (free)**: Kokoro narration, the open planner's shot list, the edit, burned captions,
+  a vertical version and the contact sheet.
+- **On the GPU**: Qwen-Image-Edit-2509 draws a style frame, character sheets and every shot
+  (best of three by the chalk check); Wan 2.2 I2V A14B animates every shot at 720p (most
+  important first); MMAudio makes foley from each clip, room tone, score beds and a stinger.
+- **Money**: the cheapest verified x86 machine with 80 GB+ of GPU memory is rented (the first
+  check found an RTX PRO 6000 at $1.21/h). The job stops before `vast.max_usd` (default $12;
+  set e.g. `vast.max_usd=6` in `overrides`) or `vast.max_hours`, keeps whatever it has made,
+  and the machine is destroyed in every case (and again by an always-run cleanup step).
+- **mode = video-vast-check** shows the balance and the best offers without spending.
+
+All of these models are open (Apache-2.0 for Qwen-Image and Wan 2.2, MIT for MMAudio's code;
+check MMAudio's weights licence before commercial use).
+
 ## Drawn mode
 
 Drawn mode runs on GitHub Actions with open-source tools and the same open models as the
