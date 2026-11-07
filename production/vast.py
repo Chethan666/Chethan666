@@ -191,7 +191,7 @@ class Vast:
                 "-o", "LogLevel=ERROR", "-o", "ServerAliveInterval=30", "-o", "ConnectTimeout=20"]
 
     def ssh(self, machine: Machine, command: str, timeout: int = 600, check: bool = True):
-        result = subprocess.run(["ssh", *self._ssh_args(machine), "-p", str(machine.port),
+        result = subprocess.run(["ssh", "-n", *self._ssh_args(machine), "-p", str(machine.port),
                                  f"root@{machine.host}", command], capture_output=True, text=True, timeout=timeout)
         if check and result.returncode != 0:
             raise VastError(f"ssh {command[:60]!r}: {result.stderr[-400:]}")
@@ -286,7 +286,9 @@ def run_job(vast: Vast, job: dict[str, Any], worker: Path, local_out: Path, max_
         vast.put(machine, [work / "job.json", work / "run.sh", work / "vast_worker.py"], "/workspace/job/")
         for name in job.get("uploads", []):
             vast.put(machine, [Path(name)], "/workspace/job/out/")
-        vast.ssh(machine, "cd /workspace/job && nohup bash run.sh > run.log 2>&1 &")
+        # Fully detached (no input, no output tied to this connection) so ssh returns at once.
+        vast.ssh(machine, "cd /workspace/job && setsid nohup bash run.sh > run.log 2>&1 < /dev/null & disown",
+                 timeout=60)
         deadline = machine.started + hours * 3600 - 600  # keep 10 minutes for the download and teardown
         text = vast.follow(machine, "/workspace/job/run.log", "/workspace/job/DONE", deadline)
         report["stopped_at_limit"] = text.endswith("__STOPPED_AT_LIMIT__")
