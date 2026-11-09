@@ -26,15 +26,19 @@ from .speech import decode
 
 log = logging.getLogger(__name__)
 
+# An Indian folk-horror colour: the drones, bells, drums and bowed strings of Indian music.
 CUES = {
-    "unease": "Dark ambient horror film score, slow and sparse: a low cello drone, distant detuned piano notes, "
-              "soft eerie textures, quiet and patient, instrumental, no drums, no vocals.",
-    "dread": "Tense horror film score building dread: pulsing low strings, a slow heartbeat-like pulse, rising "
-             "dissonant textures, creeping and suspenseful, instrumental, no vocals.",
-    "terror": "Intense horror film climax score: aggressive dissonant strings, pounding low percussion, "
-              "screeching high violins, frantic and terrifying, instrumental, no vocals.",
+    "unease": "Dark ambient Indian folk-horror score, slow and sparse: a low, slightly detuned tanpura drone, a "
+              "distant temple bell, soft breathy bansuri notes bending out of tune, quiet and patient, "
+              "instrumental, no drums, no vocals.",
+    "dread": "Tense Indian folk-horror score building dread: a pulsing low tanpura drone, a slow muffled dhol "
+             "like a heartbeat, scraping sarangi, faint anklet bells, rising dissonance, creeping and "
+             "suspenseful, instrumental, no vocals.",
+    "terror": "Intense Indian folk-horror climax: aggressive dissonant sarangi and strings, pounding low dhol and "
+              "tabla, a shrill shehnai cry, frantic and terrifying, instrumental, no vocals.",
 }
-STING = "A sudden horror jump-scare stinger: a sharp dissonant orchestral hit with a fast reverse swell into it."
+STING = ("A sudden horror jump-scare stinger: a heavy temple bell struck once, hard, with a fast reverse swell into "
+         "it and a sharp dissonant hit.")
 CALM, UNEASY, TENSE = 0, 1, 2
 
 

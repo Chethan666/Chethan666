@@ -187,7 +187,7 @@ class LegendRecognitionTests(unittest.TestCase):
     def add(self, ctx):
         return db.upsert_inspiration(ctx.conn, source="wikipedia", source_id="1", kind="folklore",
                                      title="Legend 1", url="", summary="A spirit of the roads.",
-                                     region="Japan", license="CC BY-SA")
+                                     region="India", license="CC BY-SA")
 
     def test_an_unrecognized_being_is_replanned_then_rejected(self):
         ctx, brain = make_context()

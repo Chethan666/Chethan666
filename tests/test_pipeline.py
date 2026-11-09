@@ -10,7 +10,7 @@ from tests.fakes import Brain, FakeClient, make_context, premise, test_config
 
 def add_legend(conn, n: int, summary: str = "A spirit that walks the old roads at night.") -> int:
     return db.upsert_inspiration(conn, source="wikipedia", source_id=str(n), kind="folklore",
-                                 title=f"Legend {n}", url="", summary=summary, region="Mexico",
+                                 title=f"Legend {n}", url="", summary=summary, region="India",
                                  license="CC BY-SA")
 
 

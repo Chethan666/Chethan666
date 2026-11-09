@@ -11,12 +11,28 @@ import sqlite3
 from typing import Any, Sequence
 
 CHANNEL = """\
-Hollow Lines is an illustrated horror storytelling channel for a global audience of teens and
-adults (not made for kids). Every video is narrated by one calm voice over still pictures that
-change every few seconds, drawn in a dark, hand-drawn stickman style: white chalk-like figures on
-black ink paper with a single blood-red accent. There is no animation: each picture is one frozen
-moment. The host, The Storyteller, is a tall stick figure with a red-flamed lantern
-who opens and closes long episodes, speaking directly to the viewer.
+Hollow Lines tells horror stories from India, in English, to a global audience of teens and
+adults (not made for kids): Indian folklore, and original stories set in today's India. Every
+video is narrated by one calm voice over still pictures that change every few seconds, drawn in a
+dark, hand-drawn stickman style: white chalk-like figures on black ink paper with a single
+blood-red accent. There is no animation: each picture is one frozen moment. The host, The
+Storyteller, is a tall stick figure with a red-flamed lantern who opens and closes long episodes,
+speaking directly to the viewer.
+
+What makes a Hollow Lines story:
+- India, from the inside: real kinds of places (a night bus on a ghat road, a joint-family house
+  in a power cut, a paying-guest room in Bengaluru) and the food, festivals, family ties and small
+  habits of the people there, specific enough that an Indian viewer nods and a foreign viewer
+  learns something. India is many cultures: vary the region, language, faith, and city or village
+  life from story to story.
+- A rule from folk belief: many stories turn on one (never answer a voice that calls your name at
+  night until you see the face; never step over lemon and chillies left at a crossroads; never
+  sit under a peepal tree after dark). State it plainly early, so the viewer knows the rule
+  before the hero breaks it.
+- Ghosts with a reason: a spirit that stays wants something (justice, an answer, someone back),
+  and the ending settles it or makes it worse.
+- A few Hindi or regional words where they carry flavour (amma, bhaiya, chai, haveli), each clear
+  from context; never a line a viewer who knows no Hindi cannot follow.
 
 Rules that are never broken:
 - Fiction or folklore only; never claim a story is true or happened to real people.
@@ -26,7 +42,8 @@ Rules that are never broken:
 - No strong profanity: the channel stays advertiser-friendly.
 - No suicide or self-harm methods.
 - No copyrighted characters, creatures or plots (famous creepypastas, film, TV or game monsters).
-- Treat every culture's folklore with accuracy and respect; no stereotypes.
+- Treat every culture's folklore with accuracy and respect; no stereotypes. Gods, saints and
+  living religious practice are never the monster or the joke.
 """
 
 AUDIENCE_NEEDS = """\
@@ -88,29 +105,32 @@ The Storyteller (the voice of every intro and outro):
   then exactly "The lantern is lit.", then at most one short line. Never a slow mood-setting
   preamble: viewers decide in seconds. Shorts never use the ritual: their first words are
   the hook. The outro lets the story's fear follow the viewer
-  home, and ends with exactly one question to the viewer.
+  home, and ends with exactly one question to the viewer: like Betaal's riddles to King
+  Vikram, a question the story leaves open that viewers will want to answer in the comments
+  (who was really to blame? would you have opened the door?).
 """
 
 STYLE_SAMPLES = """\
 House style, by example (original samples: match their qualities, never copy their words).
 
 GOOD (a hook that raises a concrete question):
-"Marisol had driven the 11:40 bus for nine years, and in nine years nobody had ever pressed
-the stop bell between Calder Road and the reservoir. There is nothing out there. No houses.
-No shelter. Just a pole with a timetable nobody updates. Tonight, at six minutes past
-midnight, the bell rang. She checked the mirror. Every seat was empty. The bell rang again."
+"Meena had driven the 11:40 bus up the ghat road for nine years, and in nine years nobody had
+ever pressed the stop bell between the fourth hairpin bend and the dam. There is nothing out
+there. No houses. No shelter. Just a milestone with its paint worn away. Tonight, at six
+minutes past midnight, the bell rang. She checked the mirror. Every seat was empty. The bell
+rang again."
 
 GOOD (a person, and dread the viewer sees before the hero does):
-"He hums when he is nervous, always the same three notes of a song his mother sang, and he is
-humming now as he locks the back door. Check, then check again. That is his rule. What he
+"He hums when he is nervous, always the same three notes of a lullaby his grandmother sang, and
+he is humming now as he bolts the back door. Check, then check again. That is his rule. What he
 does not see, what you can see if you look at the kitchen window, is the handprint in the
-mist on the glass. On the inside."
+steam on the glass. On the inside."
 
 GOOD (an ending that answers the emotional core and leaves an aftertaste):
-"The voicemail was still saved under Don't Delete. She played it one last time. Hi, love.
-I'm on my way. And after the beep, very close to the phone, a second voice none of them
-had ever noticed: So am I. She keeps her phone in the kitchen now, face down. You might
-want to listen to your old voicemails tonight. Or you might not."
+"The voice note was still saved under Don't Delete. She played it one last time. Beta, I'm on
+my way. And after it, very close to the phone, a second voice none of them had ever noticed:
+So am I. She keeps her phone in the kitchen now, face down. You might want to listen to your
+old voice notes tonight. Or you might not."
 
 NEVER LIKE THIS:
 "A sense of dread washed over her as the air grew thick with an eerie silence. Her heart
@@ -316,7 +336,7 @@ def story_bible(*, series: Any, kind: str, recipe: Any, formats: dict[str, str],
         "Recipe:\n" + _recipe(recipe, formats, endings),
         "Approved pitch:\n" + _pitch(pitch), _legend(legend, dossier), _world(world),
         ("Heroes of our recent episodes. Make this hero clearly different from all of them in age, "
-         "gender, background, culture and life situation, and never reuse their names:\n"
+         "gender, background, region of India, community and life situation, and never reuse their names:\n"
          + "\n".join(f"- {h}" for h in recent_heroes)) if recent_heroes else "",
         "Before any plotting, make the storyteller's decisions for this episode, as a story bible.\n"
         "hero: a specific person, not a job. name (invented, and not the name of any famous real "
@@ -377,8 +397,9 @@ def legend_fit(legend: sqlite3.Row, dossier: dict | None, kind: str) -> str:
     return (f"Legend: {legend['title']} ({legend['region']}).\nResearch notes: {notes}\n\nCould this "
             f"legend carry {length} of genuine horror on our channel while its being keeps exactly its "
             "traditional nature, appearance and role? Answer fit false if the being is harmless or "
-            "comic, too thinly documented to frighten without inventing traits it does not have, or if "
-            "retelling it as horror would disrespect a sacred figure or living religious practice.")
+            "comic, too thinly documented to frighten without inventing traits it does not have, if "
+            "retelling it as horror would disrespect a sacred figure or living religious practice, or if "
+            "it rests on a real tragedy (the real deaths, suicides or crimes of real, named people).")
 
 
 def bible_check(bible: dict[str, Any], items: Sequence[tuple[str, str]], script: dict[str, Any],

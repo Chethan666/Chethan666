@@ -24,7 +24,7 @@ import statistics
 from dataclasses import dataclass, field
 from typing import Any
 
-from . import catalog, db, dedup, learning, prompts, schemas, tournament
+from . import catalog, db, dedup, learning, prompts, research, schemas, tournament
 from .llm import BudgetExceeded, LLMError, ModelSpec
 from .router import FailoverClient as FailoverJudge, Router
 
@@ -553,7 +553,7 @@ def choose_legend(ctx: Context, kind: str) -> tuple[sqlite3.Row, dict | None] | 
     legends are marked and never offered again.
     """
     for _ in range(ctx.cfg["quality"]["legend_fit_tries"]):
-        legends = db.unused_legends(ctx.conn)
+        legends = db.unused_legends(ctx.conn, research.legend_regions(ctx.cfg))
         if not legends:
             return None
         legend = ctx.rng.choice(legends)
@@ -1888,7 +1888,7 @@ def generate_story(ctx: Context, series_name: str) -> Outcome:
             if chosen is None:
                 return Outcome(series_name, "skipped", detail="no suitable unused legend; run `research` first")
             legend, dossier = chosen
-        sparks = db.folklore_sparks(ctx.conn, 2) if series.uses_world else []
+        sparks = db.folklore_sparks(ctx.conn, 2, research.legend_regions(ctx.cfg)) if series.uses_world else []
         world = db.world_entities(ctx.conn) if series.uses_world else []
 
         pitches = gather_pitches(ctx, series, legend, dossier, sparks, world)

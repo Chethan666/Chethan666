@@ -17,7 +17,7 @@ import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, Sequence
 
 STATUSES = ("idea", "shelved", "parked", "scripted", "approved", "in_production", "produced", "published",
             "rejected", "failed")
@@ -221,12 +221,26 @@ def upsert_inspiration(conn: sqlite3.Connection, **fields: Any) -> int:
     return row["id"]
 
 
-def unused_legends(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+def _in_regions(regions: Sequence[str] | None) -> tuple[str, list[str]]:
+    """An SQL condition (and its parameters) limiting inspirations to `regions`; none means all."""
+    if not regions:
+        return "", []
+    return f" AND region IN ({', '.join('?' for _ in regions)})", list(regions)
+
+
+def unused_legends(conn: sqlite3.Connection, regions: Sequence[str] | None = None) -> list[sqlite3.Row]:
+    """Legends not yet retold and not judged unfit, from `regions` only when given."""
+    where, params = _in_regions(regions)
     return conn.execute(
         "SELECT * FROM inspirations i WHERE kind = 'folklore' AND unsuitable IS NULL AND NOT EXISTS ("
         "  SELECT 1 FROM stories s WHERE s.legend_key = i.source || ':' || i.source_id"
-        "  AND s.status != 'rejected')"
+        f"  AND s.status != 'rejected'){where}", params
     ).fetchall()
+
+
+def folklore_regions(conn: sqlite3.Connection) -> set[str]:
+    """Every region that research has brought in folklore from."""
+    return {r["region"] for r in conn.execute("SELECT DISTINCT region FROM inspirations WHERE kind = 'folklore'")}
 
 
 def mark_unsuitable(conn: sqlite3.Connection, inspiration_id: int, reason: str) -> None:
@@ -234,10 +248,12 @@ def mark_unsuitable(conn: sqlite3.Connection, inspiration_id: int, reason: str) 
     conn.execute("UPDATE inspirations SET unsuitable = ? WHERE id = ?", (reason[:500] or "unsuitable", inspiration_id))
 
 
-def folklore_sparks(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
+def folklore_sparks(conn: sqlite3.Connection, limit: int,
+                    regions: Sequence[str] | None = None) -> list[sqlite3.Row]:
+    where, params = _in_regions(regions)
     return conn.execute(
-        "SELECT * FROM inspirations WHERE kind = 'folklore' ORDER BY used_count, RANDOM() LIMIT ?",
-        (limit,),
+        f"SELECT * FROM inspirations WHERE kind = 'folklore'{where} ORDER BY used_count, RANDOM() LIMIT ?",
+        (*params, limit),
     ).fetchall()
 
 

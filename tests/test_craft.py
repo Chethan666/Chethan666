@@ -441,7 +441,7 @@ class LegendFitTests(unittest.TestCase):
     def add(self, ctx, n):
         return db.upsert_inspiration(ctx.conn, source="wikipedia", source_id=str(n), kind="folklore",
                                      title=f"Legend {n}", url="", summary="A spirit of the roads.",
-                                     region="Japan", license="CC BY-SA")
+                                     region="India", license="CC BY-SA")
 
     def test_unfit_legends_are_skipped_for_good(self):
         ctx, brain = make_context()
@@ -461,6 +461,16 @@ class LegendFitTests(unittest.TestCase):
         self.assertEqual(outcome.status, "skipped")
         self.assertIn("no suitable unused legend", outcome.detail)
         self.assertEqual(db.unused_legends(ctx.conn), [])  # never offered again
+
+    def test_legends_from_regions_no_longer_researched_are_not_retold(self):
+        ctx, brain = make_context()
+        db.upsert_inspiration(ctx.conn, source="wikipedia", source_id="9", kind="folklore", title="Kappa",
+                              url="", summary="A river imp.", region="Japan", license="CC BY-SA")
+        self.assertIsNone(pipeline.choose_legend(ctx, "long"))
+        self.assertEqual(len(db.unused_legends(ctx.conn)), 1)  # kept in the database, just not offered
+        self.add(ctx, 1)
+        legend, _ = pipeline.choose_legend(ctx, "long")
+        self.assertEqual(legend["title"], "Legend 1")
 
     def test_legend_fidelity_steers_pitches_and_the_bible(self):
         ctx, brain = make_context()

@@ -1,16 +1,22 @@
 # Hollow Lines (working title)
 
-Hollow Lines is a faceless YouTube horror storytelling channel. Every video is made of still
-pictures, one narrator and music: a new chalk-style picture every 3 to 6 seconds (white chalk
-stick figures on black with a single blood-red accent, each under a slow camera move), the calm
-voice of a recurring lantern-carrying host called The Storyteller, a horror score and sound
-effects. There are no video clips. About three-quarters of the stories are original, set in one
-shared fictional world, so recurring places, characters and hidden clues reward returning
-viewers who theorize across episodes. The rest retell folklore, which brings in search traffic.
-Each story is built for suspense rather than gore: a hook in the first ten seconds, everyday
-settings, rising dread, and endings that land as terror, a twist, justice or heartbreak. Every
-video is clearly presented as fiction or folklore and marked "not made for kids". The plan is
-three long episodes a week (8+ minutes), in English; Shorts are paused for now.
+Hollow Lines is a faceless YouTube horror storytelling channel that tells horror stories from
+India, in English, for viewers everywhere: Indian legends (the churel, the vetala, Naale Ba) and
+original stories set in today's India (a night bus on a ghat road, a joint-family house in a
+power cut, a new paying-guest room in Bengaluru). Many stories turn on a rule from folk belief
+that the viewer learns before the hero breaks it, and every spirit that stays has a reason.
+Every video is made of still pictures, one narrator and music: a new chalk-style picture every 3
+to 6 seconds (white chalk stick figures on black with a single blood-red accent, each under a
+slow camera move), the calm voice of a recurring lantern-carrying host called The Storyteller,
+an Indian folk-horror score (tanpura drone, temple bell, sarangi, dhol) and sound effects. There
+are no video clips. About three-quarters of the stories are original, set in one shared
+fictional world, so recurring places, characters and hidden clues reward returning viewers who
+theorize across episodes; the rest retell legends, which brings in search traffic. Each story is
+built for suspense rather than gore: a hook in the first ten seconds, everyday settings, rising
+dread, and endings that land as terror, a twist, justice or heartbreak. The Storyteller closes
+every episode with one open question, like Betaal's riddles to King Vikram, for the comments.
+Every video is clearly presented as fiction or folklore and marked "not made for kids". The plan
+is three long episodes a week (8+ minutes); Shorts are paused for now.
 
 ## The two pipelines
 

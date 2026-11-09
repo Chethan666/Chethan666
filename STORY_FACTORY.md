@@ -1,6 +1,6 @@
 # Story Factory (pipeline 1)
 
-The story factory is a writers' room made of AI models from several companies. It researches, pitches, writes, edits and tests horror stories. Approved stories go into a SQLite database, where the production pipeline (pipeline 2) claims them and turns them into videos.
+The story factory is a writers' room made of AI models from several companies. It researches, pitches, writes, edits and tests horror stories from India, told in English for viewers everywhere: retold Indian legends, and original stories set in today's India. Approved stories go into a SQLite database, where the production pipeline (pipeline 2) claims them and turns them into videos.
 
 Its goal is the best possible story, not the cheapest. Every step either creates competition (several pitches, several drafts) or adds an independent critic (editors, simulated viewers, a final checker).
 
@@ -128,6 +128,14 @@ On Bedrock, Claude doesn't get Anthropic's automatic refusal fallback; a decline
 Weaker models write well when the craft is spelled out instead of assumed, and stronger
 models write even better from the same instructions. Every writer prompt carries:
 
+- **Indian horror, from the inside**: real kinds of places (a night bus on a ghat road, a
+  joint-family house in a power cut, a paying-guest room in Bengaluru) and the details of the
+  people who live there; many stories turn on a rule from folk belief, stated plainly early so
+  the viewer knows it before the hero breaks it; a spirit that stays has a reason; a few Hindi
+  or regional words, each clear from context. Gods, saints and living religious practice are
+  never the monster. The recipe lists (settings, heroes, fears) are Indian too, and two of the
+  five simulated viewers check the story from each side: one who grew up on Indian ghost
+  stories and notices anything false, one who knows little about India.
 - **What the audience needs**, in psychological terms: curiosity with new questions before old
   ones close, a hero we care about who makes choices, dread over surprise, lingering before the
   reveal, fear that breathes, fair play, the peak and the ending, a human meaning under the fear,
@@ -136,9 +144,11 @@ models write even better from the same instructions. Every writer prompt carries
   and an ending with an aftertaste, plus a "never like this" passage with its fix.
 - **The Storyteller's voice and ritual**: warm, unhurried, speaks to "you", never explains;
   every long episode opens cold on a flash-forward, then "The lantern is lit." (added
-  automatically if missing). Simulated viewers rate the intro too.
+  automatically if missing), and ends on one question left open, like Betaal's riddles to
+  King Vikram, for viewers to answer in the comments. Simulated viewers rate the intro too.
 - **Every hero is new**: the story bible sees the heroes of the last 12 episodes and must
-  differ in age, gender, background and culture, with an invented name no famous person has.
+  differ in age, gender, background, region of India and community, with an invented name no
+  famous person has.
 - **Advertiser-friendly**: strong profanity blocks a story.
 - **Writing for the ear and a global audience**: plain words, short sentences, a refrain,
   writing for sound.
@@ -300,7 +310,7 @@ python -m story_factory fill --max 10
 python -m story_factory status
 ```
 
-`research` collects legends from 27 folklore categories worldwide (and their subcategories) plus popular horror video titles. `fill` also tops up legends from Wikipedia by itself whenever fewer than 15 unused ones remain, so a weekly `fill` alone keeps everything running.
+`research` collects legends from six Indian folklore categories on Wikipedia (Indian legendary creatures, demons in Hinduism, Indian folklore, superstitions of India, reportedly haunted places in India and Bengali folklore, with their subcategories) plus popular horror video titles. Only legends from the configured categories' regions are retold or used as sparks: folklore that earlier worldwide research left in the database stays there, unused. `fill` also tops up legends from Wikipedia by itself whenever fewer than 15 unused ones remain, or when a configured region has never been researched, so a weekly `fill` alone keeps everything running. A legend that rests on a real tragedy (the real deaths of real, named people) is judged unfit and never offered again.
 
 | Command | What it does |
 |---|---|

@@ -121,13 +121,21 @@ def research_wikipedia(conn: sqlite3.Connection, cfg: dict, fetch: Fetch = http_
     return saved
 
 
+def legend_regions(cfg: dict) -> list[str]:
+    """The regions of the configured Wikipedia categories. Only their legends are retold or used
+    as sparks, so folklore an earlier configuration brought in from elsewhere stays unused."""
+    return sorted({str(entry["region"]) for entry in cfg["research"]["wikipedia_categories"]})
+
+
 def ensure_legend_supply(conn: sqlite3.Connection, cfg: dict, fetch: Fetch = http_fetch) -> int:
-    """Research Wikipedia automatically when unused legends run low. Returns legends added."""
-    if len(db.unused_legends(conn)) >= cfg["research"]["min_unused_legends"]:
+    """Research Wikipedia automatically when unused legends from the configured regions run low,
+    or when a configured region has never been researched. Returns legends added."""
+    regions = legend_regions(cfg)
+    unused = len(db.unused_legends(conn, regions))
+    if unused >= cfg["research"]["min_unused_legends"] and set(regions) <= db.folklore_regions(conn):
         return 0
-    before = len(db.unused_legends(conn))
     research_wikipedia(conn, cfg, fetch)
-    return len(db.unused_legends(conn)) - before
+    return len(db.unused_legends(conn, regions)) - unused
 
 
 def research_youtube(conn: sqlite3.Connection, cfg: dict, api_key: str | None = None,

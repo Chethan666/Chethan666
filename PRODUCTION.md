@@ -30,7 +30,8 @@ claim the next approved long story (or a chosen one)
                 to the last. Each picture is checked in code (mostly black, white chalk, no colour
                 but the red accent) and by a vision model (the right style and the right moment);
                 a failure is redrawn by Seedream 4.5, and the code renderer is the last resort
- 4. SOUND       three generated score cues (unease, dread, terror) follow the story's tension and
+ 4. SOUND       three generated score cues (unease, dread, terror) with an Indian folk-horror colour
+                (tanpura drone, temple bell, sarangi, dhol) follow the story's tension and
                 crossfade; generated room tone per place; one generated effect per shot that asks
                 for it; a stinger on every scare, with the music and room tone dropping away for a
                 beat before it. Everything dips under the voice

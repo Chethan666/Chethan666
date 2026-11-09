@@ -48,6 +48,31 @@ class ResearchTests(unittest.TestCase):
                                                        fetch=lambda url: calls.append(url) or {}), 0)
         self.assertEqual(calls, [])
 
+    def test_a_region_never_researched_is_fetched_even_when_legends_are_in_stock(self):
+        for n in range(20):
+            db.upsert_inspiration(self.conn, source="wikipedia", source_id=f"old{n}", kind="folklore",
+                                  title=f"Old {n}", url="", summary="A legend.", region="India",
+                                  license="CC BY-SA")
+        self.cfg["research"]["wikipedia_categories"] = [{"category": "Category:Ghosts", "region": "India"},
+                                                        {"category": "Category:Sea ghosts", "region": "Bengal"}]
+        self.assertEqual(research.ensure_legend_supply(self.conn, self.cfg, fetch=fake_fetch), 3)
+        calls = []
+        self.assertEqual(research.ensure_legend_supply(self.conn, self.cfg,
+                                                       fetch=lambda url: calls.append(url) or {}), 0)
+        self.assertEqual(calls, [])  # both regions researched and plenty of legends in stock
+
+    def test_only_legends_from_the_researched_regions_are_offered(self):
+        self.assertEqual(research.legend_regions(test_config()), ["Bengal", "India"])
+        for n, region in enumerate(("India", "Japan", "Bengal")):
+            db.upsert_inspiration(self.conn, source="wikipedia", source_id=str(n), kind="folklore",
+                                  title=f"Legend {n}", url="", summary="A legend.", region=region,
+                                  license="CC BY-SA")
+        self.assertEqual(len(db.unused_legends(self.conn)), 3)
+        offered = db.unused_legends(self.conn, ["Bengal", "India"])
+        self.assertEqual(sorted(r["region"] for r in offered), ["Bengal", "India"])
+        sparks = db.folklore_sparks(self.conn, 5, ["Bengal", "India"])
+        self.assertNotIn("Japan", {r["region"] for r in sparks})
+
     def setUp(self):
         self.cfg = test_config()
         self.cfg["research"]["wikipedia_subcategories"] = False  # tests opt in where needed
