@@ -19,7 +19,7 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
-from drama_production.media import MediaError, data_uri
+from .media import MediaError, data_uri
 
 from . import director, draw
 from .paid import OverBudget, Studio, vision_check

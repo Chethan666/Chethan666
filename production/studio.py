@@ -1,12 +1,13 @@
 """Studio mode: one approved story in, a finished, packaged video out.
 
     voices (ElevenLabs v3, every chunk timed)  ->  shot list (3-6 s shots, staged)
-    ->  look (style frame, character sheets, a checked picture per shot)
-    ->  clips (hero and medium tiers, checked)  ->  sound design (score, room tone, effects, stingers)
+    ->  look (style frame, character sheets, a checked still picture per shot)
+    ->  sound design (score, room tone, effects, stingers)
     ->  edit (cold open, title, hard cuts, end screen)  ->  thumbnails, Shorts, review kit
 
-Every paid step has a free fallback (Kokoro, the code renderer, living stills, synthesized
-sound), and one spending cap covers the whole video, most important work first.
+The video is still pictures, narration and sound: no video clips. Every paid step has a
+free fallback (Kokoro, the code renderer, synthesized sound), and one spending cap covers
+the whole video, most important work first.
 """
 
 from __future__ import annotations
@@ -22,7 +23,6 @@ import numpy as np
 import soundfile
 
 from . import dialogue, director, draw, edit, package, shots as shotlist, timing, voice
-from .clips import Clips
 from .look import Look
 from .paid import Budget, Studio
 from .run import STORYTELLER_LOOK, _json
@@ -87,7 +87,6 @@ def produce(story: dict[str, Any], out_dir: Path, kokoro: Any, router: Any, cfg:
     shots = shotlist.cut(timeline.chunks, shotlist.scene_index(timeline.chunks, spans), story_seconds,
                          float(cfg.get("shot_min_seconds", 3.0)), float(cfg.get("shot_max_seconds", 6.5)))
     directed = shotlist.direct(router, shots, scenes, cast, red)
-    shotlist.assign_tiers(shots, scenes, int(cfg.get("hero_shots", 20)), int(cfg.get("medium_shots", 40)))
     log.info("Shot list: %d shots (%d directed by the model)", len(shots), directed)
 
     # 3. Pictures.
@@ -109,13 +108,10 @@ def produce(story: dict[str, Any], out_dir: Path, kokoro: Any, router: Any, cfg:
             draw.scene_frames(spec, looks, (1920, 1080), paper, grain, seed=s.index, variants=1)[0].save(path)
             pictures[s.index] = path
 
-    # 4. Clips.
-    clipper = Clips(studio, cfg, work / "clips", parallel) if studio is not None else None
-    clips = clipper.run(shots, pictures) if clipper is not None else {}
     if studio is not None:
         studio.stop_on_empty = False  # from here on, a dry account means free fallbacks, not a lost video
 
-    # 5. The programme: cold open, title, story, end screen.
+    # 4. The programme: cold open, title, story, end screen.
     cold = edit.pick_cold_open(shots, scenes) if cfg.get("cold_open", True) else []
     cold_a = shots[cold[0]].t0 if cold else 0.0
     cold_b = shots[cold[-1]].t1 if cold else 0.0
@@ -134,14 +130,14 @@ def produce(story: dict[str, Any], out_dir: Path, kokoro: Any, router: Any, cfg:
     speech = [(c.t0 + offset, c.t1 + offset) for c in timeline.chunks]
     speech += [(c.t0 - cold_a, c.t1 - cold_a) for c in timeline.chunks if c.t0 >= cold_a and c.t1 <= cold_b + 0.01]
 
-    # 6. Sound design.
+    # 5. Sound design.
     score = Score(studio, work / "sound", rate, parallel)
-    mixed = score.mix(track, speech, shots, offset, scenes, clips,
+    mixed = score.mix(track, speech, shots, offset, scenes,
                       stings=[cold_seconds] if title_seconds and cold else [], music_until=total)
     soundfile.write(work / "mix.wav", mixed, rate)
     soundfile.write(out_dir / "narration.wav", audio, rate)
 
-    # 7. Captions (programme times).
+    # 6. Captions (programme times).
     cues = timing.caption_cues(timeline)
     prog_cues = [timing.Cue(c.start - cold_a, c.end - cold_a, c.text) for c in cues
                  if cold and c.start >= cold_a and c.end <= cold_b + 0.01]
@@ -152,7 +148,7 @@ def produce(story: dict[str, Any], out_dir: Path, kokoro: Any, router: Any, cfg:
         burn = work / "captions.ass"
         burn.write_text(timing.ass(prog_cues, 1920, 1080))
 
-    # 8. Cards and the edit.
+    # 7. Cards and the edit.
     titles = packaging.get("titles") or [story.get("title", "")]
     style_frame = look.style_frame if look is not None else None
     title_card = edit.card(style_frame, [(CHANNEL, 40, draw.RED)] +
@@ -162,19 +158,19 @@ def produce(story: dict[str, Any], out_dir: Path, kokoro: Any, router: Any, cfg:
     end_card = edit.card(style_frame, [(line, 60, draw.CHALK) for line in edit.wrap(end_line, 30)] +
                          [("", 30, draw.CHALK), ("NEXT STORY  >", 54, draw.RED)], work / "end_card.png",
                          left=True, dim=0.25)
-    segments = edit.programme(shots, pictures, clips, cold, cold_seconds, title_seconds, end_seconds,
+    segments = edit.programme(shots, pictures, cold, cold_seconds, title_seconds, end_seconds,
                               story_seconds, title_card, end_card)
     video = edit.build(work, segments, work / "mix.wav", burn, out_dir / "video.mp4",
                        float(cfg.get("loudness_lufs", -14.0)), workers=3)
 
-    # 9. Packaging and the review kit.
+    # 8. Packaging and the review kit.
     key = next((s for s in shots if s.scare), None) or max(shots, key=lambda s: s.importance)
     refs = ([style_frame] if style_frame else []) + [pictures[key.index]] + (list(look.sheets.values())[:2] if look else [])
     thumbs = package.thumbnails(studio, out_dir, packaging, red, refs, pictures[key.index], int(cfg.get("thumbnails", 3)))
     windows = package.short_windows(shots, scenes, offset, int(cfg.get("shorts", 3)), 25.0,
                                     float(cfg.get("short_max_seconds", 55.0)))
     shorts_made = package.shorts(video, windows, prog_cues, str(titles[0]), out_dir, work)
-    package.contact_sheet(shots, pictures, clips, out_dir / "contact_sheet.jpg")
+    package.contact_sheet(shots, pictures, out_dir / "contact_sheet.jpg")
     package.preview(video, out_dir / "preview_60s.mp4")
     chapters = shotlist.chapters(router, scenes, shots, offset)
 
@@ -190,18 +186,15 @@ def produce(story: dict[str, Any], out_dir: Path, kokoro: Any, router: Any, cfg:
         "thumbnails": [p.name for p in thumbs], "shorts": [p.name for p in shorts_made],
         "shorts_windows": [[round(a, 1), round(b, 1)] for a, b in windows],
         "end_screen_starts": round(offset + story_seconds, 1),
-        # YouTube's label for realistic altered or synthetic media: not needed for a stylised
-        # chalk animation, recorded so the uploader states it explicitly.
+        # YouTube's label for realistic altered or synthetic media: not needed for stylised
+        # chalk drawings, recorded so the uploader states it explicitly.
         "synthetic_media": False,
     }
     (out_dir / "metadata.json").write_text(json.dumps(metadata, indent=2, ensure_ascii=False))
     (out_dir / "shots.json").write_text(shotlist.save(shots))
-    by_tier = {t: sum(1 for s in shots if s.tier == t) for t in ("hero", "medium", "still")}
     summary = {
         "mode": "studio", "video": str(video), "seconds": round(total, 1), "story_seconds": round(story_seconds, 1),
-        "scenes": len(scenes), "shots": len(shots), "directed_shots": directed, "tiers": by_tier,
-        "clips": len(clips), "clips_by_model": clipper.report["made"] if clipper else {},
-        "clips_rejected": clipper.report["rejected"][:20] if clipper else [],
+        "scenes": len(scenes), "shots": len(shots), "directed_shots": directed,
         "pictures": look.report if look else {"drawn_in_code": len(shots)},
         "voice": {"engine": "elevenlabs-v3" if isinstance(narrator, ElevenVoice) else "kokoro",
                   "narrator": getattr(narrator, "voice", ""), "cast": voice_names,

@@ -19,7 +19,7 @@ from typing import Any
 
 from PIL import Image, ImageDraw
 
-from drama_production.media import MediaError, data_uri
+from .media import MediaError, data_uri
 
 from . import draw, timing
 from .look import style
@@ -146,8 +146,8 @@ def shorts(video: Path, windows: list[tuple[float, float]], cues: list[timing.Cu
     return made
 
 
-def contact_sheet(shots: list[Shot], pictures: dict[int, Path], clips: dict[int, Path], out: Path,
-                  columns: int = 8, thumb: tuple[int, int] = (240, 135)) -> Path:
+def contact_sheet(shots: list[Shot], pictures: dict[int, Path], out: Path, columns: int = 8,
+                  thumb: tuple[int, int] = (240, 135)) -> Path:
     rows = -(-len(shots) // columns) or 1
     sheet = Image.new("RGB", (columns * (thumb[0] + 8) + 8, rows * (thumb[1] + 34) + 8), (24, 24, 24))
     d = ImageDraw.Draw(sheet)
@@ -158,9 +158,8 @@ def contact_sheet(shots: list[Shot], pictures: dict[int, Path], clips: dict[int,
         if path and path.exists():
             with Image.open(path) as im:
                 sheet.paste(im.convert("RGB").resize(thumb), (x, y))
-        moving = "CLIP " + s.tier.upper() if s.index in clips else "still"
-        d.text((x, y + thumb[1] + 4), f"#{s.index} {s.framing} {moving}{' SCARE' if s.scare else ''}", font=f,
-               fill=(220, 60, 60) if s.index in clips else (200, 200, 200))
+        d.text((x, y + thumb[1] + 4), f"#{s.index} {s.framing} {s.camera}{' SCARE' if s.scare else ''}", font=f,
+               fill=(220, 60, 60) if s.scare else (200, 200, 200))
     sheet.save(out, quality=85)
     return out
 

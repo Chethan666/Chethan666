@@ -1,16 +1,24 @@
 # Hollow Lines (working title)
 
-Hollow Lines is a faceless YouTube horror storytelling channel for a global audience, told in a dark hand-drawn stickman style: white chalk-like figures on black ink paper with a single blood-red accent, introduced each episode by a recurring lantern-carrying host called The Storyteller. About three-quarters of the stories are original, set in one shared fictional world, so recurring places, characters and hidden clues reward returning viewers who theorize across episodes. The rest retell folklore from around the world, which brings in search traffic. Each story is built for suspense rather than gore: a hook in the first ten seconds, everyday settings, rising dread, and endings that land as terror, a twist, justice or heartbreak. Every video is clearly presented as fiction or folklore and marked "not made for kids". The channel posts three long episodes a week (8+ minutes) and 60-second horror Shorts on the remaining days, in English. Production is fully automated in two pipelines. The [story factory](STORY_FACTORY.md) is a writers' room of AI models from several companies (today open-weight models on Amazon Bedrock: Kimi, GLM, DeepSeek, Qwen and MiniMax) that pitch, plan, write, edit and audience-test every story, running in GitHub Actions. The [production pipeline](PRODUCTION.md) voices the narration with an open-source voice model, draws the chalk stickman scenes in code and assembles each video with FFmpeg, also in GitHub Actions.
+Hollow Lines is a faceless YouTube horror storytelling channel. Every video is made of still
+pictures, one narrator and music: a new chalk-style picture every 3 to 6 seconds (white chalk
+stick figures on black with a single blood-red accent, each under a slow camera move), the calm
+voice of a recurring lantern-carrying host called The Storyteller, a horror score and sound
+effects. There are no video clips. About three-quarters of the stories are original, set in one
+shared fictional world, so recurring places, characters and hidden clues reward returning
+viewers who theorize across episodes. The rest retell folklore, which brings in search traffic.
+Each story is built for suspense rather than gore: a hook in the first ten seconds, everyday
+settings, rising dread, and endings that land as terror, a twist, justice or heartbreak. Every
+video is clearly presented as fiction or folklore and marked "not made for kids". The plan is
+three long episodes a week (8+ minutes), in English; Shorts are paused for now.
 
-## The four pipelines
+## The two pipelines
 
 | # | Pipeline | What it makes | Code | Docs |
 |---|---|---|---|---|
-| 1 | Story factory | stickman horror stories for Hollow Lines | `story_factory/` | [STORY_FACTORY.md](STORY_FACTORY.md) |
-| 2 | Video production | stickman videos from those stories | `production/` | [PRODUCTION.md](PRODUCTION.md) |
-| 3 | Drama writers' room | vertical short-drama series and dialogue episodes | `drama_factory/` | [DRAMA_FACTORY.md](DRAMA_FACTORY.md) |
-| 4 | Drama production | TV-style vertical episodes from those scripts | `drama_production/` | [DRAMA_PRODUCTION.md](DRAMA_PRODUCTION.md) |
+| 1 | Story factory | the stories: a writers' room of AI models from several companies (today open-weight models on Amazon Bedrock) pitches, plans, writes, edits and audience-tests every story | `story_factory/` | [STORY_FACTORY.md](STORY_FACTORY.md) |
+| 2 | Video production | the videos: narration, a still picture per shot, music and sound, captions, thumbnails, and a review before anything is published | `production/` | [PRODUCTION.md](PRODUCTION.md) |
 
-All four run in the same GitHub Actions workflow (one mode each) and share the model
-access, the database and the cost log; each has its own stages and settings.
-
+Both run in one GitHub Actions workflow (Actions tab, "Story factory", Run workflow; one mode
+per run) and share the model access, the story database and the cost log. The channel's
+decisions (name, narrator, schedule, thumbnails) are in [DECISIONS.md](DECISIONS.md).

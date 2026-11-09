@@ -4,9 +4,9 @@ The narration is already timed chunk by chunk, so shots are cut from those chunk
 covers one or more consecutive chunks and lasts 3-6.5 s (a long sentence is split across
 two shots). An open model then directs each shot like a storyboard artist: the framing
 (wide, medium, close, insert, point of view), what the picture shows, how the stick figures
-act with their whole bodies, the camera, what moves if it becomes a clip, one sound, whether
-it is a scare, and how much it matters. The most important shots become real clips. If the
-model fails, the scene's own plan fills the shots in, cycling the framings.
+act with their whole bodies, the slow camera move over the still picture, one sound,
+whether it is a scare, and how much it matters. If the model fails, the scene's own plan
+fills the shots in, cycling the framings.
 """
 
 from __future__ import annotations
@@ -33,23 +33,23 @@ FRAMING_TEXT = {
     "low_angle": "low angle looking up, the subject looming",
     "high_angle": "high angle looking down, the figure small and exposed",
 }
-SYSTEM = ("You are the director and storyboard artist of Hollow Lines, an animated horror channel drawn "
-          "as white chalk stick figures on black paper with exactly one blood-red accent. You stage every "
-          "shot for maximum dread and clarity: one idea per shot, strong silhouettes, exaggerated body "
-          "language, consistent screen direction, darkness used as space. Answer with JSON only.")
+SYSTEM = ("You are the director and storyboard artist of Hollow Lines, an illustrated horror channel: every "
+          "shot is one still picture drawn as white chalk stick figures on black paper with exactly one "
+          "blood-red accent, under a slow camera move. You stage every shot for maximum dread and clarity: "
+          "one idea per shot, a frozen moment that tells the story on its own, strong silhouettes, "
+          "exaggerated body language, consistent screen direction, darkness used as space. Answer with JSON "
+          "only.")
 SCHEMA = {
     "type": "object", "required": ["shots"],
     "properties": {"shots": {"type": "array", "items": {
         "type": "object",
-        "required": ["index", "framing", "picture", "characters", "camera", "motion", "sound", "scare",
-                     "importance"],
+        "required": ["index", "framing", "picture", "characters", "camera", "sound", "scare", "importance"],
         "properties": {
             "index": {"type": "integer"},
             "framing": {"type": "string", "enum": list(FRAMINGS)},
             "picture": {"type": "string"},
             "characters": {"type": "array", "items": {"type": "string"}},
             "camera": {"type": "string", "enum": list(CAMERAS)},
-            "motion": {"type": "string"},
             "sound": {"type": "string"},
             "scare": {"type": "boolean"},
             "importance": {"type": "integer"},
@@ -71,11 +71,9 @@ class Shot:
     picture: str = ""
     characters: list[str] = field(default_factory=list)
     camera: str = "still"
-    motion: str = ""
     sound: str = ""
     scare: bool = False
     importance: int = 2
-    tier: str = "still"  # hero, medium or still (a living still)
     directed: bool = False
 
     @property
@@ -156,10 +154,8 @@ def _prompt(shots: list[Shot], scenes: list[dict[str, Any]], cast: list[dict[str
             "the exact moment the words describe; the unseen threat as a dark shape or a pair of eyes, "
             "placed where the eye lands second, not in the centre\n"
             "- characters: cast names in the shot (exact spelling), [] if none\n"
-            "- camera: still, push_in (building dread), pull_out (isolation), pan_left/pan_right (reveal), "
-            "tilt_up/tilt_down, handheld (panic only)\n"
-            "- motion: what moves if this shot is animated, in one short sentence (a slow head turn, a "
-            "door creaking open, a flashlight beam sweeping, breath fogging)\n"
+            "- camera: the slow move over the still picture: still, push_in (building dread), pull_out "
+            "(isolation), pan_left/pan_right (reveal), tilt_up/tilt_down, handheld (panic only)\n"
             "- sound: one short sound effect for this shot (\"a door creaks open slowly\"), or \"\"\n"
             "- scare: true only for the few shots where something frightening is revealed\n"
             "- importance: 1 (connective) to 5 (the moment the story turns on)\n"
@@ -193,7 +189,6 @@ def direct(router: Any, shots: list[Shot], scenes: list[dict[str, Any]], cast: l
             shot.picture = str(item["picture"]).strip()[:600]
             shot.characters = [_canonical(str(n), names) for n in item.get("characters") or [] if str(n).strip()][:3]
             shot.camera = item.get("camera") if item.get("camera") in CAMERAS else shot.camera
-            shot.motion = str(item.get("motion", "")).strip()[:300] or shot.motion
             shot.sound = str(item.get("sound", "")).strip()[:120]
             shot.scare = bool(item.get("scare"))
             try:
@@ -225,35 +220,10 @@ def fallback(shot: Shot, scene: dict[str, Any], shots: list[Shot]) -> None:
     mood = str(scene.get("mood", "")).lower()
     shot.camera = "push_in" if any(m in mood for m in ("tense", "dread", "eerie")) else (
         "handheld" if "terror" in mood or "panic" in mood else ("pan_right" if position % 2 else "push_in"))
-    shot.motion = "slow subtle movement: the figure breathes and shifts, chalk dust drifts"
     shot.sound = str((scene.get("sfx") or [""])[0]) if position == 0 else ""
     shot.importance = 4 if scene.get("key_moment") and position == 0 else 2
     shot.scare = bool(scene.get("key_moment")) and position == 0 and any(
         m in mood for m in ("terror", "shock", "horror", "panic"))
-
-
-def assign_tiers(shots: list[Shot], scenes: list[dict[str, Any]], hero: int, medium: int) -> None:
-    """The most important shots become hero clips, the next ones medium clips, spread through the
-    video (never more than two hero shots in a row); the rest stay living stills."""
-    def score(s: Shot) -> tuple:
-        key = bool(scenes[s.scene].get("key_moment")) if s.scene < len(scenes) else False
-        return (-(s.importance + (2 if s.scare else 0) + (1 if key else 0)), -s.seconds, s.index)
-
-    for s in shots:
-        s.tier = "still"
-    chosen: set[int] = set()
-    for s in sorted(shots, key=score):
-        if len(chosen) >= hero:
-            break
-        if {s.index - 1, s.index - 2} <= chosen:
-            continue
-        chosen.add(s.index)
-    for i in chosen:
-        shots[i].tier = "hero"
-    rest = [s for s in sorted(shots, key=score) if s.tier == "still"]
-    # Medium clips also go where a run of stills would be longest.
-    for s in rest[:medium]:
-        s.tier = "medium"
 
 
 def chapters(router: Any, scenes: list[dict[str, Any]], shots: list[Shot], offset: float,

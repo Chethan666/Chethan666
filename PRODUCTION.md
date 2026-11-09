@@ -1,11 +1,13 @@
 # Production (pipeline 2)
 
-Pipeline 2 turns an approved story into a finished video. It has two modes:
+Pipeline 2 turns an approved story into a finished video made of **still pictures, narration
+and sound**: a new picture every 3 to 6 seconds, each under a slow camera move (push in, pull
+back, pan) with a faint hand-drawn shimmer, one narrator, a horror score and sound effects.
+There are no video clips. It has two modes:
 
 - **Studio mode** (the default whenever the `FAL_KEY` secret is set): every shot is a generated
-  chalk picture, the key shots are real clips, ElevenLabs performs the narration, a generated
-  score and sound effects carry the scares, and the edit is cut like a film. About $30–45 per
-  8–9 minute video, capped by `studio.max_usd`.
+  chalk picture, ElevenLabs performs the narration, and a generated score and sound effects
+  carry the scares. About $24 per 8–9 minute video, capped by `studio.max_usd` (default $30).
 - **Drawn mode** (no key, `--drawn`, or `studio.enabled = false`): the free pipeline described
   further down, with pictures drawn in code and Kokoro's voice.
 
@@ -19,32 +21,27 @@ claim the next approved long story (or a chosen one)
                 Kokoro. Every chunk's start and end time is known exactly.
  2. SHOT LIST   the timed chunks are cut into shots of 3-6.5 s (about 110 for an 8.5-minute
                 story). An open model stages each one like a storyboard artist: framing (wide,
-                medium, close, insert, point of view, low or high angle), what the picture shows
-                and how the stick figures act with their whole bodies, the camera move, what moves
-                in a clip, one sound, whether it is a scare, and how much it matters (1-5). The
-                most important shots become hero clips, the next ones medium clips, spread out
- 3. LOOK        Nano Banana Pro draws a style frame (the main place in the channel's chalk look)
+                medium, close, insert, point of view, low or high angle), the frozen moment the
+                picture shows and how the stick figures act with their whole bodies, the slow
+                camera move over it, one sound, whether it is a scare, and how much it matters (1-5)
+ 3. PICTURES    Nano Banana Pro draws a style frame (the main place in the channel's chalk look)
                 and a character sheet per cast member (front, side, walking). Every shot is drawn
                 from those references, so the style and the characters hold from the first shot
                 to the last. Each picture is checked in code (mostly black, white chalk, no colour
                 but the red accent) and by a vision model (the right style and the right moment);
                 a failure is redrawn by Seedream 4.5, and the code renderer is the last resort
- 4. CLIPS       hero shots: Seedance 2.0 (Kling 3 if it fails); medium shots: Seedance lite.
-                Each clip is as long as its shot needs. Frames of every clip are checked; a clip
-                that loses the chalk look is dropped and the shot stays a living still (the
-                picture with the chalk boil and a slow camera move)
- 5. SOUND       three generated score cues (unease, dread, terror) follow the story's tension and
+ 4. SOUND       three generated score cues (unease, dread, terror) follow the story's tension and
                 crossfade; generated room tone per place; one generated effect per shot that asks
-                for it; foley made from the hero clips; a stinger on every scare, with the music
-                and room tone dropping away for a beat before it. Everything dips under the voice
- 6. EDIT        cold open (the scariest moment before the ending, 6-14 s), a 2 s title card, the
-                story cut hard on its own sentence breaks, and a 20 s end screen for YouTube's
-                end-screen elements. Loudness -14 LUFS. Captions as captions.srt (burned in only
-                with studio.burn_captions)
- 7. PACKAGING   three thumbnails (the victim, the threat, the place) for YouTube's Test &
+                for it; a stinger on every scare, with the music and room tone dropping away for a
+                beat before it. Everything dips under the voice
+ 5. EDIT        cold open (the scariest moment before the ending, 6-14 s), a 2 s title card, the
+                story cut hard on its own sentence breaks, every shot its still picture with its
+                camera move, and a 20 s end screen for YouTube's end-screen elements. Loudness
+                -14 LUFS. Captions as captions.srt (burned in only with studio.burn_captions)
+ 6. PACKAGING   three thumbnails (the victim, the threat, the place) for YouTube's Test &
                 Compare; two or three vertical Shorts cut from the scariest stretches (never the
                 ending) with big captions; chapters in the description
- 8. REVIEW KIT  contact_sheet.jpg (every shot, marked clip or still) and preview_60s.mp4
+ 7. REVIEW KIT  contact_sheet.jpg (every shot with its framing and camera move) and preview_60s.mp4
 → video.mp4 (1080p), thumbnail_1-3.jpg, short_1-3.mp4, captions.srt, metadata.json (title,
   description with chapters, tags, comment, end-screen time), shots.json, report.json (what
   was made, what fell back, and the spend by step), narration.wav
@@ -59,33 +56,31 @@ Typical spend for an 8.5-minute story (estimates in `studio.prices`; check fal.a
 | Step | About |
 |---|---|
 | Style frame, character sheets, ~110 shot pictures (Nano Banana Pro) | $17 |
-| 20 hero clips (Seedance 2.0 fast, ~5 s) | $24 |
-| 40 medium clips (Seedance lite) | $7 |
 | Voices (ElevenLabs v3, ~9,000 characters) | $1 |
-| Score, room tone, effects, foley, checks | $2–3 |
+| Music (three 2.5-minute score cues) | $4.50 |
+| Room tone, effects, stingers, picture checks, thumbnails | $1–1.50 |
+| **Total** | **about $24** |
 
-The cap (`studio.max_usd`, default 45) wins: past it, shots stay living stills and sounds are
-synthesized. Lower `hero_shots` or switch `models.shot` to `fal-ai/nano-banana-2/edit`
-(about half the price) for cheaper videos.
+The cap (`studio.max_usd`, default 30) wins: past it, a shot borrows a neighbouring picture
+(or the code renderer draws it) and sounds are synthesized. For cheaper videos, switch
+`models.shot` to `fal-ai/nano-banana-2/edit` (about half the picture cost; the bake-off found
+it crowds the frame more), or run drawn mode for free.
 
 ### Choosing models: the bake-off
 
 `mode = video-bakeoff` (optionally with a `story_id`) runs four of a story's most important
-shots through every picture model, the two most important through every motion model, the
-opening through two ElevenLabs voices and Kokoro, plus a music cue and a stinger, side by side
-with their checks and costs (capped at $10). `mode = video-check` lists what every configured
-model accepts, at no cost.
+shots through every picture model, the opening through two ElevenLabs voices and Kokoro,
+plus a music cue and a stinger, side by side with their checks and costs (capped at $10).
+`mode = video-check` lists what every configured model accepts, at no cost.
 
-The first bake-off (run 71, story 18, $7.43) settled the defaults: Nano Banana Pro draws the
-cleanest chalk-on-blackboard pictures with expressive stick figures; Nano Banana 2 crowds
-the frame; Seedream 4.5 drifts into grey, shaded realism (it stays only as the redraw).
-Seedance 2.0 and Kling 3 both keep the chalk look in motion (a tear running down a cheek, a
-pupil pulsing red); Seedance 2.0 also adds the camera move, so it leads and Kling backs it up.
+The first bake-off (run 71, story 18, $7.43) settled the picture default: Nano Banana Pro
+draws the cleanest chalk-on-blackboard pictures with expressive stick figures; Nano Banana 2
+crowds the frame; Seedream 4.5 drifts into grey, shaded realism (it stays only as the redraw).
 
 Every video and bake-off run also pushes small review images (comparison sheets, the
-contact sheet, thumbnails, a frame every 20 s, clip strips, the reports) to the
-`review-media` branch under `run-<number>/`, so a run can be judged without downloading
-the artifact; `mode = video-share` with a run id does the same for an earlier run.
+contact sheet, thumbnails, a frame every 20 s, the reports) to the `review-media` branch
+under `run-<number>/`, so a run can be judged without downloading the artifact;
+`mode = video-share` with a run id does the same for an earlier run.
 
 ### Review, then publish
 
@@ -113,27 +108,6 @@ authorise it once for the channel's Google account with the scopes `youtube.uplo
 using your own client), and keep the refresh token. Never paste these into a chat or commit
 them. Until the app is verified by Google, uploads from it stay private, which is what we
 want anyway.
-
-## Open models on a rented GPU (Vast.ai)
-
-**mode = video-vast** (optionally a `story_id`) makes a 40–60 s piece with open models only,
-on a GPU rented from Vast.ai with the `VAST_API_KEY` secret:
-
-- **The excerpt**: the stretch of the story that builds up to its first key scare (never the
-  ending), so it plays as a teaser that ends on the hook, with a "what happened next?" card.
-- **Here (free)**: Kokoro narration, the open planner's shot list, the edit, burned captions,
-  a vertical version and the contact sheet.
-- **On the GPU**: Qwen-Image-Edit-2509 draws a style frame, character sheets and every shot
-  (best of three by the chalk check); Wan 2.2 I2V A14B animates every shot at 720p (most
-  important first); MMAudio makes foley from each clip, room tone, score beds and a stinger.
-- **Money**: the cheapest verified x86 machine with 80 GB+ of GPU memory is rented (the first
-  check found an RTX PRO 6000 at $1.21/h). The job stops before `vast.max_usd` (default $12;
-  set e.g. `vast.max_usd=6` in `overrides`) or `vast.max_hours`, keeps whatever it has made,
-  and the machine is destroyed in every case (and again by an always-run cleanup step).
-- **mode = video-vast-check** shows the balance and the best offers without spending.
-
-All of these models are open (Apache-2.0 for Qwen-Image and Wan 2.2, MIT for MMAudio's code;
-check MMAudio's weights licence before commercial use).
 
 ## Drawn mode
 
@@ -165,18 +139,11 @@ claim the next approved long story (or a chosen one)
                  red accent, each character with the same features in every scene (read
                  from the cast's fixed looks), unseen things as dark shapes with red eyes,
                  ghosts dashed. Three jittered versions per scene make the hand-drawn boil
- 4b. MOTION      with FAL_KEY set, up to 8 scenes (key moments first, then the tensest)
-                 become real moving clips: the chalk picture goes to an image-to-video model
-                 (Seedance lite, 720p 16:9, 5 s) told to keep the chalk-on-black look. Capped at
-                 $2 a video (an estimate from published prices); a failed clip leaves the scene
-                 drawn. `--no-motion` or `video.motion_scenes = 0` turns it off
  5. SOUND        a low drone and air under everything, darker in tense scenes and dipping
                  under the voice, plus synthesized cues the scene asks for (knock,
                  heartbeat, phone, footsteps, rain, wind, thunder, static, drip, creak, bell)
- 6. ASSEMBLY     FFmpeg: each scene a clip with its camera move (push in, pull out, pan,
-                 shake), flicker where the light flickers, fades through black; a moving
-                 scene plays its clip (slowed up to 1.4x) and the drawing carries on if the
-                 scene is longer; joined,
+ 6. ASSEMBLY     FFmpeg: each scene's picture with its camera move (push in, pull out, pan,
+                 shake), flicker where the light flickers, fades through black; joined,
                  captions burned in, sound mixed
 → video.mp4 (1080p), thumbnail.png, captions.srt, narration.wav, metadata.json (titles,
   description, tags, pinned comment, end-screen line), direction.json
@@ -205,8 +172,9 @@ pip install -r requirements-video.txt
 python -m production --config config.aws-open.toml produce --story 12
 ```
 
-`--voice silent` swaps the narrator for a placeholder tone, and `--no-direction-model`
-directs from keywords only, for testing the rest without downloads or model calls.
+`--drawn` makes the free drawn version even when `FAL_KEY` is set, `--voice silent` swaps
+the narrator for a placeholder tone, and `--no-direction-model` directs from keywords only,
+for testing the rest without downloads or model calls.
 
 The narrator is set in the config: `[video] voice = "am_michael"`, `lang = "a"` (US
 English; `"b"` is British), `speed = 0.92`.

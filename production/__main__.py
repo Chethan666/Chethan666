@@ -40,12 +40,6 @@ def main(argv: list[str] | None = None) -> int:
     u.add_argument("--privacy", choices=("private", "unlisted"), default="private")
     u.add_argument("--at", help="schedule: an RFC 3339 time, e.g. 2026-11-20T17:00:00Z")
     sub.add_parser("stats", help="read every published video's YouTube stats into the performance table")
-    v = sub.add_parser("vast-video", help="a 40-60 s piece made with open models on a rented Vast.ai GPU")
-    v.add_argument("--story", type=int, help="a story id (default: the newest approved or produced long story)")
-    v.add_argument("--out", default="out")
-    v.add_argument("--max-usd", type=float, help="the GPU rental cap for this video (default vast.max_usd)")
-    sub.add_parser("vast-check", help="Vast.ai balance and the best GPU offers (no spend)")
-    sub.add_parser("vast-cleanup", help="destroy any Vast.ai machine this run left behind")
     b = sub.add_parser("bakeoff", help="the same shots through every candidate model, side by side")
     b.add_argument("--story", type=int, help="a story id (default: the newest approved or produced long story)")
     b.add_argument("--out", default="out")
@@ -58,9 +52,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--resolution", choices=sorted(run.SIZES), default="1080")
     p.add_argument("--no-direction-model", action="store_true",
                    help="direct scenes from keywords only (no model calls)")
-    p.add_argument("--keep-work", action="store_true", help="keep the scene pictures and clips")
-    p.add_argument("--no-motion", action="store_true", help="drawn scenes only (no paid moving clips)")
-    p.add_argument("--drawn", action="store_true", help="the drawn pipeline even when FAL_KEY is set")
+    p.add_argument("--keep-work", action="store_true", help="keep the shot pictures and working files")
+    p.add_argument("--drawn", action="store_true", help="the free drawn pipeline even when FAL_KEY is set")
     p.add_argument("--max-usd", type=float, help="studio spending cap for this video")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -68,13 +61,9 @@ def main(argv: list[str] | None = None) -> int:
     cfg = apply_overrides(load_config(args.config), args.set)
     if args.command == "check":
         return check(cfg.get("studio", {}))
-    if args.command in ("vast-check", "vast-cleanup"):
-        return vast_admin(args.command)
     conn = db.connect(cfg["database"])
     if args.command == "bakeoff":
         return bakeoff(args, cfg, conn)
-    if args.command == "vast-video":
-        return vast_video(args, cfg, conn)
     if args.command in ("approve", "publish", "stats"):
         return channel(args, conn)
     video_cfg = cfg.get("video", {})
@@ -101,102 +90,27 @@ def main(argv: list[str] | None = None) -> int:
         narrator = voice.KokoroVoice(video_cfg.get("voice", "am_michael"), video_cfg.get("lang", "a"),
                                      float(video_cfg.get("speed", 0.92)))
     router = None if args.no_direction_model else Router(cfg, conn)
-    animator = None
-    if not args.no_motion and int(video_cfg.get("motion_scenes", 0)) > 0 and os.environ.get("FAL_KEY"):
-        from drama_production.media import Fal
-
-        from .animate import Animator
-        animator = Animator(Fal(), video_cfg["motion_model"], video_cfg.get("motion_args", {}),
-                            float(video_cfg.get("motion_usd_per_second", 0.0)),
-                            float(video_cfg.get("motion_max_usd", 0.0)), int(video_cfg["motion_scenes"]))
     out_dir = Path(args.out) / f"story-{story['id']}"
     studio_cfg = dict(cfg.get("studio", {}))
     if args.max_usd is not None:
         studio_cfg["max_usd"] = args.max_usd
-    use_studio = (studio_cfg.get("enabled") and os.environ.get("FAL_KEY") and not args.drawn
-                  and not args.no_motion)
+    use_studio = studio_cfg.get("enabled") and os.environ.get("FAL_KEY") and not args.drawn
     try:
         if use_studio:
-            from drama_production.media import Fal
-
             from . import studio
-            animator = None
+            from .media import Fal
             summary = studio.produce(story, out_dir, narrator, router, studio_cfg, Fal(), conn, args.keep_work)
         else:
-            summary = run.produce(story, out_dir, narrator, router, args.resolution, args.keep_work, video_cfg,
-                                  animator)
+            summary = run.produce(story, out_dir, narrator, router, args.resolution, args.keep_work, video_cfg)
     except Exception as exc:  # report, and hand a claimed story back to the queue
         log.exception("Production failed")
         info = {"error": str(exc)[:500], "run": os.environ.get("GITHUB_RUN_ID")}
         db.update_story(conn, story["id"], production=info, **({"status": "approved"} if claimed else {}))
         print(f"[failed] story #{story['id']}: {exc}", file=sys.stderr)
         return 2
-    if animator is not None and animator.spent:
-        db.record_cost(conn, pipeline="video", task="motion", model=animator.model, input_units=0,
-                       output_units=len(summary.get("moving_scenes", [])), usd=animator.spent)
     summary.update(run=os.environ.get("GITHUB_RUN_ID"), run_number=os.environ.get("GITHUB_RUN_NUMBER"),
                    narrator_fallback=args.voice)
     db.update_story(conn, story["id"], production=summary, **({"status": "produced"} if claimed else {}))
-    print(json.dumps(summary, indent=2))
-    return 0
-
-
-def _label() -> str:
-    return f"hollow-lines-{os.environ.get('GITHUB_RUN_ID', 'local')}"
-
-
-def vast_admin(command: str) -> int:
-    from .vast import Vast, download_usd, expected_cost
-
-    vast = Vast(label=_label())
-    if command == "vast-cleanup":
-        print(f"Destroyed {vast.cleanup_label()} leftover machine(s) labelled {vast.label}")
-        return 0
-    print("Balance:", vast.balance())
-    try:
-        user = vast.cli("show", "user")
-        print("Account:", {k: user.get(k) for k in ("credit", "balance", "balance_threshold", "has_billing",
-                                                    "billing_creditonly", "can_pay") if isinstance(user, dict)})
-        mine = vast.cli("show", "instances") or []
-        print(f"Your machines ({len(mine)}):")
-        for inst in mine:
-            print(f"  id {inst.get('id')} {inst.get('gpu_name')} status {inst.get('actual_status')} "
-                  f"label {inst.get('label')} ${float(inst.get('dph_total') or 0):.2f}/h")
-    except Exception as exc:  # noqa: BLE001 - a report
-        print("Account details unavailable:", exc)
-    offers = vast.offers()
-    print(f"{len(offers)} suitable offers; the cheapest:")
-    for o in offers[:8]:
-        print(f"  id {o.get('id')}  {o.get('gpu_name')}  ${float(o.get('dph_total') or 0):.2f}/h  "
-              f"gpu_ram {o.get('gpu_ram')}  cpu_ram {o.get('cpu_ram')}  disk {o.get('disk_space')}  "
-              f"down {o.get('inet_down')}  reliability {o.get('reliability2', o.get('reliability'))}  "
-              f"cuda {o.get('cuda_max_good')}  downloads ~${download_usd(o):.2f}  "
-              f"typical run ~${expected_cost(o):.2f}")
-    if offers:
-        print("Offer fields:", ", ".join(sorted(offers[0])))
-    return 0
-
-
-def vast_video(args: argparse.Namespace, cfg: dict, conn) -> int:
-    from . import vastvideo
-    from .vast import Vast
-
-    row = db.get_story(conn, args.story) if args.story else conn.execute(
-        "SELECT * FROM stories WHERE kind = 'long' AND status IN ('approved', 'produced') "
-        "ORDER BY id DESC LIMIT 1").fetchone()
-    if row is None:
-        print("No story to make", file=sys.stderr)
-        return 1
-    story = dict(row)
-    print(f"Open-model video on Vast.ai from story #{story['id']}: {story['title']}", flush=True)
-    video_cfg = cfg.get("video", {})
-    kokoro = voice.KokoroVoice(video_cfg.get("voice", "am_michael"), video_cfg.get("lang", "a"),
-                               float(video_cfg.get("speed", 0.92)))
-    vcfg = dict(cfg.get("vast", {}))
-    if args.max_usd is not None:
-        vcfg["max_usd"] = args.max_usd
-    summary = vastvideo.produce(story, Path(args.out) / f"vast-story-{story['id']}", kokoro, Router(cfg, conn), vcfg,
-                                Vast(label=_label()), Path(__file__).with_name("vast_worker.py"), conn)
     print(json.dumps(summary, indent=2))
     return 0
 
@@ -242,9 +156,8 @@ def channel(args: argparse.Namespace, conn) -> int:
 
 
 def bakeoff(args: argparse.Namespace, cfg: dict, conn) -> int:
-    from drama_production.media import Fal
-
     from . import bakeoff as bake
+    from .media import Fal
     row = db.get_story(conn, args.story) if args.story else conn.execute(
         "SELECT * FROM stories WHERE kind = 'long' AND status IN ('approved', 'produced') "
         "ORDER BY id DESC LIMIT 1").fetchone()
@@ -267,13 +180,9 @@ def bakeoff(args: argparse.Namespace, cfg: dict, conn) -> int:
 ALTERNATES = [
     "fal-ai/nano-banana-pro", "fal-ai/nano-banana-pro/edit", "fal-ai/nano-banana-2", "fal-ai/nano-banana-2/edit",
     "fal-ai/bytedance/seedream/v4.5/text-to-image", "fal-ai/bytedance/seedream/v4.5/edit",
-    "bytedance/seedance-2.0/image-to-video", "bytedance/seedance-2.0/fast/image-to-video",
-    "bytedance/seedance-2.0/image-to-video-fast", "fal-ai/bytedance/seedance/v2/image-to-video",
-    "fal-ai/kling-video/v3/pro/image-to-video", "fal-ai/kling-video/v3/standard/image-to-video",
-    "fal-ai/kling-video/v3/turbo/pro/image-to-video", "fal-ai/kling-video/o3/standard/image-to-video",
     "fal-ai/elevenlabs/tts/eleven-v3", "fal-ai/elevenlabs/tts/multilingual-v2",
-    "fal-ai/mmaudio-v2", "fal-ai/mmaudio-v2/text-to-audio", "fal-ai/elevenlabs/sound-effects/v2",
-    "fal-ai/elevenlabs/sound-effects", "fal-ai/elevenlabs/music", "fal-ai/stable-audio-25/text-to-audio",
+    "fal-ai/elevenlabs/sound-effects/v2", "fal-ai/elevenlabs/sound-effects", "fal-ai/elevenlabs/music",
+    "fal-ai/stable-audio-25/text-to-audio",
     "fal-ai/minimax-music/v2", "fal-ai/lyria2", "beatoven/music-generation", "fal-ai/ace-step/prompt-to-audio",
     "openrouter/router/vision", "fal-ai/any-llm/vision", "fal-ai/imageutils/depth",
 ]
@@ -281,7 +190,7 @@ ALTERNATES = [
 
 def check(studio: dict) -> int:
     """Every studio model's inputs and choices, from fal's public descriptions. No spend."""
-    from drama_production.media import Fal
+    from .media import Fal
 
     print("FAL_KEY:", "set" if os.environ.get("FAL_KEY") else "MISSING (add it as a GitHub Actions secret)")
     fal = Fal(key=os.environ.get("FAL_KEY") or "not-needed-to-read-schemas")

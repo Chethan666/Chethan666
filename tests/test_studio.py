@@ -1,4 +1,4 @@
-"""Pipeline 2 studio mode: shot list, pictures, clips, voices, sound and the edit, with a fake fal.ai."""
+"""Pipeline 2 studio mode: shot list, still pictures, voices, sound and the edit, with a fake fal.ai."""
 
 import copy
 import json
@@ -40,16 +40,6 @@ class ShotListTests(unittest.TestCase):
         self.assertGreaterEqual(len(long_sentence), 1)
         self.assertNotIn(0, [s.scene for s in shots if s.t0 >= 15.3])  # scene borders are respected
 
-    def test_tiers_put_hero_clips_on_the_important_shots_and_spread_them(self):
-        shots = [shotlist.Shot(i, 0, i * 4.0, i * 4.0 + 4, "x", importance=5 if i in (3, 4, 5, 9) else 1)
-                 for i in range(12)]
-        shotlist.assign_tiers(shots, [{"key_moment": False}], hero=4, medium=3)
-        heroes = [s.index for s in shots if s.tier == "hero"]
-        self.assertEqual(len(heroes), 4)
-        self.assertIn(9, heroes)
-        self.assertEqual(sum(1 for s in shots if s.tier == "medium"), 3)
-        self.assertFalse({3, 4, 5} <= set(heroes))  # never three hero shots in a row
-
     def test_the_model_stages_shots_and_bad_answers_fall_back_to_the_scene_plan(self):
         shots = shotlist.cut([chunk(0.6, 4.0), chunk(4.2, 8.0)], [0, 1], 9.0)
 
@@ -57,8 +47,8 @@ class ShotListTests(unittest.TestCase):
             def generate_json(self, task, system, prompt, schema):
                 self.prompt = prompt
                 return {"shots": [{"index": 0, "framing": "close", "picture": "Marisol grips the wheel",
-                                   "characters": ["marisol"], "camera": "push_in", "motion": "her head turns",
-                                   "sound": "a bell dings", "scare": True, "importance": 9},
+                                   "characters": ["marisol"], "camera": "push_in", "sound": "a bell dings",
+                                   "scare": True, "importance": 9},
                                   {"index": 1, "framing": "nonsense", "picture": ""}]}
 
         class Router:
@@ -73,6 +63,7 @@ class ShotListTests(unittest.TestCase):
         self.assertTrue(shots[0].scare)
         self.assertTrue(shots[1].picture)  # filled in from the scene plan
         self.assertIn("SCENE 1", Router.planner.prompt)
+        self.assertNotIn("animated", Router.planner.prompt)  # every shot is a still picture
 
     def test_chapters_start_at_zero_and_are_spaced(self):
         shots = [shotlist.Shot(i, i, i * 50.0, i * 50.0 + 50, "x") for i in range(5)]
@@ -118,13 +109,6 @@ class ChecksTests(unittest.TestCase):
             b.reserve("m")
         self.assertAlmostEqual(b.spent, 0.8)
 
-    def test_clip_length_is_the_shortest_that_covers_the_shot(self):
-        from production.clips import length
-
-        self.assertEqual(length(4.9, [4, 5, 6]), 4)  # 4 s slowed to 1.25x covers 5 s
-        self.assertEqual(length(6.0, [4, 5, 6]), 5)
-        self.assertEqual(length(30.0, [4, 5, 6]), 6)
-
 
 def chalk_picture(path, size=(640, 360), colour=False):
     im = Image.new("RGB", size, (6, 6, 6))
@@ -142,26 +126,20 @@ def chalk_picture(path, size=(640, 360), colour=False):
 class FakeFal:
     """Answers every studio model with local files, as if fal.ai had made them."""
 
-    def __init__(self, folder: Path, colour_clips=False, fail_hero=False, broke_after=None, colour_pictures=0):
+    def __init__(self, folder: Path, broke_after=None, colour_pictures=0):
         self.calls = []
-        self.fail_hero = fail_hero
         self.broke_after = broke_after  # calls before the account runs dry
         self.colour_pictures = colour_pictures  # how many shot pictures come back in colour
         self.colour_image = folder / "colour.png"
         chalk_picture(self.colour_image, colour=True)
         self.image = folder / "fake.png"
         chalk_picture(self.image)
-        self.video = folder / "fake.mp4"
-        clip_picture = folder / "clip.png"
-        chalk_picture(clip_picture, colour=colour_clips)
-        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-loop", "1", "-i", str(clip_picture), "-t", "3",
-                        "-r", "24", "-pix_fmt", "yuv420p", str(self.video)], check=True)
         self.audio = folder / "fake.wav"
         t = np.arange(44100 * 2) / 44100
         soundfile.write(self.audio, (0.2 * np.sin(2 * np.pi * 220 * t)).astype(np.float32), 44100)
 
     def run(self, endpoint, args):
-        from drama_production.media import MediaError
+        from production.media import MediaError
 
         self.calls.append((endpoint, dict((k, v) for k, v in args.items() if not str(v).startswith("data:"))))
         if self.broke_after is not None and len(self.calls) > self.broke_after:
@@ -169,12 +147,6 @@ class FakeFal:
                              'Exhausted balance. Top up your balance at fal.ai/dashboard/billing."}')
         if "any-llm" in endpoint:
             return {"output": '{"ok": true, "reason": "fine"}'}
-        if "seedance-2.0" in endpoint and self.fail_hero:
-            raise MediaError("HTTP 500: busy")
-        if "video" in endpoint:
-            return {"video": {"url": self.video.as_uri()}}
-        if "mmaudio" in endpoint:
-            return {"video": {"url": self.video.as_uri()}}
         if "elevenlabs" in endpoint:
             return {"audio": {"url": self.audio.as_uri()}}
         if "edit" in endpoint and "Shot:" in args.get("prompt", "") and self.colour_pictures > 0:
@@ -198,8 +170,7 @@ def studio_cfg(**over):
     from story_factory.config import DEFAULTS
 
     cfg = copy.deepcopy(DEFAULTS["studio"])
-    cfg.update({"end_screen_seconds": 3.0, "hero_shots": 2, "medium_shots": 2, "max_usd": 10.0, "parallel": 2},
-               **over)
+    cfg.update({"end_screen_seconds": 3.0, "max_usd": 10.0, "parallel": 2}, **over)
     return cfg
 
 
@@ -231,13 +202,13 @@ class StudioTests(unittest.TestCase):
         self.assertEqual((info["streams"][0]["width"], info["streams"][0]["height"]), (1920, 1080))
         self.assertAlmostEqual(float(info["format"]["duration"]), summary["seconds"], delta=0.6)
         self.assertEqual(summary["voice"]["engine"], "elevenlabs-v3")
-        self.assertEqual(summary["clips"], 4)  # 2 hero + 2 medium
         self.assertGreater(summary["usd"], 0)
         self.assertLessEqual(summary["usd"], 10.0)
         self.assertTrue(summary["cold_open_shots"])
         endpoints = [e for e, _ in made["fal"].calls]
         self.assertIn("fal-ai/nano-banana-pro", endpoints)  # the style frame
-        self.assertIn("bytedance/seedance-2.0/fast/image-to-video", endpoints)
+        self.assertIn("fal-ai/nano-banana-pro/edit", endpoints)  # the shots
+        self.assertFalse([e for e in endpoints if "video" in e])  # still pictures only: no video model
         self.assertIn("fal-ai/elevenlabs/music", endpoints)
         voiced = [a.get("text", "") for e, a in made["fal"].calls if e.endswith("eleven-v3")]
         self.assertTrue(any(t.startswith("[whispers]") for t in voiced))  # the hushed scene is performed
@@ -246,18 +217,6 @@ class StudioTests(unittest.TestCase):
         self.assertFalse((out / "work").exists())
         srt = (out / "captions.srt").read_text()
         self.assertIn("Tonight the bell rang", srt)
-
-    def test_clips_that_lose_the_chalk_look_are_dropped_and_failed_heroes_try_kling(self):
-        made = {}
-
-        def fal(root):
-            made["fal"] = FakeFal(root, colour_clips=True, fail_hero=True)
-            return made["fal"]
-
-        summary, _ = self.run_studio(fal)
-        self.assertEqual(summary["clips"], 0)
-        self.assertTrue(summary["clips_rejected"])
-        self.assertIn("fal-ai/kling-video/v3/pro/image-to-video", [e for e, _ in made["fal"].calls])
 
     def test_the_cap_holds_and_the_video_is_still_made(self):
         summary, out = self.run_studio(FakeFal, studio_cfg(max_usd=0.5))
@@ -288,7 +247,7 @@ class StudioTests(unittest.TestCase):
         names = {p.name for p in (root / "bake").iterdir()}
         self.assertIn("compare_pictures.jpg", names)
         self.assertTrue(any(n.endswith("_shot_alt.png") for n in names))
-        self.assertTrue(any(n.startswith("clip_") and n.endswith("_hero_alt.mp4") for n in names))
+        self.assertFalse([n for n in names if n.endswith(".mp4")])  # no motion models to compare
         self.assertIn("voice_eleven_Brian.mp3", names)
         self.assertGreater(report["usd"], 0)
 

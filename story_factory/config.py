@@ -209,35 +209,26 @@ DEFAULTS: dict[str, Any] = {
         "voice": "am_michael", "lang": "a", "speed": 0.92,
         # Characters read their own quoted lines (voices by kind of speaker; see production/voice.py).
         "character_voices": True,
-        # Moving chalk: up to `motion_scenes` scenes (key moments first) become real video clips
-        # on fal.ai when FAL_KEY is set, within `motion_max_usd` per video. 0 scenes turns it off.
-        "motion_scenes": 8,
-        "motion_max_usd": 2.0,
-        "motion_model": "fal-ai/bytedance/seedance/v1/lite/image-to-video",
-        "motion_args": {"duration": "5", "resolution": "720p", "aspect_ratio": "16:9"},
-        "motion_usd_per_second": 0.036,
     },
-    # Pipeline 2, studio mode (with FAL_KEY): every shot a generated chalk picture, key shots
-    # as real clips, an expressive narrator, a scored soundtrack, and a broadcast edit.
+    # Pipeline 2, studio mode (with FAL_KEY): every shot a generated still picture (no video
+    # clips), an expressive narrator, a scored soundtrack, and a broadcast edit.
     # Without the key, or with `enabled = false`, the drawn pipeline above runs instead.
     "studio": {
         "enabled": True,
         # Spending cap per video (estimates from `prices`); work past it falls back to free steps.
-        "max_usd": 45.0,
+        # A typical 8-9 minute video costs about $20-25: ~110 pictures about $17, voices about $1,
+        # music, room tone, effects and checks the rest.
+        "max_usd": 30.0,
         "models": {
             "sheet": "fal-ai/nano-banana-pro",           # the style frame and character sheets
             "shot": "fal-ai/nano-banana-pro/edit",       # every shot, from the sheets
             "shot_cheap": "fal-ai/bytedance/seedream/v4.5/edit",  # the redraw when a picture fails
             "shot_alt": "fal-ai/nano-banana-2/edit",            # compared in the bake-off
-            "hero": "bytedance/seedance-2.0/fast/image-to-video",
-            "hero_alt": "fal-ai/kling-video/v3/pro/image-to-video",
-            "medium": "fal-ai/bytedance/seedance/v1/lite/image-to-video",
             "voice": "fal-ai/elevenlabs/tts/eleven-v3",
-            "foley": "fal-ai/mmaudio-v2",
             "sfx": "fal-ai/elevenlabs/sound-effects/v2",
             "music": "fal-ai/elevenlabs/music",
             "thumbnail": "fal-ai/nano-banana-pro/edit",
-            "vision": "fal-ai/any-llm/vision",           # checks every picture and clip frame
+            "vision": "fal-ai/any-llm/vision",           # checks every picture
         },
         # Extra arguments per model role (checked against each model's inputs by `check`).
         "model_args": {
@@ -245,33 +236,20 @@ DEFAULTS: dict[str, Any] = {
             "shot": {"aspect_ratio": "16:9", "num_images": 1, "resolution": "2K"},
             "shot_cheap": {"image_size": "landscape_16_9", "num_images": 1},
             "shot_alt": {"aspect_ratio": "16:9", "num_images": 1, "resolution": "2K"},
-            "hero": {"resolution": "720p", "aspect_ratio": "16:9", "generate_audio": False},
-            "hero_alt": {"generate_audio": False, "negative_prompt": "colour, colors, realistic, 3d, shading, "
-                         "faces, text, blur, distortion, morphing"},
-            "medium": {"resolution": "720p", "aspect_ratio": "16:9"},
             "voice": {"stability": 0.5},
             "thumbnail": {"aspect_ratio": "16:9", "num_images": 1, "resolution": "2K"},
             "vision": {"model": "google/gemini-2.5-flash"},
         },
-        # Clip lengths each motion model accepts, in seconds (from `check`).
-        "durations": {"hero": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-                      "hero_alt": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-                      "medium": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]},
-        # Estimated USD per picture, per second of clip or audio, or per 1,000 characters of speech.
+        # Estimated USD per picture, per second of audio, or per 1,000 characters of speech.
         "prices": {
             "fal-ai/nano-banana-pro": 0.15, "fal-ai/nano-banana-pro/edit": 0.15,
             "fal-ai/nano-banana-2/edit": 0.08, "fal-ai/bytedance/seedream/v4.5/edit": 0.04,
-            "bytedance/seedance-2.0/fast/image-to-video": 0.2419,
-            "bytedance/seedance-2.0/image-to-video": 0.3024,
-            "fal-ai/kling-video/v3/pro/image-to-video": 0.224,
-            "fal-ai/bytedance/seedance/v1/lite/image-to-video": 0.036,
-            "fal-ai/elevenlabs/tts/eleven-v3": 0.10, "fal-ai/mmaudio-v2": 0.002,
+            "fal-ai/elevenlabs/tts/eleven-v3": 0.10,
             "fal-ai/elevenlabs/sound-effects/v2": 0.002, "fal-ai/elevenlabs/music": 0.01,
             "fal-ai/any-llm/vision": 0.002,
         },
-        # Shots: 3-6 s each; how many become clips, by tier (the rest are living stills).
+        # Shots: 3-6.5 s each, every one a still picture with a slow camera move.
         "shot_min_seconds": 3.0, "shot_max_seconds": 6.5,
-        "hero_shots": 20, "medium_shots": 40,
         "parallel": 6,
         # Narrator and cast voices on ElevenLabs v3 (names from `check`); Kokoro if a line fails.
         "narrator_voice": "Brian",
@@ -284,74 +262,6 @@ DEFAULTS: dict[str, Any] = {
         "thumbnails": 3,
         # Audio loudness for YouTube.
         "loudness_lufs": -14.0,
-    },
-    # Pipeline 2 on open models: a 40-60 s piece made on a rented Vast.ai GPU (mode video-vast).
-    "vast": {
-        "max_usd": 12.0,  # the GPU rental cap; the job stops before it would pass it
-        "max_hours": 3.4,  # and the GitHub job's own time limit
-        "picture_model": "Qwen/Qwen-Image-Edit-2509", "picture_steps": 40, "picture_tries": 3,
-        "clip_model": "Wan-AI/Wan2.2-I2V-A14B-Diffusers", "clip_steps": 25, "clip_size": [1280, 720],
-        "shot_min_seconds": 3.0, "shot_max_seconds": 6.0,
-        "title_seconds": 2.0, "end_seconds": 5.0, "burn_captions": True, "loudness_lufs": -14.0,
-    },
-    # Pipeline 3: the drama writers' room (series bibles and dialogue episodes).
-    "drama": {
-        "genre": "supernatural thriller",
-        "episodes_per_series": 12,
-        "episode_seconds": 90,
-        # Median editor score every criterion must reach, and the plan bar.
-        "min_score": 7,
-        "plan_min_score": 7,
-        "plan_revisions": 2,
-        "pitches_per_pitcher": 3,
-        "tournament_size": 4,
-        "shelve_min_score": 7.5,
-        "max_revisions": 2,
-        "max_fresh_starts": 1,
-        # Alternatives the hook and cliffhanger labs write.
-        "alternatives": 2,
-        "viewers": [
-            "a 22-year-old who binges short dramas at night and hates slow openings",
-            "a 35-year-old commuter who swipes away from anything confusing",
-            "a 45-year-old who pays to unlock episodes when a character's secret hooks her",
-            "a 28-year-old skeptic who spots plot holes and recycled tropes",
-        ],
-    },
-    # Pipeline 4: the drama video pipeline. Model names are fal.ai endpoint ids; check
-    # them with `python -m drama_production check` before spending anything.
-    "drama_video": {
-        "models": {
-            "portrait": "fal-ai/bytedance/seedream/v4/text-to-image",
-            "shot": "fal-ai/bytedance/seedream/v4/edit",
-            "motion": "fal-ai/bytedance/seedance/v1/lite/image-to-video",
-        },
-        "model_args": {
-            "portrait": {"image_size": {"width": 1080, "height": 1920}, "num_images": 1},
-            "shot": {"image_size": {"width": 1080, "height": 1920}, "num_images": 1},
-            "motion": {"duration": "5", "resolution": "720p", "aspect_ratio": "9:16"},
-        },
-        # Estimated USD per picture, or per second of moving clip (third-party figures;
-        # check fal.ai's pricing pages). The cap stops moving clips, not the episode.
-        "prices": {
-            "fal-ai/bytedance/seedream/v4/text-to-image": 0.03,
-            "fal-ai/bytedance/seedream/v4/edit": 0.03,
-            "fal-ai/bytedance/seedance/v1/lite/image-to-video": 0.036,
-        },
-        # Every shot is a real clip (most important first); the cap stops clips, not the episode.
-        "max_usd_per_episode": 4.5,
-        "max_motion_shots": 40,
-        "parallel_motion": 4,
-        # Clip lengths the motion model accepts (seconds); each shot gets the shortest that covers it.
-        "motion_durations": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],  # Seedance lite, per the check (run 67)
-        "parallel_images": 4,
-        # Voices: every character gets a fixed Kokoro voice (free). With BOSON_API_KEY set,
-        # Boson speaks every line, cloned from a short clip of that voice (kept with the series),
-        # for more expressive acting; a refused line falls back to Kokoro.
-        "boson_model": "higgs-audio-v3-tts",
-        # Names `check` tries against the API (it reports which ones it accepts).
-        "boson_probe_voices": ["jake", "emma", "belinda", "mabel", "chadwick", "vex", "en_man", "en_woman"],
-        "voices": {},
-        "keep_work": False,
     },
     "dedup": {
         "title_similarity": 0.85,

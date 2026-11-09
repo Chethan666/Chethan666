@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Pushes small review images of a run (comparison sheets, contact sheet, thumbnails, frames from the
-# video every 20 s, clip frames) and its reports to the review-media branch, under run-<number>/,
-# so they can be looked at without downloading the whole artifact. No audio, no full video.
+# video every 20 s, a frame of each Short) and its reports to the review-media branch, under
+# run-<number>/, so they can be looked at without downloading the whole artifact. No audio, no full video.
 set -euo pipefail
 src=out
 dest=$RUNNER_TEMP/review/run-$GITHUB_RUN_NUMBER
@@ -20,10 +20,6 @@ done
 find "$src" -type f -name 'short_*.mp4' | while read -r v; do
   name=$(echo "${v#$src/}" | tr '/' '_')
   ffmpeg -nostdin -hide_banner -loglevel error -y -ss 5 -i "$v" -frames:v 1 -vf scale=360:-2 "$dest/${name%.*}.jpg" || true
-done
-find "$src" -type f -name '*.mp4' -path '*bakeoff*' | while read -r v; do
-  name=$(echo "${v#$src/}" | tr '/' '_')
-  ffmpeg -nostdin -hide_banner -loglevel error -y -i "$v" -vf "fps=2,scale=320:-2,tile=5x2" -frames:v 1 -q:v 5 "$dest/${name%.*}_strip.jpg" || true
 done
 find "$src" -type f \( -name 'report.json' -o -name 'bakeoff.json' -o -name 'shots.json' -o -name 'metadata.json' \) \
   ! -path '*/work/*' | while read -r f; do cp "$f" "$dest/$(echo "${f#$src/}" | tr '/' '_')"; done

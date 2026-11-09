@@ -76,8 +76,8 @@ SCENE_SPEC = {
 DIRECTION = {"type": "object", "additionalProperties": False, "required": ["scenes"],
              "properties": {"scenes": {"type": "array", "items": SCENE_SPEC}}}
 
-SYSTEM = ("You are the art director of Hollow Lines, an animated horror channel drawn as white chalk "
-          "stick figures on black paper with exactly one blood-red accent. You turn each scene's "
+SYSTEM = ("You are the art director of Hollow Lines, an illustrated horror channel: still pictures drawn as "
+          "white chalk stick figures on black paper with exactly one blood-red accent. You turn each scene's "
           "description into simple, readable compositions using only the given vocabulary.")
 
 

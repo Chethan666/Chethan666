@@ -11,10 +11,11 @@ import sqlite3
 from typing import Any, Sequence
 
 CHANNEL = """\
-Hollow Lines is an animated horror storytelling channel for a global audience of teens and
-adults (not made for kids). Every video is narrated by one calm voice and drawn as dark,
-hand-drawn stickman animation: white chalk-like figures on black ink paper with a single
-blood-red accent. The host, The Storyteller, is a tall stick figure with a red-flamed lantern
+Hollow Lines is an illustrated horror storytelling channel for a global audience of teens and
+adults (not made for kids). Every video is narrated by one calm voice over still pictures that
+change every few seconds, drawn in a dark, hand-drawn stickman style: white chalk-like figures on
+black ink paper with a single blood-red accent. There is no animation: each picture is one frozen
+moment. The host, The Storyteller, is a tall stick figure with a red-flamed lantern
 who opens and closes long episodes, speaking directly to the viewer.
 
 Rules that are never broken:
@@ -671,10 +672,10 @@ def scene_plan(narration: str, scene_range: tuple[int, int], key_range: tuple[in
         canon += ("Recurring characters already have fixed looks; reuse them word for word if they "
                  "appear:\n" + "\n".join(f"- {name}: {look}" for name, look in known_looks) + "\n")
     return (f"NARRATION:\n{narration}\nTASK: Split the narration into {scene_range[0]}-{scene_range[1]} "
-            "visual scenes for the animator. Each scene's `text` is copied exactly from the narration; "
+            "visual scenes for the illustrator. Each scene's `text` is copied exactly from the narration; "
             "scenes are in order and together cover the whole narration with nothing skipped. "
-            "Describe each picture in words (what is drawn and what moves), keeping it drawable: few "
-            "figures, clear silhouettes, darkness and at most one red accent. List sound effects. "
+            "Describe each picture in words (what is drawn: a still picture, one frozen moment), keeping "
+            "it drawable: few figures, clear silhouettes, darkness and at most one red accent. List sound effects. "
             "Give each scene a delivery cue for the narrator's voice. "
             f"Mark {key_range[0]}-{key_range[1]} scenes as key_moment: the scares, reveals and "
             "emotional peaks that deserve a brand-new image.\n"

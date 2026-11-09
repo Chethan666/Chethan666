@@ -2,10 +2,10 @@
 
 Layers, from the bottom: a room tone for each place (generated, looped), a music score that
 follows the story's tension (three generated cues: unease, dread, terror, crossfaded as the
-story moves between them), a sound effect for every shot that asks for one, foley made from
-the hero clips themselves, and a stinger on every scare. Before each scare the music and room
-tone drop away for a beat, so the hit lands in silence. Everything dips under the voice. If a
-generated sound fails, the synthesized drone and cues from `sound.py` fill in.
+story moves between them), a sound effect for every shot that asks for one, and a stinger on
+every scare. Before each scare the music and room tone drop away for a beat, so the hit lands
+in silence. Everything dips under the voice. If a generated sound fails, the synthesized
+drone and cues from `sound.py` fill in.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from typing import Any
 
 import numpy as np
 
-from drama_production.media import MediaError, data_uri
+from .media import MediaError
 
 from . import sound
 from .paid import OverBudget, Studio, digest
@@ -50,7 +50,7 @@ def tension(mood: str) -> int:
 class Score:
     def __init__(self, studio: Studio | None, work: Path, rate: int, parallel: int = 4):
         self.studio, self.work, self.rate, self.parallel = studio, work, rate, parallel
-        self.report: dict[str, Any] = {"music": [], "ambience": 0, "effects": 0, "foley": 0, "synthesized": []}
+        self.report: dict[str, Any] = {"music": [], "ambience": 0, "effects": 0, "synthesized": []}
         work.mkdir(parents=True, exist_ok=True)
 
     # --- generated sounds -----------------------------------------------------------
@@ -83,23 +83,10 @@ class Score:
             args["loop"] = True
         return self._gen("sfx", args, name, units=seconds or 3.0)
 
-    def foley(self, clip: Path, text: str, seconds: float, name: str) -> np.ndarray | None:
-        if self.studio is None or "foley" not in self.studio.models:
-            return None
-        try:
-            path = self.studio.call("foley", {"video_url": data_uri(clip), "prompt": text or "subtle quiet foley",
-                                              "duration": round(min(max(seconds, 1), 30), 1),
-                                              "negative_prompt": "music, speech, voices"},
-                                    "audio", self.work / f"{name}.mp4", "sound_foley", units=seconds)
-            return decode(path, self.rate)
-        except (MediaError, OverBudget) as exc:
-            log.warning("Foley %s not generated: %s", name, str(exc)[:200])
-            return None
-
     # --- the mix ----------------------------------------------------------------------
     def mix(self, voice: np.ndarray, speech: list[tuple[float, float]], shots: list[Shot], offset: float,
-            scenes: list[dict[str, Any]], clips: dict[int, Path], stings: list[float],
-            music_until: float, max_effects: int = 45) -> np.ndarray:
+            scenes: list[dict[str, Any]], stings: list[float], music_until: float,
+            max_effects: int = 45) -> np.ndarray:
         """`voice` is the whole programme's speech track; shot times are on the story timeline, so
         `offset` (cold open + title) moves them onto the programme. `stings` are extra stinger times
         (the title card); every scare shot gets one as well."""
@@ -192,17 +179,6 @@ class Score:
                     self.report["effects"] += 1
                     a = int((s.t0 + offset + 0.15) * rate)
                     _place(out, sample * 0.4 * (0.55 + 0.45 * duck[a] if a < n else 1.0), a)
-
-        # Foley from the hero clips.
-        heroes = [s for s in shots if s.tier == "hero" and s.index in clips][:30]
-        def fol(s: Shot) -> tuple[Shot, np.ndarray | None]:
-            return s, self.foley(clips[s.index], s.sound or s.motion, min(s.seconds, 15), f"foley_{s.index:03d}")
-        with ThreadPoolExecutor(max_workers=self.parallel) as pool:
-            for s, sample in pool.map(fol, heroes):
-                if sample is not None and sample.size:
-                    self.report["foley"] += 1
-                    a = int((s.t0 + offset) * rate)
-                    _place(out, sample[: int(s.seconds * rate)] * 0.25, a)
 
         fade = int(1.0 * rate)
         out[:fade] *= np.linspace(0.2, 1, min(fade, n))[: out[:fade].size]

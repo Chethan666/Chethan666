@@ -16,7 +16,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from drama_production.media import MediaError, data_uri, download, first_url
+from .media import MediaError, data_uri, download, first_url
 
 log = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ class Studio:
         self.fal, self.budget, self.cache, self.cfg = fal, budget, cache, cfg
         self.models: dict[str, str] = cfg.get("models", {})
         self.args: dict[str, dict] = cfg.get("model_args", {})
-        self.stop_on_empty = True  # an empty balance stops the video while pictures and clips are made
+        self.stop_on_empty = True  # an empty balance stops the video while the pictures are made
         self.balance_ran_out = False
         cache.mkdir(parents=True, exist_ok=True)
 
@@ -92,8 +92,8 @@ class Studio:
 
     def call(self, role: str, arguments: dict[str, Any], kind: str, out: Path, task: str,
              units: float = 1.0, key: Any = None, tries: int = 2) -> Path:
-        """Run a model (role from the config) and download its `kind` result (image, video,
-        audio) to `out`. Cached by the request; paid once."""
+        """Run a model (role from the config) and download its `kind` result (image or audio)
+        to `out`. Cached by the request; paid once."""
         model = self.models[role]
         args = dict(self.args.get(role, {}), **arguments)
         suffix = out.suffix or {"image": ".png", "video": ".mp4", "audio": ".mp3"}[kind]
@@ -143,12 +143,10 @@ def result_url(result: dict[str, Any], kind: str) -> str:
             return value["url"]
         if isinstance(value, str) and value.startswith("http"):
             return value
-    if isinstance(result.get("video"), dict) and result["video"].get("url"):  # video-to-audio models
-        return result["video"]["url"]
     raise MediaError(f"no {kind} in result: {str(result)[:300]}")
 
 
-VISION_SYSTEM = ("You are the picture checker of a chalk-animation horror channel. Every frame must look like "
+VISION_SYSTEM = ("You are the picture checker of a chalk-drawing horror channel. Every picture must look like "
                  "white chalk drawn on a black chalkboard: simple stick figures, rough chalk strokes, black "
                  "background, and no colour at all except a single blood-red accent. Answer with JSON only.")
 

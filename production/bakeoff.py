@@ -1,10 +1,10 @@
 """The bake-off: the same shots through each candidate model, side by side, before a whole video.
 
 Pictures: four of the story's most important shots, each drawn by every picture model (from
-the same style frame and character sheets). Clips: the two most important shots, each through
-every motion model at 5 s. Voices: the opening of the narration in two ElevenLabs voices and
-in Kokoro. Sound: one music cue and a stinger. Everything is checked and costed, and lands in
-one folder with a comparison sheet, so the defaults are chosen from real output.
+the same style frame and character sheets). Voices: the opening of the narration in two
+ElevenLabs voices and in Kokoro. Sound: one music cue and a stinger. Everything is checked
+and costed, and lands in one folder with a comparison sheet, so the defaults are chosen from
+real output.
 """
 
 from __future__ import annotations
@@ -18,10 +18,9 @@ from typing import Any
 import soundfile
 from PIL import Image, ImageDraw
 
-from drama_production.media import MediaError, data_uri
+from .media import MediaError, data_uri
 
 from . import draw, shots as shotlist, timing, voice
-from .clips import frames, motion_prompt
 from .look import Look, chalk_check, fit
 from .paid import Budget, OverBudget, Studio, vision_check
 from .run import _json
@@ -31,7 +30,6 @@ from .speech import ElevenVoice, decode
 log = logging.getLogger(__name__)
 
 PICTURE_ROLES = ("shot", "shot_alt", "shot_cheap")
-CLIP_ROLES = ("hero", "hero_alt", "medium")
 
 
 def run(story: dict[str, Any], out: Path, kokoro: Any, router: Any, cfg: dict[str, Any], fal: Any,
@@ -45,7 +43,7 @@ def run(story: dict[str, Any], out: Path, kokoro: Any, router: Any, cfg: dict[st
     scenes = _json(story.get("scenes"), [])
     cast = _json(story.get("cast"), [])
     red = str(_json(story.get("bible"), {}).get("red_accent", ""))
-    report: dict[str, Any] = {"story": story.get("id"), "pictures": {}, "clips": {}, "voices": {}, "sound": {}}
+    report: dict[str, Any] = {"story": story.get("id"), "pictures": {}, "voices": {}, "sound": {}}
 
     # Timing from a silent read (free): the shots are cut exactly as in a real video.
     spans = timing.scene_spans(narration, scenes)
@@ -87,28 +85,6 @@ def run(story: dict[str, Any], out: Path, kokoro: Any, router: Any, cfg: dict[st
                 entry["error"] = str(exc)[:300]
             report["pictures"][f"shot {s.index} {role}"] = entry
     sheet(best, pictures, out / "compare_pictures.jpg")
-
-    # Clips: the two most important shots through every motion model.
-    for s in best[:2]:
-        picture = pictures.get((s.index, "shot")) or next((p for (i, _), p in pictures.items() if i == s.index), None)
-        if picture is None:
-            continue
-        for role in CLIP_ROLES:
-            if role not in studio.models:
-                continue
-            image_key = "start_image_url" if "kling" in studio.models[role] else "image_url"
-            path = out / f"clip_shot{s.index:03d}_{role}.mp4"
-            entry = {"model": studio.models[role], "motion": s.motion}
-            try:
-                studio.call(role, {image_key: data_uri(picture), "prompt": motion_prompt(s), "duration": "5"},
-                            "video", path, f"bakeoff_{role}", units=5)
-                checks = frames(path, [0.3, 0.65, 0.95], work / f"frames_{s.index}_{role}")
-                entry["chalk_checks"] = [chalk_check(f) for f in checks]
-                if len(checks) > 1:
-                    shutil.copy(checks[1], out / f"clip_shot{s.index:03d}_{role}_middle.png")
-            except (MediaError, OverBudget) as exc:
-                entry["error"] = str(exc)[:300]
-            report["clips"][f"shot {s.index} {role}"] = entry
 
     # Voices: the opening of the story.
     opening = " ".join(narration.split()[:90])

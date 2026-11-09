@@ -190,90 +190,26 @@ class WholeVideoTests(unittest.TestCase):
             shutil.rmtree(out, ignore_errors=True)
 
 
-    def test_a_video_with_a_moving_scene_and_a_characters_line(self):
-        from production import assemble, run, voice
+    def test_a_video_with_a_characters_line(self):
+        from production import run, voice
 
         narration = NARRATION.replace("Tonight the bell rang.", "Tonight the bell rang. \"Who's there?\" Marisol said.")
         story = {"id": 8, "title": "Night Bus", "narration": narration, "scenes": json.dumps(SCENES),
                  "cast": json.dumps([{"name": "Marisol", "look": "bus driver's cap"}])}
         out = Path(tempfile.mkdtemp())
 
-        class FakeAnimator:
-            spent = 0.18
-
-            def run(self, work, scenes, direction):
-                assemble._run(["-f", "lavfi", "-i", "testsrc=size=640x360:rate=24:duration=2", "-pix_fmt",
-                               "yuv420p", "gen.mp4"], work)
-                return {2: work / "gen.mp4"}
-
         import os
         here = os.getcwd()
         try:
             os.chdir(out)  # relative folders, as in the workflow
-            summary = run.produce(story, Path("made"), voice.SilentVoice(), None, "360", animator=FakeAnimator())
+            summary = run.produce(story, Path("made"), voice.SilentVoice(), None, "360")
             out = out / "made"
-            self.assertEqual(summary["moving_scenes"], [2])
             self.assertEqual(summary["quoted_lines"], 1)
             self.assertIn("Marisol", summary["character_voices"])
             self.assertTrue((out / "video.mp4").stat().st_size > 0)
         finally:
             os.chdir(here)
             shutil.rmtree(out.parent if out.name == "made" else out, ignore_errors=True)
-
-
-@unittest.skipUnless(HAVE_VIDEO_LIBS and shutil.which("ffmpeg"), "needs the video libraries and FFmpeg")
-class MotionTests(unittest.TestCase):
-    def test_key_moments_then_tense_scenes_are_animated_within_the_budget(self):
-        from production import animate
-
-        scenes = [{"mood": "calm"}, {"mood": "Mounting terror"}, {"mood": "eerie", "key_moment": True},
-                  {"mood": "tense dread"}, {"mood": "calm"}]
-        self.assertEqual(animate.choose(scenes, 3), [1, 2, 3])
-        self.assertEqual(animate.choose(scenes, 0), [])
-        text = animate.prompt({"visual": "Marisol looks at the mirror"},
-                              {"figures": [{"name": "Marisol", "pose": "look_back"}], "camera": "push_in"})
-        self.assertIn("white chalk lines on black", text)
-        self.assertIn("Marisol (look_back)", text)
-
-        calls = []
-
-        class FakeFal:
-            def run(self, model, args):
-                calls.append(args)
-                return {"video": {"url": "https://example.invalid/clip.mp4"}}
-
-        made = Path(tempfile.mkdtemp())
-        try:
-            from unittest import mock
-            from PIL import Image
-
-            for i in range(len(scenes)):
-                Image.new("RGB", (64, 36)).save(made / f"scene_{i:03d}_0.png")
-            animator = animate.Animator(FakeFal(), "m", {"duration": "5"}, 0.036, 0.40, 5)
-            with mock.patch("drama_production.media.download", side_effect=lambda url, path: path):
-                moving = animator.run(made, scenes, [{} for _ in scenes])
-            self.assertEqual(len(moving), 2)  # $0.18 a clip: the cap stops the third
-            self.assertTrue(calls[0]["image_url"].startswith("data:image/png;base64,"))
-        finally:
-            shutil.rmtree(made, ignore_errors=True)
-
-    def test_a_moving_scene_plays_its_clip_then_the_drawing_carries_on(self):
-        from production import assemble, draw
-
-        work = Path(tempfile.mkdtemp())
-        try:
-            size = (160, 90)
-            paper, grain = draw.make_paper(*size)
-            for v in range(3):
-                paper.save(work / f"scene_000_{v}.png")
-            assemble._run(["-f", "lavfi", "-i", "testsrc=size=160x90:rate=24:duration=2", "-pix_fmt", "yuv420p",
-                           "gen.mp4"], work)
-            name = assemble.moving_clip(work, 0, 4.0, "push_in", "flicker", size, work / "gen.mp4")
-            self.assertAlmostEqual(assemble._length(work / name), 4.0, delta=0.25)
-            short = assemble.moving_clip(work, 0, 1.5, "still", "dark", size, work / "gen.mp4")
-            self.assertAlmostEqual(assemble._length(work / short), 1.5, delta=0.2)
-        finally:
-            shutil.rmtree(work, ignore_errors=True)
 
 
 if __name__ == "__main__":
