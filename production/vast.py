@@ -238,11 +238,30 @@ class Vast:
                 "-o", "LogLevel=ERROR", "-o", "ServerAliveInterval=30", "-o", "ConnectTimeout=20"]
 
     def ssh(self, machine: Machine, command: str, timeout: int = 600, check: bool = True):
-        result = subprocess.run(["ssh", "-n", *self._ssh_args(machine), "-p", str(machine.port),
+        result = subprocess.run(["ssh", "-n", "-T", *self._ssh_args(machine), "-p", str(machine.port),
                                  f"root@{machine.host}", command], capture_output=True, text=True, timeout=timeout)
         if check and result.returncode != 0:
             raise VastError(f"ssh {command[:60]!r}: {result.stderr[-400:]}")
         return result
+
+    def start(self, machine: Machine, folder: str, script: str, logfile: str) -> None:
+        """Start the job fully detached. Some hosts keep the ssh channel open after the job is in the
+        background (runs 77 and 83 timed out here), so a timeout is not a failure: the job counts as
+        started once its log exists."""
+        command = (f"cd {shlex.quote(folder)} && (setsid nohup bash {shlex.quote(script)} "
+                   f"> {shlex.quote(logfile)} 2>&1 < /dev/null &) ; exit 0")
+        try:
+            self.ssh(machine, command, timeout=45, check=False)
+        except subprocess.TimeoutExpired:
+            log.info("The start command held the connection open; checking the job started")
+        for _ in range(6):
+            probe = self.ssh(machine, f"test -e {shlex.quote(folder + '/' + logfile)} && echo STARTED",
+                             timeout=60, check=False)
+            if "STARTED" in probe.stdout:
+                log.info("Job started on the GPU")
+                return
+            time.sleep(10)
+        raise VastError("the job did not start on the GPU (no log file appeared)")
 
     def put(self, machine: Machine, files: list[Path], remote: str) -> None:
         subprocess.run(["scp", *self._ssh_args(machine), "-P", str(machine.port), "-r", *map(str, files),
@@ -348,9 +367,7 @@ def run_job(vast: Vast, job: dict[str, Any], worker: Path, local_out: Path, max_
         vast.put(machine, [work / "job.json", work / "run.sh", work / "vast_worker.py"], "/workspace/job/")
         for name in job.get("uploads", []):
             vast.put(machine, [Path(name)], "/workspace/job/out/")
-        # Fully detached (no input, no output tied to this connection) so ssh returns at once.
-        vast.ssh(machine, "cd /workspace/job && setsid nohup bash run.sh > run.log 2>&1 < /dev/null & disown",
-                 timeout=60)
+        vast.start(machine, "/workspace/job", "run.sh", "run.log")
         deadline = machine.started + hours * 3600 - 600  # keep 10 minutes for the download and teardown
         text = vast.follow(machine, "/workspace/job/run.log", "/workspace/job/DONE", deadline)
         report["stopped_at_limit"] = text.endswith("__STOPPED_AT_LIMIT__")

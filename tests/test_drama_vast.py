@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 try:
@@ -154,3 +155,38 @@ class EpisodeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StartTests(unittest.TestCase):
+    def test_a_start_command_that_holds_the_connection_still_counts_once_the_log_exists(self):
+        from production import vast as vastmod
+
+        calls = []
+
+        class Fake(vastmod.Vast):
+            def __init__(self):
+                pass
+
+            def ssh(self, machine, command, timeout=600, check=True):
+                calls.append(command)
+                if "setsid" in command:
+                    raise subprocess.TimeoutExpired(command, timeout)
+                return subprocess.CompletedProcess(command, 0, "STARTED\n", "")
+
+        Fake().start(vastmod.Machine(1, 1.0, "x"), "/workspace/job", "run.sh", "run.log")
+        self.assertEqual(len(calls), 2)
+        self.assertIn("test -e /workspace/job/run.log", calls[1])
+
+    def test_no_log_means_the_job_never_started(self):
+        from production import vast as vastmod
+
+        class Fake(vastmod.Vast):
+            def __init__(self):
+                pass
+
+            def ssh(self, machine, command, timeout=600, check=True):
+                return subprocess.CompletedProcess(command, 0, "", "")
+
+        with unittest.mock.patch.object(vastmod.time, "sleep"):
+            with self.assertRaises(vastmod.VastError):
+                Fake().start(vastmod.Machine(1, 1.0, "x"), "/w", "run.sh", "run.log")
