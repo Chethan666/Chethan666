@@ -79,8 +79,9 @@ python -m venv /workspace/tts
   /workspace/tts/bin/pip install -q chatterbox-tts soundfile 2>&1 | tail -n 3
   TV=$(python -c "import torch; print(torch.__version__.split('+')[0])")
   AV=$(python -c "import torchaudio; print(torchaudio.__version__.split('+')[0])")
-  /workspace/tts/bin/pip install -q --force-reinstall --no-deps "torch==$TV" "torchaudio==$AV" \
-    --index-url https://download.pytorch.org/whl/cu128 2>&1 | tail -n 3 )
+  # With its CUDA libraries this time (run 85: --no-deps left out libcufile, so torch would not load).
+  /workspace/tts/bin/pip install -q "torch==$TV" "torchaudio==$AV" \
+    --index-url https://download.pytorch.org/whl/cu128 --extra-index-url https://pypi.org/simple 2>&1 | tail -n 3 )
 /workspace/tts/bin/python -c "import chatterbox, librosa, torch; print('chatterbox ready, torch', torch.__version__)"
 /workspace/tts/bin/python vast_worker.py job.json voices
 for f in out/kline_*.wav; do t="${f/kline_/line_}"; [ -e "$t" ] || { cp "$f" "$t"; echo "line ${t##*/}: Kokoro"; }; done
@@ -90,7 +91,9 @@ step pictures
 python vast_worker.py job.json pictures
 step "waiting for the talking model"
 while [ ! -e TALK_MODEL_READY ] || [ ! -e WAN_ENV_READY ]; do sleep 10; done
-tail -n 3 wan_env.log
+tail -n 15 wan_env.log
+# Run 85: every S2V shot failed while importing wan; show why before spending on it.
+(cd /workspace/Wan2.2 && /workspace/wanenv/bin/python -c "import wan; print('wan imports fine')" 2>&1 | tail -n 25)
 step "talking shots (Wan2.2-S2V)"
 python vast_worker.py job.json talk
 step "waiting for the clip model"
@@ -235,11 +238,17 @@ def produce(bible: dict[str, Any], episode: dict[str, Any], out_dir: Path, kokor
     job = build_job(bible, shots, cfg)
     if reuse is not None and reuse.exists():  # pictures an earlier run already made, from the same prompts
         wanted = {r["file"] for r in job["references"]} | {f"shot_{s['index']:03d}.png" for s in job["shots"]}
-        kept = [p for p in reuse.rglob("*.png") if p.name in wanted]
+        # Clips too, except a talking shot that an earlier run could only make without lip sync.
+        for s in job["shots"]:
+            i = s["index"]
+            if s["mode"] == "move" or any(reuse.rglob(f"clip_{i:03d}.talk")):
+                wanted |= {f"clip_{i:03d}.mp4", f"clip_{i:03d}.talk"}
+        kept = [p for p in reuse.rglob("*") if p.is_file() and p.name in wanted]
         for p in kept:
             shutil.copy(p, upload / p.name)
-        log.info("Reusing %d pictures from %s", len(kept), reuse)
-    job["uploads"] = [str(p) for p in sorted(upload.glob("*.wav")) + sorted(upload.glob("*.png"))]
+        log.info("Reusing %d pictures and clips from %s", len(kept), reuse)
+    job["uploads"] = [str(p) for p in sorted(upload.glob("*.wav")) + sorted(upload.glob("*.png"))
+                      + sorted(upload.glob("clip_*"))]
     gpu = run_job(vast, job, worker, work / "gpu", float(cfg.get("max_usd", 15.0)),
                   disk=int(cfg.get("disk", 450)), max_hours=float(cfg.get("max_hours", 5.0)),
                   script=remote_script(job))
@@ -275,7 +284,7 @@ def produce(bible: dict[str, Any], episode: dict[str, Any], out_dir: Path, kokor
         if i not in pictures:
             pictures[i] = pictures[min(pictures, key=lambda j: abs(j - i))]
     clips = {i: made / f"clip_{i:03d}.mp4" for i in range(len(shots)) if (made / f"clip_{i:03d}.mp4").exists()}
-    talking = sorted(i for i in clips if job["shots"][i]["mode"] == "talk")
+    talking = sorted(i for i in clips if (made / f"clip_{i:03d}.talk").exists())  # made by S2V itself
 
     # 5. Sound: the lines, the room, the bed.
     track = np.concatenate(lines)
@@ -307,6 +316,10 @@ def produce(bible: dict[str, Any], episode: dict[str, Any], out_dir: Path, kokor
     review.mkdir(exist_ok=True)
     for p in list(made.glob("ref_*.png")) + list(made.glob("shot_*.png")):
         shutil.copy(p, review / p.name)
+    raw = out_dir / "raw"  # the GPU's own clips and lines, so a later run can reuse them (reuse_run)
+    raw.mkdir(exist_ok=True)
+    for p in list(made.glob("clip_*")) + list(made.glob("line_*.wav")):
+        shutil.copy(p, raw / p.name)
 
     summary = {
         "mode": "drama-vast", "title": episode.get("title"), "series": bible.get("title"),

@@ -283,7 +283,7 @@ class Vast:
             lines = text.splitlines()
             for line in lines[seen:]:
                 if line != "__DONE__":
-                    log.info("[gpu] %s", line[:300])
+                    log.info("[gpu] %s", line[:2500] if "FAILED" in line or "Error" in line else line[:300])
             seen = len([x for x in lines if x != "__DONE__"])
             if "__DONE__" in lines:
                 return text

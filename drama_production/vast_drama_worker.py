@@ -180,6 +180,7 @@ def talk(job: dict, out: Path) -> None:
         if result.returncode != 0 or not dst.exists():
             log("FAILED talk", shot["index"], (result.stderr + result.stdout)[-900:].replace("\n", " | "))
             continue
+        (out / f"clip_{shot['index']:03d}.talk").write_text("Wan2.2-S2V")  # lip-synced, not a fallback
         log("talk", shot["index"], f"done in {time.time() - started:.0f} s")
 
 
