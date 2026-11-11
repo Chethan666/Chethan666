@@ -83,12 +83,13 @@ class JobTests(unittest.TestCase):
 
 
 class TrafficTests(unittest.TestCase):
-    def test_only_hosts_that_charge_nothing_for_traffic_are_offered(self):
+    def test_only_hosts_with_free_downloads_and_pennies_of_upload_are_offered(self):
         from production.vast import Vast
 
         offers = [
             {"id": 1, "dph_total": 1.0, "inet_down_cost": 0.04, "inet_up_cost": 0.0, "inet_down": 900},
-            {"id": 2, "dph_total": 1.4, "inet_down_cost": 0.0, "inet_up_cost": 0.02, "inet_down": 900},
+            {"id": 2, "dph_total": 1.4, "inet_down_cost": 0.0, "inet_up_cost": 0.05, "inet_down": 900},
+            {"id": 5, "dph_total": 1.74, "inet_down_cost": 0.0, "inet_up_cost": 0.0133, "inet_down": 58000},
             {"id": 3, "dph_total": 1.3, "internet_down_cost_per_tb": 0, "internet_up_cost_per_tb": 0, "inet_down": 900},
             {"id": 4, "dph_total": 1.2, "inet_down_cost": 0.0, "inet_up_cost": 0.0, "inet_down": 900},
         ]
@@ -100,7 +101,7 @@ class TrafficTests(unittest.TestCase):
             def cli(self, *args, **kwargs):
                 return offers
 
-        self.assertEqual([o["id"] for o in Fake().offers()], [4, 3])
+        self.assertEqual(sorted(o["id"] for o in Fake().offers()), [3, 4, 5])
 
     def test_a_slow_line_costs_more_rented_time(self):
         from production.vast import expected_cost

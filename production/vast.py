@@ -37,10 +37,11 @@ QUERIES = (
 DOWNLOAD_GB = 240  # run 77 pulled 172 GB for pipeline 2; the drama job's models come to about 240 GB
 UPLOAD_GB = 3  # the results brought back
 HOURS = 2.5  # a typical run
-# Run 77 paid $6.72 for downloads alone, so only hosts that charge nothing for internet traffic
-# (both directions) are rented. Raise these only on purpose.
+# Run 77 paid $6.72 for downloads alone, so only hosts that charge nothing for downloads are
+# rented. No 80 GB host was free both ways (run 82), and bringing the results back is a few GB,
+# so an upload charge of up to ten cents is allowed. Raise these only on purpose.
 MAX_DOWNLOAD_USD = 0.0
-MAX_UPLOAD_USD = 0.0
+MAX_UPLOAD_USD = 0.10
 
 
 def _per_tb(offer: dict[str, Any], tb_field: str, gb_field: str) -> float:
