@@ -178,7 +178,7 @@ def talk(job: dict, out: Path) -> None:
                 "--prompt", shot["motion_prompt"], "--image", str(src), "--audio", str(wav), "--save_file", str(dst)]
         result = subprocess.run(args, cwd=repo, capture_output=True, text=True)
         if result.returncode != 0 or not dst.exists():
-            log("FAILED talk", shot["index"], (result.stderr or result.stdout)[-600:].replace("\n", " | "))
+            log("FAILED talk", shot["index"], (result.stderr + result.stdout)[-900:].replace("\n", " | "))
             continue
         log("talk", shot["index"], f"done in {time.time() - started:.0f} s")
 

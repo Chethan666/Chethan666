@@ -42,10 +42,16 @@ cd /workspace/job
 export HF_HOME=/workspace/hf HF_HUB_ENABLE_HF_TRANSFER=1 PYTHONUNBUFFERED=1
 step() { echo "$(date +%H:%M:%S) == $*"; }
 fetch() { python -c "from huggingface_hub import snapshot_download as d; d('$1'$2)" 2>&1 | tail -n 1; }
+python -c "import torch, torchaudio; print('torch', torch.__version__, 'torchaudio', torchaudio.__version__, 'ok')"
 step installing
 (apt-get update -qq && apt-get install -y -qq git ffmpeg) >/dev/null 2>&1
+# Run 84: a background install upgraded torch mid-run and broke torchaudio for both Wan models.
+# Every install below is held to the image's own torch, torchvision and torchaudio.
+python -c "import torch, torchvision, torchaudio as a; print(f'torch=={torch.__version__}\ntorchvision=={torchvision.__version__}\ntorchaudio=={a.__version__}')" > /workspace/pins.txt
+cat /workspace/pins.txt
+export PIP_CONSTRAINT=/workspace/pins.txt
 pip install -q -U "git+https://github.com/huggingface/diffusers" transformers accelerate sentencepiece \
-  hf_transfer ftfy imageio imageio-ffmpeg peft soundfile "huggingface_hub[hf_transfer]" 2>&1 | tail -n 3
+  ftfy imageio imageio-ffmpeg peft soundfile librosa 2>&1 | tail -n 3
 step "downloading the models in the background"
 (fetch @PICTURE_MODEL@ "" > dl_picture.log 2>&1; touch PICTURE_READY) &
 (fetch @TALK_MODEL@ ", local_dir='@TALK_DIR@'" > dl_talk.log 2>&1; touch TALK_MODEL_READY) &
@@ -66,16 +72,16 @@ step "downloading the models in the background"
   touch /workspace/job/MMAUDIO_READY
 ) > mmaudio.log 2>&1 &
 step "voices (Chatterbox)"
-python -m venv --system-site-packages /workspace/tts
-/workspace/tts/bin/pip install -q --no-deps chatterbox-tts
-/workspace/tts/bin/python - > /tmp/tts-req.txt <<'PY'
-from importlib.metadata import requires
-for r in requires('chatterbox-tts') or []:
-    name = r.split(';')[0].strip()
-    if 'extra ==' not in r and not name.lower().startswith(('torch', 'torchaudio', 'torchvision')):
-        print(name)
-PY
-/workspace/tts/bin/pip install -q -r /tmp/tts-req.txt 2>&1 | tail -n 2
+# Its own environment with all its pinned packages, then a torch build that knows this GPU
+# (Chatterbox pins an older torch without Blackwell support). Run 84 lacked librosa here.
+python -m venv /workspace/tts
+( unset PIP_CONSTRAINT
+  /workspace/tts/bin/pip install -q chatterbox-tts soundfile 2>&1 | tail -n 3
+  TV=$(python -c "import torch; print(torch.__version__.split('+')[0])")
+  AV=$(python -c "import torchaudio; print(torchaudio.__version__.split('+')[0])")
+  /workspace/tts/bin/pip install -q --force-reinstall --no-deps "torch==$TV" "torchaudio==$AV" \
+    --index-url https://download.pytorch.org/whl/cu128 2>&1 | tail -n 3 )
+/workspace/tts/bin/python -c "import chatterbox, librosa, torch; print('chatterbox ready, torch', torch.__version__)"
 /workspace/tts/bin/python vast_worker.py job.json voices
 for f in out/kline_*.wav; do t="${f/kline_/line_}"; [ -e "$t" ] || { cp "$f" "$t"; echo "line ${t##*/}: Kokoro"; }; done
 step "waiting for the picture model"
@@ -203,7 +209,8 @@ def _read(path: Path) -> np.ndarray:
 
 
 def produce(bible: dict[str, Any], episode: dict[str, Any], out_dir: Path, kokoro: Any, cfg: dict[str, Any],
-            vast: Any, worker: Path, run_job=None, full_cfg: dict | None = None) -> dict[str, Any]:
+            vast: Any, worker: Path, run_job=None, full_cfg: dict | None = None,
+            reuse: Path | None = None) -> dict[str, Any]:
     from production import vast as vastmod
 
     started = time.time()
@@ -226,7 +233,13 @@ def produce(bible: dict[str, Any], episode: dict[str, Any], out_dir: Path, kokor
 
     # 2. The GPU.
     job = build_job(bible, shots, cfg)
-    job["uploads"] = [str(p) for p in sorted(upload.glob("*.wav"))]
+    if reuse is not None and reuse.exists():  # pictures an earlier run already made, from the same prompts
+        wanted = {r["file"] for r in job["references"]} | {f"shot_{s['index']:03d}.png" for s in job["shots"]}
+        kept = [p for p in reuse.rglob("*.png") if p.name in wanted]
+        for p in kept:
+            shutil.copy(p, upload / p.name)
+        log.info("Reusing %d pictures from %s", len(kept), reuse)
+    job["uploads"] = [str(p) for p in sorted(upload.glob("*.wav")) + sorted(upload.glob("*.png"))]
     gpu = run_job(vast, job, worker, work / "gpu", float(cfg.get("max_usd", 15.0)),
                   disk=int(cfg.get("disk", 450)), max_hours=float(cfg.get("max_hours", 5.0)),
                   script=remote_script(job))

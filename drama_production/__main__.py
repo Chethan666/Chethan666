@@ -40,6 +40,7 @@ def main(argv: list[str] | None = None) -> int:
                    help="a ready episode script (bible + episode), used when no --episode is given")
     v.add_argument("--out", default="out")
     v.add_argument("--max-usd", type=float, dest="max_usd")
+    v.add_argument("--reuse", help="a folder of pictures an earlier run made (ref_*.png, shot_*.png) to skip redrawing")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
@@ -143,7 +144,8 @@ def vast(args: argparse.Namespace, cfg: dict) -> int:
         vcfg["max_usd"] = args.max_usd
     kokoro = KokoroVoice("af_heart", cfg["video"].get("lang", "a"), 1.0)
     summary = vastdrama.produce(bible, episode, Path(args.out) / f"drama-vast-{name}", kokoro, vcfg,
-                                Vast(label=_label()), Path(__file__).with_name("vast_drama_worker.py"), full_cfg=cfg)
+                                Vast(label=_label()), Path(__file__).with_name("vast_drama_worker.py"), full_cfg=cfg,
+                                reuse=Path(args.reuse) if args.reuse else None)
     if summary.get("usd"):
         db.record_cost(conn, pipeline="drama", task="vast_gpu", model=str(summary["gpu"].get("gpu")), input_units=0,
                        output_units=summary["moving_shots"], usd=float(summary["usd"]))
