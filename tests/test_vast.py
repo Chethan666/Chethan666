@@ -88,9 +88,9 @@ class VastCliTests(unittest.TestCase):
 
         run = FakeRun()
         vast = Vast(key="k", run=run, label="hollow-lines-9")
-        # ARM boxes and hosts that charge a lot for downloads are left out; the rest by true cost
-        # (rent plus download charge): 1.3 h-rate + $0.60 download beats 1.9 h-rate with free downloads
-        self.assertEqual([o["id"] for o in vast.offers()], [5, 1, 2])
+        # ARM boxes and every host that charges anything for internet traffic are left out (run 77
+        # paid $6.72 for downloads); the rest by true cost
+        self.assertEqual([o["id"] for o in vast.offers()], [1, 2])
         self.assertEqual(vast.balance(), 19.5)
         machine = vast.rent({"id": 1, "gpu_name": "H100 NVL", "dph_total": 1.9})
         self.assertEqual((machine.id, machine.price), (777, 1.9))

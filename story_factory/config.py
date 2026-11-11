@@ -353,6 +353,16 @@ DEFAULTS: dict[str, Any] = {
         "voices": {},
         "keep_work": False,
     },
+    # Pipeline 4 on open models (mode drama-vast): a GPU rented from Vast.ai, only from hosts
+    # that charge nothing for internet traffic. The run stops before max_usd or max_hours.
+    "drama_vast": {
+        "max_usd": 15.0,
+        "max_hours": 5.0,
+        "disk": 450,
+        "picture_steps": 40,
+        "talk_steps": 40,
+        "clip_steps": 30,
+    },
     "dedup": {
         "title_similarity": 0.85,
         "synopsis_lexical_similarity": 0.30,

@@ -27,29 +27,48 @@ log = logging.getLogger(__name__)
 IMAGE = "pytorch/pytorch:2.8.0-cuda12.8-cudnn9-runtime"
 # 80 GB+ cards (H100, H200, RTX PRO 6000 class first; A100 80 GB as the fallback).
 QUERIES = (
-    "num_gpus=1 gpu_ram>=79 compute_cap>=900 verified=true rentable=true reliability>0.98 disk_space>=300 "
+    "num_gpus=1 gpu_ram>=79 compute_cap>=900 verified=true rentable=true reliability>0.98 disk_space>=450 "
     "cpu_ram>=120 inet_down>=800 direct_port_count>=1 cuda_vers>=12.8",
-    "num_gpus=1 gpu_ram>=79 compute_cap>=800 verified=true rentable=true reliability>0.97 disk_space>=300 "
+    "num_gpus=1 gpu_ram>=79 compute_cap>=800 verified=true rentable=true reliability>0.97 disk_space>=450 "
     "cpu_ram>=100 inet_down>=500 direct_port_count>=1 cuda_vers>=12.8",
 )
 
 
-DOWNLOAD_GB = 180  # measured: run 77 pulled 172 GB (Qwen-Image-Edit, Wan 2.2, software) before MMAudio
+DOWNLOAD_GB = 240  # run 77 pulled 172 GB for pipeline 2; the drama job's models come to about 240 GB
+UPLOAD_GB = 3  # the results brought back
 HOURS = 2.5  # a typical run
-MAX_DOWNLOAD_USD = 1.0  # hosts charging more than this for the downloads are skipped
+# Run 77 paid $6.72 for downloads alone, so only hosts that charge nothing for internet traffic
+# (both directions) are rented. Raise these only on purpose.
+MAX_DOWNLOAD_USD = 0.0
+MAX_UPLOAD_USD = 0.0
 
 
-def download_usd(offer: dict[str, Any]) -> float:
-    """What the host charges for downloading the models (some hosts bill internet traffic per TB)."""
-    per_tb = _num(offer.get("internet_down_cost_per_tb"), -1)
+def _per_tb(offer: dict[str, Any], tb_field: str, gb_field: str) -> float:
+    per_tb = _num(offer.get(tb_field), -1)
     if per_tb < 0:
-        per_tb = _num(offer.get("inet_down_cost"), 0.0) * 1000  # per GB
-    return per_tb * DOWNLOAD_GB / 1000
+        per_tb = _num(offer.get(gb_field), 0.0) * 1000  # per GB
+    return per_tb
 
 
-def expected_cost(offer: dict[str, Any]) -> float:
-    """Rent for a typical run plus the download charge: the true price of an offer."""
-    return _num(offer.get("dph_total"), 99) * HOURS + download_usd(offer) + _num(offer.get("storage_total_cost"), 0.0)
+def download_usd(offer: dict[str, Any], gb: float = DOWNLOAD_GB) -> float:
+    """What the host charges for downloading the models (some hosts bill internet traffic per TB)."""
+    return _per_tb(offer, "internet_down_cost_per_tb", "inet_down_cost") * gb / 1000
+
+
+def upload_usd(offer: dict[str, Any], gb: float = UPLOAD_GB) -> float:
+    return _per_tb(offer, "internet_up_cost_per_tb", "inet_up_cost") * gb / 1000
+
+
+def download_hours(offer: dict[str, Any], gb: float = DOWNLOAD_GB) -> float:
+    """Time spent downloading the models, which is rented time too (inet_down is in Mbit/s)."""
+    mbps = max(_num(offer.get("inet_down"), 500.0), 100.0)
+    return gb * 8000 / mbps / 3600 * 1.5  # Hugging Face rarely fills the line
+
+
+def expected_cost(offer: dict[str, Any], hours: float = HOURS) -> float:
+    """Rent for a typical run (download time included) plus traffic and storage: the true price."""
+    return (_num(offer.get("dph_total"), 99) * (hours + download_hours(offer)) + download_usd(offer)
+            + upload_usd(offer) + _num(offer.get("storage_total_cost"), 0.0))
 
 
 class VastError(RuntimeError):
@@ -123,7 +142,8 @@ class Vast:
             found = found if isinstance(found, list) else found.get("offers", []) if isinstance(found, dict) else []
             # x86 machines only (DGX Spark / GB10 boxes are ARM and can't run the image).
             found = [o for o in found if str(o.get("cpu_arch", "amd64")).lower() in ("amd64", "x86_64")
-                     and "GB10" not in str(o.get("gpu_name", "")) and download_usd(o) <= MAX_DOWNLOAD_USD]
+                     and "GB10" not in str(o.get("gpu_name", "")) and download_usd(o) <= MAX_DOWNLOAD_USD
+                     and upload_usd(o) <= MAX_UPLOAD_USD]
             if found:
                 return sorted(found, key=expected_cost)
         return []
@@ -150,7 +170,8 @@ class Vast:
             instance = match.group(1)
         machine = Machine(int(instance), _num(offer.get("dph_total")), str(offer.get("gpu_name", "?")))
         machine.started = time.time()
-        log.info("Rented %s (instance %s) at $%.2f/h", machine.gpu, machine.id, machine.price)
+        log.info("Rented %s (instance %s) at $%.2f/h; internet traffic: download $%.2f, upload $%.2f",
+                 machine.gpu, machine.id, machine.price, download_usd(offer), upload_usd(offer))
         return machine
 
     def wait(self, machine: Machine, timeout: int = 1500) -> None:
@@ -287,7 +308,7 @@ def remote_script(job: dict[str, Any]) -> str:
 
 
 def run_job(vast: Vast, job: dict[str, Any], worker: Path, local_out: Path, max_usd: float,
-            disk: int = 300, max_hours: float = 3.4) -> dict[str, Any]:
+            disk: int = 300, max_hours: float = 3.4, script: str | None = None) -> dict[str, Any]:
     """Rent the cheapest suitable machine, run the job, bring back the results, destroy the machine."""
     credit = vast.balance()
     if credit is not None:
@@ -320,7 +341,7 @@ def run_job(vast: Vast, job: dict[str, Any], worker: Path, local_out: Path, max_
         job = dict(job, out="/workspace/job/out")
         work = Path(tempfile.mkdtemp(prefix="vastjob-"))
         (work / "job.json").write_text(json.dumps(job))
-        (work / "run.sh").write_text(remote_script(job))
+        (work / "run.sh").write_text(script or remote_script(job))
         (work / "vast_worker.py").write_text(worker.read_text())
         vast.ssh(machine, "mkdir -p /workspace/job/out")
         vast.put(machine, [work / "job.json", work / "run.sh", work / "vast_worker.py"], "/workspace/job/")

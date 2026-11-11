@@ -46,6 +46,28 @@ GitHub Actions secrets (Settings → Secrets and variables → Actions):
 ## Cost
 
 Estimated from third-party price figures (check fal.ai's pricing pages): about $0.03 per
-picture and $0.036 per second of moving clip, so a 90-second episode with ~20 shots and
-three 5-second clips is roughly $1.20, plus about $0.25 once per series for references.
+picture and $0.036 per second of moving clip. Every shot is a moving clip, so a 90-second
+episode with ~20 shots is about $3.85 (capped by `max_usd_per_episode`, $4.50), plus about
+$0.25 once per series for references.
 Every call is logged in the `costs` table under the `drama` pipeline.
+
+## Open models on a rented GPU (mode drama-vast)
+
+`python -m drama_production vast` (workflow mode **drama-vast**) makes an episode with open
+models only, on a GPU rented from Vast.ai with the `VAST_API_KEY` secret. With no `story_id`
+it makes the ready 60-second script `drama_production/scripts/the-last-call.json`; with an
+episode id it makes that episode from the database.
+
+- **Here (free)**: a Kokoro reference clip of each character's fixed voice, Kokoro fallback
+  lines, and afterwards the edit (a cut on every line, film look, big subtitles, sound bed).
+- **On the GPU**: Chatterbox (MIT) speaks every line, cloned from its character's voice;
+  Qwen-Image-Edit-2511 (Apache-2.0) draws a portrait per character (a double is drawn from the
+  original's portrait), a plate per location and every shot from those references;
+  Wan2.2-S2V-14B (Apache-2.0) films on-screen speakers lip-synced to their line; Wan 2.2 I2V
+  A14B (Apache-2.0) films every other shot and any talking shot S2V couldn't make; MMAudio
+  makes the room's ambience.
+- **Money**: only hosts that charge **nothing** for internet traffic are rented (run 77 paid
+  $6.72 for downloads alone), cheapest true cost first, with download time counted as rented
+  time. The run stops before `drama_vast.max_usd` (default $15) or `drama_vast.max_hours` (5),
+  keeps what it has made (missing clips become stills with camera moves), and the machine is
+  destroyed in every case. `video-vast-check` shows the balance and offers without spending.

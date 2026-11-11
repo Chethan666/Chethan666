@@ -34,6 +34,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--episode", type=int, help="a chosen episode id (default: the next approved one)")
     p.add_argument("--out", default="out")
     p.add_argument("--voice", choices=("auto", "kokoro", "boson"), default="auto")
+    v = sub.add_parser("vast", help="make an episode with open models on a rented Vast.ai GPU")
+    v.add_argument("--episode", type=int, help="an episode id from the database")
+    v.add_argument("--script", default=str(Path(__file__).with_name("scripts") / "the-last-call.json"),
+                   help="a ready episode script (bible + episode), used when no --episode is given")
+    v.add_argument("--out", default="out")
+    v.add_argument("--max-usd", type=float, dest="max_usd")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
@@ -74,6 +80,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  {name:<18} {outcome}")
         return 1 if failed else 0
 
+    if args.command == "vast":
+        return vast(args, cfg)
+
     from .produce import Producer  # the video libraries are only needed here
 
     conn = db.connect(cfg["database"])
@@ -102,6 +111,43 @@ def main(argv: list[str] | None = None) -> int:
     conn.execute("UPDATE episodes SET production = ?, updated_at = ?" + (", status = 'produced'" if status else "")
                  + " WHERE id = ?", (json.dumps(meta), db.now(), row["id"]))
     print(json.dumps(meta, indent=2, ensure_ascii=False))
+    return 0
+
+
+def vast(args: argparse.Namespace, cfg: dict) -> int:
+    """Open models on a rented GPU: Chatterbox, Qwen-Image-Edit-2511, Wan2.2-S2V, Wan 2.2 I2V, MMAudio."""
+    from production.__main__ import _label
+    from production.vast import Vast
+
+    from . import vastdrama
+    from .voices import KokoroVoice
+
+    conn = db.connect(cfg["database"])
+    if args.episode:
+        row = conn.execute("SELECT * FROM episodes WHERE id = ?", (args.episode,)).fetchone()
+        if row is None:
+            print(f"No episode #{args.episode}", file=sys.stderr)
+            return 1
+        series = conn.execute("SELECT * FROM series WHERE id = ?", (row["series_id"],)).fetchone()
+        bible, episode = json.loads(series["bible"]), json.loads(row["script"])
+        bible.setdefault("title", series["title"])
+        name = f"series-{series['id']}-ep-{row['number']:02d}"
+    else:
+        script = json.loads(Path(args.script).read_text())
+        bible, episode = script["bible"], script["episode"]
+        name = Path(args.script).stem
+    print(f"Open-model drama on Vast.ai: {bible.get('title')} - {episode.get('title')} "
+          f"({len(episode.get('shots', []))} shots)", flush=True)
+    vcfg = dict(cfg.get("drama_vast", {}))
+    if args.max_usd is not None:
+        vcfg["max_usd"] = args.max_usd
+    kokoro = KokoroVoice("af_heart", cfg["video"].get("lang", "a"), 1.0)
+    summary = vastdrama.produce(bible, episode, Path(args.out) / f"drama-vast-{name}", kokoro, vcfg,
+                                Vast(label=_label()), Path(__file__).with_name("vast_drama_worker.py"), full_cfg=cfg)
+    if summary.get("usd"):
+        db.record_cost(conn, pipeline="drama", task="vast_gpu", model=str(summary["gpu"].get("gpu")), input_units=0,
+                       output_units=summary["moving_shots"], usd=float(summary["usd"]))
+    print(json.dumps(summary, indent=2, ensure_ascii=False))
     return 0
 
 
