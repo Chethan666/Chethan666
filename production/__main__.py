@@ -146,7 +146,7 @@ def _label() -> str:
 
 
 def vast_admin(command: str) -> int:
-    from .vast import Vast, download_usd, expected_cost, upload_usd
+    from .vast import QUERIES, Vast, download_usd, expected_cost, upload_usd
 
     vast = Vast(label=_label())
     if command == "vast-cleanup":
@@ -174,6 +174,23 @@ def vast_admin(command: str) -> int:
               f"typical run ~${expected_cost(o):.2f}")
     if offers:
         print("Offer fields:", ", ".join(sorted(offers[0])))
+    # Why offers were left out: the cheapest 80 GB machines before the traffic rule, with their charges.
+    for label, query in (("our filters", QUERIES[-1]),
+                         ("any verified 80 GB", "num_gpus=1 gpu_ram>=79 verified=true rentable=true")):
+        try:
+            raw = vast.cli("search", "offers", query, "-o", "dph_total")
+        except Exception as exc:  # noqa: BLE001 - a report
+            print(f"{label}: search failed: {exc}")
+            continue
+        raw = raw if isinstance(raw, list) else []
+        free = [o for o in raw if download_usd(o) == 0 and upload_usd(o) == 0]
+        print(f"{label}: {len(raw)} offers, {len(free)} with no traffic charges; the cheapest:")
+        for o in raw[:12]:
+            print(f"  id {o.get('id')}  {o.get('gpu_name')}  ${float(o.get('dph_total') or 0):.2f}/h  "
+                  f"disk {o.get('disk_space')}  down {o.get('inet_down')}  arch {o.get('cpu_arch')}  "
+                  f"down $/TB {o.get('internet_down_cost_per_tb')} (per GB {o.get('inet_down_cost')})  "
+                  f"up $/TB {o.get('internet_up_cost_per_tb')} (per GB {o.get('inet_up_cost')})  "
+                  f"-> traffic for this job ~${download_usd(o) + upload_usd(o):.2f}")
     return 0
 
 
