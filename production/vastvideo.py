@@ -20,7 +20,7 @@ from typing import Any
 import numpy as np
 import soundfile
 
-from drama_production.media import MediaError
+from production.media import MediaError
 
 from . import director, draw, edit, package, shots as shotlist, timing, voice
 from .clips import frames as clip_frames, motion_prompt

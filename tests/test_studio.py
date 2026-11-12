@@ -161,7 +161,7 @@ class FakeFal:
         soundfile.write(self.audio, (0.2 * np.sin(2 * np.pi * 220 * t)).astype(np.float32), 44100)
 
     def run(self, endpoint, args):
-        from drama_production.media import MediaError
+        from production.media import MediaError
 
         self.calls.append((endpoint, dict((k, v) for k, v in args.items() if not str(v).startswith("data:"))))
         if self.broke_after is not None and len(self.calls) > self.broke_after:

@@ -17,7 +17,7 @@ from typing import Any
 
 import numpy as np
 
-from drama_production.media import MediaError, data_uri
+from production.media import MediaError, data_uri
 
 from . import sound
 from .paid import OverBudget, Studio, digest

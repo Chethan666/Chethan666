@@ -103,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
     router = None if args.no_direction_model else Router(cfg, conn)
     animator = None
     if not args.no_motion and int(video_cfg.get("motion_scenes", 0)) > 0 and os.environ.get("FAL_KEY"):
-        from drama_production.media import Fal
+        from production.media import Fal
 
         from .animate import Animator
         animator = Animator(Fal(), video_cfg["motion_model"], video_cfg.get("motion_args", {}),
@@ -117,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
                   and not args.no_motion)
     try:
         if use_studio:
-            from drama_production.media import Fal
+            from production.media import Fal
 
             from . import studio
             animator = None
@@ -259,7 +259,7 @@ def channel(args: argparse.Namespace, conn) -> int:
 
 
 def bakeoff(args: argparse.Namespace, cfg: dict, conn) -> int:
-    from drama_production.media import Fal
+    from production.media import Fal
 
     from . import bakeoff as bake
     row = db.get_story(conn, args.story) if args.story else conn.execute(
@@ -298,7 +298,7 @@ ALTERNATES = [
 
 def check(studio: dict) -> int:
     """Every studio model's inputs and choices, from fal's public descriptions. No spend."""
-    from drama_production.media import Fal
+    from production.media import Fal
 
     print("FAL_KEY:", "set" if os.environ.get("FAL_KEY") else "MISSING (add it as a GitHub Actions secret)")
     fal = Fal(key=os.environ.get("FAL_KEY") or "not-needed-to-read-schemas")

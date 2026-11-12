@@ -16,7 +16,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from drama_production.media import MediaError, data_uri, download, first_url
+from production.media import MediaError, data_uri, download, first_url
 
 log = logging.getLogger(__name__)
 

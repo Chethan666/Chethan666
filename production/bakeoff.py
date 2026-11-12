@@ -18,7 +18,7 @@ from typing import Any
 import soundfile
 from PIL import Image, ImageDraw
 
-from drama_production.media import MediaError, data_uri
+from production.media import MediaError, data_uri
 
 from . import draw, shots as shotlist, timing, voice
 from .clips import frames, motion_prompt

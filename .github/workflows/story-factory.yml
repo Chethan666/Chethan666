@@ -4,14 +4,8 @@
 #   mode=story: also researches Wikipedia and generates one real story
 #   mode=bench: blind-compares the writing of `config` against `bench_against` on fixed pitches
 #   mode=recheck: runs the legend recognition test on approved retellings that never had it
-# Pipelines 1 and 2 are the stickman channel (story factory, video); 3 and 4 are the dramas:
-#   mode=drama-series: pipeline 3 pitches and plans a new short-drama series
-#   mode=drama-write: pipeline 3 writes the next episodes (story_id = how many, default 3)
-#   mode=drama-check: pipeline 4 lists what each configured fal.ai model expects, and the Boson voices (no spend)
-#   mode=drama-video: pipeline 4 makes the next approved episode's vertical video (story_id = an episode id), saved as drama-<run>
-#   mode=drama-vast: pipeline 4 on open models on a rented Vast.ai GPU (no traffic charges): the ready 60-second
-#               script in drama_production/scripts (or story_id = an episode id), capped by `overrides`
-#               (e.g. drama_vast.max_usd=15), saved as drama-<run>
+# Pipeline 1 (the story factory) and pipeline 2 (videos) are the stickman channel; the short-drama
+# pipelines moved to their own repository.
 #   mode=video-bakeoff: pipeline 2 runs a few shots of a story (story_id, or the newest) through every
 #               candidate model side by side (capped at $10), saved as video-<run number>
 #   mode=video-approve / video-reject: after watching a video (story_id), approve it for publishing or not
@@ -38,7 +32,7 @@ on:
       mode:
         description: "check = tests and model access only; story = generate one story; video = make the next approved story's video; bench = compare two model setups; recheck = re-check approved legends"
         type: choice
-        options: [check, story, video, video-vast, video-vast-check, drama-vast, video-check, video-bakeoff, video-approve, video-reject, video-publish, video-stats, video-share, drama-check, drama-series, drama-write, drama-video, bench, recheck]
+        options: [check, story, video, video-vast, video-vast-check, video-check, video-bakeoff, video-approve, video-reject, video-publish, video-stats, video-share, bench, recheck]
         default: check
       series:
         description: Series to generate in story mode
@@ -64,15 +58,11 @@ on:
         options: [config.aws-open.toml, config.aws-top.toml, config.aws-only.toml, config.example.toml]
         default: config.example.toml
       story_id:
-        description: "video: a story number; drama-video: an episode id; drama-write: how many episodes (default 3)"
+        description: "video: a story number"
         type: string
         default: ""
       overrides:
         description: "Optional config overrides, space-separated KEY=VALUE (e.g. quality.min_score=8)"
-        type: string
-        default: ""
-      reuse_run:
-        description: "drama-vast: the run id of an earlier drama-vast run whose pictures to reuse (skips redrawing)"
         type: string
         default: ""
       bench_pitches:
@@ -92,7 +82,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 300
     env:
       AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
       AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
@@ -100,7 +90,6 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
       FAL_KEY: ${{ secrets.FAL_KEY }}
-      BOSON_API_KEY: ${{ secrets.BOSON_API_KEY }}
       # YouTube publishing (OAuth for the channel; see PRODUCTION.md). Optional until you publish.
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
@@ -152,7 +141,7 @@ jobs:
           fi
 
       - name: Restore the story database from the last run
-        if: env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video' || startsWith(env.MODE, 'video-') || startsWith(env.MODE, 'drama-')
+        if: env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video' || startsWith(env.MODE, 'video-')
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -170,14 +159,14 @@ jobs:
           python -m story_factory --config "$CONFIG" "${SETS[@]}" generate "$SERIES"
 
       - name: Cache the narrator voice model
-        if: env.MODE == 'video' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast' || startsWith(env.MODE, 'drama-v')
+        if: env.MODE == 'video' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast'
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
           key: kokoro-82m-v1
 
       - name: Install video tools
-        if: env.MODE == 'video' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast' || startsWith(env.MODE, 'drama-v')
+        if: env.MODE == 'video' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
@@ -185,7 +174,7 @@ jobs:
           pip install -r requirements-video.txt
 
       - name: Vast.ai tools
-        if: startsWith(env.MODE, 'video-vast') || env.MODE == 'drama-vast'
+        if: startsWith(env.MODE, 'video-vast')
         run: pip install vastai
 
       - name: Vast.ai balance and offers
@@ -207,34 +196,8 @@ jobs:
           { echo '## Video'; echo '```'; tail -c 60000 video-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           exit $status
 
-      - name: Make the drama episode on Vast.ai
-        if: env.MODE == 'drama-vast'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          REUSE_RUN: ${{ inputs.reuse_run }}
-        run: |
-          ARGS=()
-          if [ -n "$STORY_ID" ]; then ARGS+=(--episode "$STORY_ID"); fi
-          if [ -n "$REUSE_RUN" ]; then
-            artifact=$(gh api "repos/$REPO/actions/runs/$REUSE_RUN/artifacts" --jq \
-              '[.artifacts[] | select(.name | startswith("drama-"))] | first | .id // empty')
-            if [ -n "$artifact" ]; then
-              gh api "repos/$REPO/actions/artifacts/$artifact/zip" > "$RUNNER_TEMP/reuse.zip"
-              mkdir -p reuse && unzip -o -q "$RUNNER_TEMP/reuse.zip" -d reuse
-              echo "Reusing pictures from run $REUSE_RUN: $(find reuse -name '*.png' | wc -l) files"
-              ARGS+=(--reuse reuse)
-            fi
-          fi
-          SETS=()
-          for kv in $OVERRIDES; do SETS+=(--set "$kv"); done
-          python -m drama_production --config "$CONFIG" "${SETS[@]}" vast "${ARGS[@]}" 2>&1 | tee drama-output.txt
-          status=${PIPESTATUS[0]}
-          { echo '## drama-vast'; echo '```'; tail -c 60000 drama-output.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-          exit $status
-
       - name: Give back any Vast.ai machine this run rented
-        if: always() && (env.MODE == 'video-vast' || env.MODE == 'drama-vast')
+        if: always() && env.MODE == 'video-vast'
         run: python -m production --config "$CONFIG" vast-cleanup || true
 
       - name: Share review images
@@ -297,32 +260,6 @@ jobs:
           python -m production --config "$CONFIG" "${SETS[@]}" check 2>&1 | tee video-check.txt
           { echo '## Studio models'; echo '```'; tail -c 60000 video-check.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Short drama series
-        if: startsWith(env.MODE, 'drama-') && env.MODE != 'drama-vast'
-        run: |
-          SETS=()
-          for kv in $OVERRIDES; do SETS+=(--set "$kv"); done
-          P3=(python -m drama_factory --config "$CONFIG" "${SETS[@]}")     # pipeline 3: writing
-          P4=(python -m drama_production --config "$CONFIG" "${SETS[@]}")  # pipeline 4: video
-          case "$MODE" in
-            drama-check)  "${P4[@]}" check ;;
-            drama-series) "${P3[@]}" series ;;
-            drama-write)  "${P3[@]}" write --count "${STORY_ID:-3}" ;;
-            drama-video)  if [ -n "$STORY_ID" ]; then "${P4[@]}" produce --episode "$STORY_ID"; else "${P4[@]}" produce; fi ;;
-          esac 2>&1 | tee drama-output.txt
-          status=${PIPESTATUS[0]}
-          { echo "## $MODE"; echo '```'; tail -c 60000 drama-output.txt; echo '```'; echo '```'; "${P3[@]}" status; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-          exit $status
-
-      - name: Save the episode video
-        if: always() && startsWith(env.MODE, 'drama-v')
-        uses: actions/upload-artifact@v6
-        with:
-          name: drama-${{ github.run_number }}
-          path: out/
-          retention-days: 14
-          if-no-files-found: ignore
-
       - name: Re-check approved retold legends
         if: env.MODE == 'recheck'
         run: python -m story_factory --config "$CONFIG" recheck | tee -a "$GITHUB_STEP_SUMMARY"
@@ -342,7 +279,7 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Save the story database
-        if: always() && (env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video' || startsWith(env.MODE, 'video-') || startsWith(env.MODE, 'drama-'))
+        if: always() && (env.MODE == 'story' || env.MODE == 'recheck' || env.MODE == 'video' || startsWith(env.MODE, 'video-'))
         uses: actions/upload-artifact@v6
         with:
           # The next run restores the newest one; each run re-saves it, so it never expires in use.

@@ -65,7 +65,7 @@ class Animator:
             return True
 
     def animate(self, picture: Path, scene: dict[str, Any], spec: dict[str, Any], out: Path) -> Path | None:
-        from drama_production.media import MediaError, data_uri, download, first_url
+        from production.media import MediaError, data_uri, download, first_url
 
         if not self._reserve():
             return None

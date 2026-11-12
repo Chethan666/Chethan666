@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
-from drama_production.media import MediaError, data_uri
+from production.media import MediaError, data_uri
 
 from .look import chalk_check
 from .paid import OverBudget, Studio, vision_check

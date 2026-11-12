@@ -19,7 +19,7 @@ from typing import Any
 
 from PIL import Image, ImageDraw
 
-from drama_production.media import MediaError, data_uri
+from production.media import MediaError, data_uri
 
 from . import draw, timing
 from .look import style

@@ -1,8 +1,8 @@
-"""Paid media services: fal.ai for pictures and video, Boson AI for voices.
+"""Paid media services: fal.ai for pictures, video and sound.
 
-Both are plain HTTPS calls (no SDK). Keys come only from the environment (FAL_KEY,
-BOSON_API_KEY). Model names live in the config, because these catalogs change often;
-`python -m drama_production check` lists what each configured model expects before anything is spent.
+Plain HTTPS calls (no SDK). The key comes only from the environment (FAL_KEY). Model names
+live in the config, because these catalogs change often; `python -m production check` lists
+what each configured model expects before anything is spent.
 """
 
 from __future__ import annotations
@@ -127,74 +127,3 @@ def first_url(result: dict[str, Any], kind: str) -> str:
         if isinstance(video, str):
             return video
     raise MediaError(f"no {kind} in result: {str(result)[:300]}")
-
-
-class BosonVoice:
-    """Boson AI's Higgs TTS: expressive speech, one fixed voice per character."""
-
-    URL = "https://api.boson.ai/v1/audio"
-
-    def __init__(self, model: str = "higgs-audio-v3-tts", key: str | None = None):
-        self.key = key or os.environ.get("BOSON_API_KEY", "")
-        if not self.key:
-            raise MediaError("Set BOSON_API_KEY in the environment")
-        self.model = model
-
-    @property
-    def headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self.key}"}
-
-    def speak(self, text: str, voice: str | None, path: Path, reference: tuple[Path, str] | None = None,
-              tries: int = 3) -> Path:
-        """Speak `text` in a preset `voice`, or cloned from `reference` (a short clip and its words)."""
-        body: dict[str, Any] = {"model": self.model, "input": text, "response_format": "wav"}
-        if reference is not None:
-            body["ref_audio"] = base64.b64encode(reference[0].read_bytes()).decode()
-            body["ref_text"] = reference[1]
-        elif voice:
-            body["voice"] = voice
-        for attempt in range(tries):
-            try:
-                path.write_bytes(_request(f"{self.URL}/speech", method="POST", headers=self.headers, body=body,
-                                          timeout=300, raw=True))
-                return path
-            except MediaError as exc:  # the public preview is rate limited: wait and try again
-                if attempt == tries - 1 or not any(f"HTTP {c}" in str(exc) for c in (429, 500, 502, 503, 504)):
-                    raise
-                time.sleep(5 * 3 ** attempt)
-        return path
-
-    def voices(self) -> Any:
-        return _request(f"{self.URL}/voices", headers=self.headers)
-
-    def models(self) -> Any:
-        return _request("https://api.boson.ai/v1/models", headers=self.headers)
-
-    def probe(self, names: list[str], text: str = "The door was open. It is never open.") -> dict[str, str]:
-        """Which voice names the API accepts, by speaking a short line with each (the preview is free).
-        A wrong name's error usually lists the valid ones, so one deliberate miss is included."""
-        found: dict[str, str] = {}
-        reference = b""
-        for name in [""] + list(names) + ["not-a-voice-xyz"]:
-            body: dict[str, Any] = {"model": self.model, "input": text, "response_format": "wav"}
-            if name:
-                body["voice"] = name
-            try:
-                audio = _request(f"{self.URL}/speech", method="POST", headers=self.headers, body=body,
-                                 timeout=120, raw=True)
-                found[name or "(default)"] = f"OK, {len(audio)} bytes"
-                reference = reference or audio
-            except MediaError as exc:
-                found[name or "(default)"] = f"refused: {str(exc)[-400:]}"
-        if reference:  # cloning: the default voice's own audio as the reference, in two encodings
-            raw = base64.b64encode(reference).decode()
-            for label, value in (("clone base64", raw), ("clone data-uri", "data:audio/wav;base64," + raw)):
-                body = {"model": self.model, "input": "Someone has been sleeping in my bed.",
-                        "response_format": "wav", "ref_audio": value, "ref_text": text}
-                try:
-                    audio = _request(f"{self.URL}/speech", method="POST", headers=self.headers, body=body,
-                                     timeout=180, raw=True)
-                    found[label] = f"OK, {len(audio)} bytes"
-                except MediaError as exc:
-                    found[label] = f"refused: {str(exc)[-400:]}"
-        return found

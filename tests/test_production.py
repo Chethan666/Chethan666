@@ -250,7 +250,7 @@ class MotionTests(unittest.TestCase):
             for i in range(len(scenes)):
                 Image.new("RGB", (64, 36)).save(made / f"scene_{i:03d}_0.png")
             animator = animate.Animator(FakeFal(), "m", {"duration": "5"}, 0.036, 0.40, 5)
-            with mock.patch("drama_production.media.download", side_effect=lambda url, path: path):
+            with mock.patch("production.media.download", side_effect=lambda url, path: path):
                 moving = animator.run(made, scenes, [{} for _ in scenes])
             self.assertEqual(len(moving), 2)  # $0.18 a clip: the cap stops the third
             self.assertTrue(calls[0]["image_url"].startswith("data:image/png;base64,"))
