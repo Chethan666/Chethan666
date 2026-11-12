@@ -75,8 +75,17 @@ step "downloading the models in the background"
   # flash-attn (it would compile for many paid minutes; the worker falls back to PyTorch attention).
   for f in requirements.txt requirements_s2v.txt requirements_animate.txt; do
     [ -e "$f" ] && { cat "$f"; echo; }
-  done | grep -vE '^\s*(#|-e|$)' | grep -viE '^(torch|torchvision|torchaudio|flash.attn)([<>=! ]|$)' > /tmp/wan-req.txt
-  /workspace/wanenv/bin/pip install -q -c /tmp/wan-pins.txt -r /tmp/wan-req.txt 2>&1 | tail -n 8
+  done | grep -vE '^\s*(#|-e|$)' | grep -viE '^(torch|torchvision|torchaudio|flash.attn|pyworld)([<>=! ]|$)' > /tmp/wan-req.txt
+  # Run 87: pyworld (only for Wan's own text-to-speech, unused here) failed to compile, and pip
+  # then installs nothing. It is left out, and if the list still fails, each package is
+  # installed on its own so one bad package can never block the rest.
+  if ! /workspace/wanenv/bin/pip install -q -c /tmp/wan-pins.txt -r /tmp/wan-req.txt 2>&1 | tail -n 8; then :; fi
+  if ! /workspace/wanenv/bin/python -c "import easydict, decord, librosa" 2>/dev/null; then
+    echo "installing Wan's packages one at a time"
+    while read -r req; do
+      /workspace/wanenv/bin/pip install -q -c /tmp/wan-pins.txt "$req" >/dev/null 2>&1 || echo "  not installed: $req"
+    done < /tmp/wan-req.txt
+  fi
   touch /workspace/job/WAN_ENV_READY
 ) > wan_env.log 2>&1 &
 (
