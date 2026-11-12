@@ -176,15 +176,15 @@ def talk(job: dict, out: Path) -> None:
                 "--ckpt_dir", job["talk_dir"], "--offload_model", "False", "--convert_model_dtype",
                 "--sample_steps", str(job.get("talk_steps", 40)), "--base_seed", str(42 + shot["index"]),
                 "--prompt", shot["motion_prompt"], "--image", str(src), "--audio", str(wav), "--save_file", str(dst)]
-        fallback = dst.with_suffix(".move.mp4")
-        if dst.exists():  # a moving clip from an earlier run: kept unless S2V succeeds
-            dst.replace(fallback)
+        # S2V writes beside the clip and replaces it only when it finishes, so a moving clip from an
+        # earlier run survives a failure or the spending limit stopping the machine mid-shot (run 88).
+        made = dst.with_suffix(".s2v.mp4")
+        args[args.index("--save_file") + 1] = str(made)
         result = subprocess.run(args, cwd=repo, capture_output=True, text=True)
-        if result.returncode != 0 or not dst.exists():
-            if fallback.exists():
-                fallback.replace(dst)
+        if result.returncode != 0 or not made.exists():
             log("FAILED talk", shot["index"], (result.stderr + result.stdout)[-900:].replace("\n", " | "))
             continue
+        made.replace(dst)
         (out / f"clip_{shot['index']:03d}.talk").write_text("Wan2.2-S2V")  # lip-synced, not a fallback
         log("talk", shot["index"], f"done in {time.time() - started:.0f} s")
 

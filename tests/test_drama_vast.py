@@ -216,6 +216,7 @@ class TalkFallbackTests(unittest.TestCase):
                 {"index": 2, "mode": "talk", "motion_prompt": "talks"}]}
             with unittest.mock.patch.object(mod.subprocess, "run", fake_run):
                 mod.talk(job, out)
+            self.assertEqual(sorted(p.name for p in out.glob("clip_002*.mp4")), ["clip_002.mp4"])
             return (out / "clip_002.mp4").read_bytes(), (out / "clip_002.talk").exists()
 
     def test_a_failed_lip_sync_keeps_the_earlier_moving_clip(self):

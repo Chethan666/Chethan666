@@ -306,6 +306,9 @@ def produce(bible: dict[str, Any], episode: dict[str, Any], out_dir: Path, kokor
     for i in range(len(shots)):
         if i not in pictures:
             pictures[i] = pictures[min(pictures, key=lambda j: abs(j - i))]
+    for i in range(len(shots)):  # a run stopped by an older worker mid-shot left the moving clip aside
+        if not (made / f"clip_{i:03d}.mp4").exists() and (made / f"clip_{i:03d}.move.mp4").exists():
+            (made / f"clip_{i:03d}.move.mp4").replace(made / f"clip_{i:03d}.mp4")
     clips = {i: made / f"clip_{i:03d}.mp4" for i in range(len(shots)) if (made / f"clip_{i:03d}.mp4").exists()}
     talking = sorted(i for i in clips if (made / f"clip_{i:03d}.talk").exists())  # made by S2V itself
 
