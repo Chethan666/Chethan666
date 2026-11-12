@@ -39,6 +39,12 @@ SCHEMA = {
 }
 
 
+STRANGER = re.compile(rf"\b(?:a|an|the)\s+(old\s+)?(woman|man|girl|boy)(?:'s voice)?\s+{SAY}\b[^\"“]{{0,20}}$",
+                      re.IGNORECASE)
+STRANGER_KINDS = {"the woman": "woman", "the man": "man", "the old woman": "old_woman", "the old man": "old_man",
+                  "the girl": "girl", "the boy": "boy"}
+
+
 @dataclass
 class Line:
     start: int  # offsets of the quote, marks included
@@ -82,16 +88,22 @@ def attribute(router: Any, narration: str, cast: list[dict[str, Any]],
                 log.warning("Dialogue attribution fell back to the text around the quotes: %s", exc)
                 continue
             for item in result.get("lines", []):
-                if isinstance(item, dict) and str(item.get("speaker", "")).strip():
+                if isinstance(item, dict) and plausible(str(item.get("speaker", ""))):
                     answered[int(item.get("index", 0))] = str(item["speaker"]).strip()
             for item in result.get("speakers", []):
-                if isinstance(item, dict) and item.get("voice") in KINDS:
+                if isinstance(item, dict) and item.get("voice") in KINDS and plausible(str(item.get("name", ""))):
                     kinds[_canonical(str(item.get("name", "")), names)] = item["voice"]
     for i, line in enumerate(lines, 1):
         line.speaker = _canonical(answered.get(i) or guess(narration, line, names), names)
     for line in lines:
-        kinds.setdefault(line.speaker, "man")
+        kinds.setdefault(line.speaker, STRANGER_KINDS.get(line.speaker, "man"))
     return lines, kinds
+
+
+def plausible(name: str) -> bool:
+    """A speaker name, not a model's reasoning pasted into the field (seen in a live run)."""
+    name = name.strip()
+    return 0 < len(name) <= 40 and "\n" not in name and len(name.split()) <= 5 and "?" not in name
 
 
 def _canonical(name: str, names: list[str]) -> str:
@@ -114,5 +126,8 @@ def guess(narration: str, line: Line, names: list[str]) -> str:
             return n
     if re.match(rf"\s*,?\s*I\s+{SAY}", after):
         return "narrator"
+    stranger = STRANGER.search(before[-60:])  # 'A woman's voice whispered, "..."'
+    if stranger:
+        return f"the {(stranger.group(1) or '').lower()}{stranger.group(2).lower()}"
     mentioned = [n for n in names if re.search(rf"\b{re.escape(n.split()[0])}\b", before)]
     return mentioned[-1] if mentioned else "narrator"

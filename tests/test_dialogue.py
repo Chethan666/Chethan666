@@ -96,3 +96,33 @@ class VoiceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReasoningAsNameTests(unittest.TestCase):
+    def test_a_models_reasoning_in_the_speaker_field_is_ignored(self):
+        from production import dialogue
+
+        text = 'I answered. A woman\'s voice whispered, "You left the back door open." I live alone.'
+        junk = "narrator/nadia? unclear - see note below\nso the speaker is the caller, voice woman"
+
+        class Planner:
+            def generate_json(self, *a):
+                return {"lines": [{"index": 1, "speaker": junk}],
+                        "speakers": [{"name": junk, "voice": "man"}, {"name": "the caller", "voice": "woman"}]}
+
+        class Router:
+            def one(self, role):
+                return Planner()
+
+        lines, kinds = dialogue.attribute(Router(), text, [{"name": "Nadia"}])
+        self.assertTrue(dialogue.plausible("the caller"))
+        self.assertNotIn(junk, kinds)
+        self.assertTrue(all(dialogue.plausible(ln.speaker) for ln in lines))
+
+    def test_an_unnamed_voice_gets_a_voice_of_its_kind(self):
+        from production import dialogue
+
+        text = 'I answered. A woman\'s voice whispered, "You left the back door open." I live alone.'
+        lines, kinds = dialogue.attribute(None, text, [{"name": "Nadia"}])
+        self.assertEqual(lines[0].speaker, "the woman")
+        self.assertEqual(kinds["the woman"], "woman")

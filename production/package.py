@@ -68,7 +68,7 @@ def short_windows(shots: list[Shot], scenes: list[dict[str, Any]], offset: float
                   min_s: float = 25.0, max_s: float = 55.0) -> list[tuple[float, float]]:
     """Programme times of the best stretches: each starts at the start of a key scene (or a scene
     with a scare) and ends on a shot boundary; no overlaps; never the final scene."""
-    if not shots:
+    if not shots or count <= 0:
         return []
     last = shots[-1].scene
     starts: dict[int, Shot] = {}
