@@ -1,0 +1,30 @@
+{
+  "story_id": 9001,
+  "title": "Line Nine",
+  "other_titles": [],
+  "description": "A test story.",
+  "tags": [
+    "horror",
+    "scary story"
+  ],
+  "pinned_comment": "Would you have picked up?",
+  "end_screen_line": "Another call is waiting.",
+  "credit": "",
+  "made_for_kids": false,
+  "duration_seconds": 36.9,
+  "chapters": [],
+  "thumbnails": [
+    "thumbnail_1.jpg"
+  ],
+  "shorts": [
+    "short_1.mp4"
+  ],
+  "shorts_windows": [
+    [
+      2.0,
+      28.7
+    ]
+  ],
+  "end_screen_starts": 33.9,
+  "synthetic_media": false
+}

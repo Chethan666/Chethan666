@@ -1,0 +1,137 @@
+{
+  "mode": "stills",
+  "video": "/home/runner/work/Horror/Horror/out/story-9001/video.mp4",
+  "seconds": 36.9,
+  "story_seconds": 31.9,
+  "beats": 5,
+  "point_of_view": "first",
+  "voices": {
+    "engine": "elevenlabs",
+    "host": "Brian",
+    "teller": "Charlotte",
+    "teller_kind": "woman",
+    "characters": {
+      "Nadia": "Alice",
+      "narrator/nadia? unclear - see note below narrative headline it's the narrator but the cast is nadia who is the narrator? the story is told by a narrator often first person. the cast nadia works nights at call center. the line about you left the door open is a voice on phone. so it's a woman's voice whispered. so not nadia herself speaking, but line 9 caller. wait text says a woman's voice whispered it. so said by a character not in cast: a caller. reads literally: a woman's voice whispered [[quote]]. i'm nadia? nadia is a woman in cast, but she's the narrator? the narrative says i work nights. so i is nadia. so the speaker of the whispered quote is a woman's voice on phone. so minor speaker: the caller or woman on phone. should label 'caller' or 'woman' etc. but voice: woman. (she whispered). so answer: speaker: the caller (label), voice: woman. but more precisely: in cast, nadia is the main character but she's not speaking that line. she hears it. so it's a different woman. so speaker: 'the woman on the phone' - short label: 'the caller' or 'woman on phone'. decide 'the caller'. voice: woman. yes.\nthe first part up to the bracket: narrator (nadias) thoughts, but the quoted dialogue is spoken by caller. so for each numbered quote, say who speaks it: the quote is [[You left the back door open.]]. so speaker for that is 'the caller' (minor speaker). wait the prompt says: for each numbered quote (the text in [[ ]]), say who speaks it. only that dialogue. not the narrative. so only the part inside [[ ]]. so for quote 1: [[You left the back door open.]], speaker is 'the caller'. voice: woman. first part is narration by narrator (nadia), but the quote is separate.\nso answer for 1: speaker: the caller, voice: woman.\nbut need cast: narrator (first person teller) is nadia? the story headline: cast: [nadia]. the story is told by narrator often first person. so narrator is nadia? yes, nadia is the i. so for quotes, if narrator says something inside [[ ]], speaker narrator. but here it's not narrator saying it.\ncheck if there's more than one quote: prompt is for each numbered quote. but only one quote shown. however there might be continuation? dialogue? no, only one dialogue line inside [[ ]] in the snippet.\nbut actually there might be more? text ends with ... but in user message, it stops after Would you have picked up?... so only one quote to assign.\nso final: lines: array with one object:\nindex: 1, speaker: the caller (minor speaker label), voice: woman.\nneed to output JSON only. object with key lines: array.\nformat: lines: [{\"index\": 1, \"speaker\": \"the caller\", \"voice\": \"woman\"}]\nis that okay? prompt also says: say who speaks it: a cast name exactly as written, \"narrator\" when the narrator or the first-person teller says it, or a short label for a minor speaker (\"the operator\"). so minor speaker label. 'the caller' is fine.\nvoice: woman.\nso output.": "George",
+      "the caller": "Lily"
+    }
+  },
+  "usd": 1.21,
+  "usd_by_task": {
+    "picture_reference": 0.08,
+    "picture_sheet": 0.16,
+    "picture_shot": 0.2,
+    "picture_shot_alt": 0.08,
+    "picture_thumbnail": 0.08,
+    "sound_music": 0.4,
+    "sound_sfx": 0.15,
+    "vision": 0.01,
+    "voice": 0.04
+  },
+  "fal_balance_ran_out": false,
+  "qa": {
+    "status": "pass",
+    "issues": [],
+    "video_seconds": 36.9,
+    "seconds": 0.1
+  },
+  "agents": {
+    "casting": {
+      "point_of_view": "first",
+      "teller": "woman",
+      "why": "The story's protagonist is a night-shift call centre worker named Nadia, as identified in the story bible. This opening establishes the narrator's identity as Nadia herself and is told in a first-pers",
+      "engine": "elevenlabs",
+      "host_voice": "Brian",
+      "teller_voice": "Charlotte",
+      "quoted_lines": 1,
+      "character_voices": {
+        "Nadia": "Alice",
+        "narrator/nadia? unclear - see note below narrative headline it's the narrator but the cast is nadia who is the narrator? the story is told by a narrator often first person. the cast nadia works nights at call center. the line about you left the door open is a voice on phone. so it's a woman's voice whispered. so not nadia herself speaking, but line 9 caller. wait text says a woman's voice whispered it. so said by a character not in cast: a caller. reads literally: a woman's voice whispered [[quote]]. i'm nadia? nadia is a woman in cast, but she's the narrator? the narrative says i work nights. so i is nadia. so the speaker of the whispered quote is a woman's voice on phone. so minor speaker: the caller or woman on phone. should label 'caller' or 'woman' etc. but voice: woman. (she whispered). so answer: speaker: the caller (label), voice: woman. but more precisely: in cast, nadia is the main character but she's not speaking that line. she hears it. so it's a different woman. so speaker: 'the woman on the phone' - short label: 'the caller' or 'woman on phone'. decide 'the caller'. voice: woman. yes.\nthe first part up to the bracket: narrator (nadias) thoughts, but the quoted dialogue is spoken by caller. so for each numbered quote, say who speaks it: the quote is [[You left the back door open.]]. so speaker for that is 'the caller' (minor speaker). wait the prompt says: for each numbered quote (the text in [[ ]]), say who speaks it. only that dialogue. not the narrative. so only the part inside [[ ]]. so for quote 1: [[You left the back door open.]], speaker is 'the caller'. voice: woman. first part is narration by narrator (nadia), but the quote is separate.\nso answer for 1: speaker: the caller, voice: woman.\nbut need cast: narrator (first person teller) is nadia? the story headline: cast: [nadia]. the story is told by narrator often first person. so narrator is nadia? yes, nadia is the i. so for quotes, if narrator says something inside [[ ]], speaker narrator. but here it's not narrator saying it.\ncheck if there's more than one quote: prompt is for each numbered quote. but only one quote shown. however there might be continuation? dialogue? no, only one dialogue line inside [[ ]] in the snippet.\nbut actually there might be more? text ends with ... but in user message, it stops after Would you have picked up?... so only one quote to assign.\nso final: lines: array with one object:\nindex: 1, speaker: the caller (minor speaker label), voice: woman.\nneed to output JSON only. object with key lines: array.\nformat: lines: [{\"index\": 1, \"speaker\": \"the caller\", \"voice\": \"woman\"}]\nis that okay? prompt also says: say who speaks it: a cast name exactly as written, \"narrator\" when the narrator or the first-person teller says it, or a short label for a minor speaker (\"the operator\"). so minor speaker label. 'the caller' is fine.\nvoice: woman.\nso output.": "George",
+        "the caller": "Lily"
+      },
+      "seconds": 25.8
+    },
+    "voice": {
+      "seconds_of_speech": 31.9,
+      "chunks": 13,
+      "speakers": [
+        "host",
+        "narrator",
+        "narrator/nadia? unclear - see note below narrative headline it's the narrator but the cast is nadia who is the narrator? the story is told by a narrator often first person. the cast nadia works nights at call center. the line about you left the door open is a voice on phone. so it's a woman's voice whispered. so not nadia herself speaking, but line 9 caller. wait text says a woman's voice whispered it. so said by a character not in cast: a caller. reads literally: a woman's voice whispered [[quote]]. i'm nadia? nadia is a woman in cast, but she's the narrator? the narrative says i work nights. so i is nadia. so the speaker of the whispered quote is a woman's voice on phone. so minor speaker: the caller or woman on phone. should label 'caller' or 'woman' etc. but voice: woman. (she whispered). so answer: speaker: the caller (label), voice: woman. but more precisely: in cast, nadia is the main character but she's not speaking that line. she hears it. so it's a different woman. so speaker: 'the woman on the phone' - short label: 'the caller' or 'woman on phone'. decide 'the caller'. voice: woman. yes.\nthe first part up to the bracket: narrator (nadias) thoughts, but the quoted dialogue is spoken by caller. so for each numbered quote, say who speaks it: the quote is [[You left the back door open.]]. so speaker for that is 'the caller' (minor speaker). wait the prompt says: for each numbered quote (the text in [[ ]]), say who speaks it. only that dialogue. not the narrative. so only the part inside [[ ]]. so for quote 1: [[You left the back door open.]], speaker is 'the caller'. voice: woman. first part is narration by narrator (nadia), but the quote is separate.\nso answer for 1: speaker: the caller, voice: woman.\nbut need cast: narrator (first person teller) is nadia? the story headline: cast: [nadia]. the story is told by narrator often first person. so narrator is nadia? yes, nadia is the i. so for quotes, if narrator says something inside [[ ]], speaker narrator. but here it's not narrator saying it.\ncheck if there's more than one quote: prompt is for each numbered quote. but only one quote shown. however there might be continuation? dialogue? no, only one dialogue line inside [[ ]] in the snippet.\nbut actually there might be more? text ends with ... but in user message, it stops after Would you have picked up?... so only one quote to assign.\nso final: lines: array with one object:\nindex: 1, speaker: the caller (minor speaker label), voice: woman.\nneed to output JSON only. object with key lines: array.\nformat: lines: [{\"index\": 1, \"speaker\": \"the caller\", \"voice\": \"woman\"}]\nis that okay? prompt also says: say who speaks it: a cast name exactly as written, \"narrator\" when the narrator or the first-person teller says it, or a short label for a minor speaker (\"the operator\"). so minor speaker label. 'the caller' is fine.\nvoice: woman.\nso output."
+      ],
+      "lines_read_by_kokoro": 0,
+      "seconds": 32.2
+    },
+    "storyboard": {
+      "beats": 5,
+      "directed_by_model": 5,
+      "host_beats": 2,
+      "scares": 2,
+      "average_seconds": 6.4,
+      "seconds": 10.7
+    },
+    "art": {
+      "style_frame": true,
+      "style_frame_by": "fal:reference",
+      "sheets": [
+        "Nadia",
+        "The Storyteller"
+      ],
+      "designs": {
+        "Nadia": "A woman in her mid-thirties with a slight, weary frame. Her face is sharply defined, bearing tired eyes softened with faint shadows. Her dark hair is tightly tied back, revealing a high forehead. She wears a loose grey cardigan over a faded white t-shirt, with a coiled-wire headset always hanging around her neck.",
+        "The Storyteller": "a tall, gaunt man of indeterminate age in a long, worn charcoal coat and a wide-brimmed hat, his face mostly in shadow except for pale, kind, tired eyes; he always carries an old iron lantern whose flame burns blood red"
+      },
+      "seconds": 35.8
+    },
+    "illustrator": {
+      "pictures": 5,
+      "borrowed_neighbour": 0,
+      "placeholders": 0,
+      "by_painter": {
+        "fal:reference": 1,
+        "fal:sheet": 2,
+        "fal:shot": 4,
+        "fal:shot_alt": 1
+      },
+      "rejected": [
+        "beat_004 (fal:shot): The storyteller is looking down rather than directly at the viewer, and his expression is somber but not a mask of warning. The lantern's light also illuminates the storyteller's body, not mostly the "
+      ],
+      "seconds": 108.8
+    },
+    "edit_plan": {
+      "cold_open_beats": [],
+      "cold_open_seconds": 0.0,
+      "total_seconds": 36.9,
+      "seconds": 0.0
+    },
+    "sound": {
+      "music": [
+        "dread"
+      ],
+      "ambience": 3,
+      "effects": 4,
+      "foley": 0,
+      "synthesized": [],
+      "seconds": 39.2
+    },
+    "edit": {
+      "segments": 7,
+      "motion": "none",
+      "seconds": 21.0
+    },
+    "packager": {
+      "thumbnails": 1,
+      "shorts": 1,
+      "chapters": 0,
+      "seconds": 30.4
+    },
+    "qa": {
+      "status": "pass",
+      "issues": [],
+      "video_seconds": 36.9,
+      "seconds": 0.1
+    }
+  },
+  "review": "pending",
+  "render_minutes": 5.1
+}
