@@ -53,6 +53,8 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--max-usd", type=float, default=10.0)
     p = sub.add_parser("produce", help="make the video for one approved story")
     p.add_argument("--story", type=int, help="a chosen story (its status is left unchanged)")
+    p.add_argument("--script", help="a story JSON file instead of the database (stills mode; nothing is saved "
+                                    "to the database); its optional \"stills\" object overrides settings")
     p.add_argument("--out", default="out", help="output folder")
     p.add_argument("--voice", choices=("kokoro", "silent"), default="kokoro",
                    help="silent: a placeholder tone, for testing the rest of the pipeline")
@@ -83,7 +85,13 @@ def main(argv: list[str] | None = None) -> int:
         return channel(args, conn)
     video_cfg = cfg.get("video", {})
 
-    if args.story:
+    script_settings: dict = {}
+    if args.script:
+        story = json.loads(Path(args.script).read_text())
+        script_settings = story.pop("stills", {}) or {}
+        story = {k: (json.dumps(v) if isinstance(v, (list, dict)) else v) for k, v in story.items()}
+        row, claimed = story, False
+    elif args.story:
         row = db.get_story(conn, args.story)
         if row is None:
             print(f"No story #{args.story}", file=sys.stderr)
@@ -117,7 +125,7 @@ def main(argv: list[str] | None = None) -> int:
     studio_cfg = dict(cfg.get("studio", {}))
     if args.max_usd is not None:
         studio_cfg["max_usd"] = args.max_usd
-    stills_cfg = dict(cfg.get("stills", {}))
+    stills_cfg = dict(cfg.get("stills", {}), **script_settings)
     if args.max_usd is not None:
         stills_cfg["max_usd"] = args.max_usd
     use_stills = stills_cfg.get("enabled") and not args.drawn and not args.studio
@@ -144,6 +152,9 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:  # report, and hand a claimed story back to the queue
         log.exception("Production failed")
         info = {"error": str(exc)[:500], "run": os.environ.get("GITHUB_RUN_ID")}
+        if args.script:
+            print(f"[failed] script {args.script}: {exc}", file=sys.stderr)
+            return 2
         db.update_story(conn, story["id"], production=info, **({"status": "approved"} if claimed else {}))
         print(f"[failed] story #{story['id']}: {exc}", file=sys.stderr)
         return 2
@@ -152,8 +163,9 @@ def main(argv: list[str] | None = None) -> int:
                        output_units=len(summary.get("moving_scenes", [])), usd=animator.spent)
     summary.update(run=os.environ.get("GITHUB_RUN_ID"), run_number=os.environ.get("GITHUB_RUN_NUMBER"),
                    narrator_fallback=args.voice)
-    db.update_story(conn, story["id"], production=summary, **({"status": "produced"} if claimed else {}))
-    print(json.dumps(summary, indent=2))
+    if not args.script:
+        db.update_story(conn, story["id"], production=summary, **({"status": "produced"} if claimed else {}))
+    print(json.dumps(summary, indent=2, default=str))
     return 0
 
 

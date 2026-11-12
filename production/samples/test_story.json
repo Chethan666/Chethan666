@@ -1,0 +1,121 @@
+{
+  "id": 9001,
+  "title": "Line Nine",
+  "kind": "long",
+  "intro": "A phone that rings for no one. The lantern is lit.",
+  "body": "I work nights at the Calder Road call centre. At 3:07, line nine lit up. Line nine was disconnected years ago. I answered anyway. A woman's voice whispered, \"You left the back door open.\" I live alone. I opened my security camera. The back door was open, and the kitchen light was on.",
+  "outro": "Some calls are better left unanswered. Would you have picked up?",
+  "narration": "A phone that rings for no one. The lantern is lit.\n\nI work nights at the Calder Road call centre. At 3:07, line nine lit up. Line nine was disconnected years ago. I answered anyway. A woman's voice whispered, \"You left the back door open.\" I live alone. I opened my security camera. The back door was open, and the kitchen light was on.\n\nSome calls are better left unanswered. Would you have picked up?",
+  "cast": [
+    {
+      "name": "Nadia",
+      "look": "a woman in her thirties, tired eyes, dark hair tied back, grey cardigan, a headset around her neck"
+    }
+  ],
+  "bible": {
+    "red_accent": "the glowing button of line nine",
+    "hero": {
+      "name": "Nadia",
+      "who": "a night-shift call centre worker"
+    }
+  },
+  "scenes": [
+    {
+      "text": "A phone that rings for no one. The lantern is lit.",
+      "visual": "The Storyteller in the dark with his red lantern",
+      "location": "the hollow",
+      "characters": [],
+      "mood": "eerie",
+      "delivery": "slow",
+      "sfx": [],
+      "key_moment": false
+    },
+    {
+      "text": "I work nights at the Calder Road call centre. At 3:07, line nine lit up. Line nine was disconnected years ago.",
+      "visual": "Nadia alone at a desk in a dark call centre; one phone button glows red",
+      "location": "an empty call centre at night",
+      "characters": [
+        "Nadia"
+      ],
+      "mood": "uneasy",
+      "delivery": "steady",
+      "sfx": [
+        "a phone line buzzes"
+      ],
+      "key_moment": false
+    },
+    {
+      "text": "I answered anyway. A woman's voice whispered, \"You left the back door open.\"",
+      "visual": "Close on Nadia listening, her face pale in the monitor light",
+      "location": "an empty call centre at night",
+      "characters": [
+        "Nadia"
+      ],
+      "mood": "dread",
+      "delivery": "hushed",
+      "sfx": [
+        "static on a phone line"
+      ],
+      "key_moment": true
+    },
+    {
+      "text": "I live alone. I opened my security camera. The back door was open, and the kitchen light was on.",
+      "visual": "A security camera view of a dark kitchen, the back door ajar, the light on",
+      "location": "Nadia's kitchen on a camera feed",
+      "characters": [],
+      "mood": "terror",
+      "delivery": "hushed",
+      "sfx": [
+        "a door creaks"
+      ],
+      "key_moment": true
+    },
+    {
+      "text": "Some calls are better left unanswered. Would you have picked up?",
+      "visual": "The Storyteller lowers his lantern",
+      "location": "the hollow",
+      "characters": [],
+      "mood": "eerie",
+      "delivery": "slow",
+      "sfx": [],
+      "key_moment": false
+    }
+  ],
+  "pauses": [
+    {
+      "after": "I answered anyway.",
+      "ms": 900
+    },
+    {
+      "after": "I live alone.",
+      "ms": 1000
+    }
+  ],
+  "packaging": {
+    "titles": [
+      "Line Nine"
+    ],
+    "thumbnail_text": "LINE NINE",
+    "description": "A test story.",
+    "tags": [
+      "horror",
+      "scary story"
+    ],
+    "end_screen_line": "Another call is waiting."
+  },
+  "comment_question": "Would you have picked up?",
+  "stills": {
+    "max_usd": 1.5,
+    "cold_open": false,
+    "title_seconds": 2.0,
+    "end_screen_seconds": 3.0,
+    "thumbnails": 1,
+    "shorts": 0,
+    "music_cues": [
+      "dread"
+    ],
+    "music_min_seconds": 40,
+    "max_effects": 4,
+    "parallel": 3
+  }
+}

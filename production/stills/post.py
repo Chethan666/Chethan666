@@ -74,6 +74,8 @@ class SoundAgent:
     def run(self, board: Board) -> dict[str, Any]:
         d = board.data
         score = Score(board.studio, board.work / "sound", d["rate"], int(board.cfg.get("parallel", 4)))
+        score.cue_names = list(board.cfg.get("music_cues") or score.cue_names)
+        score.min_music = float(board.cfg.get("music_min_seconds", 60.0))
         stings = [d["cold_seconds"]] if d["cold"] and d["title_seconds"] else []
         try:
             mixed = score.mix(d["track"], d["speech"], d["beats"], d["offset"], d["scenes"], {}, stings=stings,

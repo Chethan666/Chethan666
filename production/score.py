@@ -50,6 +50,8 @@ def tension(mood: str) -> int:
 class Score:
     def __init__(self, studio: Studio | None, work: Path, rate: int, parallel: int = 4):
         self.studio, self.work, self.rate, self.parallel = studio, work, rate, parallel
+        self.cue_names = list(CUES)  # which score cues to generate (fewer is cheaper)
+        self.min_music = 60.0  # shortest cue generated, in seconds
         self.report: dict[str, Any] = {"music": [], "ambience": 0, "effects": 0, "foley": 0, "synthesized": []}
         work.mkdir(parents=True, exist_ok=True)
 
@@ -65,13 +67,14 @@ class Score:
             return None
 
     def music(self, seconds: float) -> dict[str, np.ndarray]:
-        length = int(min(max(seconds, 60), 150))
+        length = int(min(max(seconds, self.min_music), 150))
         def one(item: tuple[str, str]) -> tuple[str, np.ndarray | None]:
             key, prompt = item
             return key, self._gen("music", {"prompt": prompt, "music_length_ms": length * 1000,
                                             "force_instrumental": True}, f"music_{key}", units=length)
         with ThreadPoolExecutor(max_workers=3) as pool:
-            got = {k: v for k, v in pool.map(one, CUES.items()) if v is not None and v.size}
+            got = {k: v for k, v in pool.map(one, [(k, CUES[k]) for k in self.cue_names if k in CUES])
+                   if v is not None and v.size}
         self.report["music"] = sorted(got)
         return got
 
