@@ -60,11 +60,13 @@ step "downloading the models in the background"
   git clone -q https://github.com/Wan-Video/Wan2.2 /workspace/Wan2.2
   python -m venv --system-site-packages /workspace/wanenv
   cd /workspace/Wan2.2
-  cat requirements*.txt 2>/dev/null | grep -viE '^(torch|torchvision|torchaudio|flash.attn)([<>=! ]|$)' \
-    | grep -v '^#' > /tmp/wan-req.txt
-  /workspace/wanenv/bin/pip install -q -r /tmp/wan-req.txt
-  timeout 1200 /workspace/wanenv/bin/pip install -q flash-attn --no-build-isolation \
-    || echo "flash-attn not installed: PyTorch attention will be used"
+  # One file at a time with a newline after each: run 85 glued them ("numpy>=1.23.5,<2decord"),
+  # pip refused the whole list and wan could not import. No editable installs, no torch, and no
+  # flash-attn (it would compile for many paid minutes; the worker falls back to PyTorch attention).
+  for f in requirements.txt requirements_s2v.txt requirements_animate.txt; do
+    [ -e "$f" ] && { cat "$f"; echo; }
+  done | grep -vE '^\s*(#|-e|$)' | grep -viE '^(torch|torchvision|torchaudio|flash.attn)([<>=! ]|$)' > /tmp/wan-req.txt
+  /workspace/wanenv/bin/pip install -q -r /tmp/wan-req.txt 2>&1 | tail -n 5
   touch /workspace/job/WAN_ENV_READY
 ) > wan_env.log 2>&1 &
 (
@@ -149,8 +151,9 @@ def build_job(bible: dict[str, Any], shots: list[dict[str, Any]], cfg: dict[str,
         "clip_size": cfg.get("clip_size", [720, 1280]), "clip_steps": int(cfg.get("clip_steps", 30)),
         "talk_size": cfg.get("talk_size", "1024*704"), "talk_steps": int(cfg.get("talk_steps", 40)),
         "references": refs, "shots": [], "lines": [], "uploads": [],
+        # MMAudio names its output file after the prompt; run 85's long prompt was too long a file name.
         "audio": [{"name": f"room_{slug(loc['name'])}", "duration": 10,
-                   "prompt": f"Ambience of {loc['name']}: {loc.get('look', '')}. Quiet room tone, no music, no voices."}
+                   "prompt": (loc.get("sound") or f"{loc['name']} at night, quiet room tone")[:90]}
                   for loc in bible.get("locations", [])[:4]],
     }
     known = {r["name"] for r in refs}

@@ -33,6 +33,7 @@
     "locations": [
       {
         "name": "Dispatch Center",
+        "sound": "late-night office room tone, computer hum, soft rain on a window",
         "look": "a county 911 dispatch room at 3 AM: rows of desks with several glowing monitors each, most chairs empty, dim overhead lights, cold blue screen light, rain streaking a large dark window, a wall clock reading 3:07"
       }
     ]
