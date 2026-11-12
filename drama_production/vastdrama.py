@@ -58,7 +58,17 @@ step "downloading the models in the background"
 (fetch @CLIP_MODEL@ "" > dl_clip.log 2>&1; touch CLIP_READY) &
 (
   git clone -q https://github.com/Wan-Video/Wan2.2 /workspace/Wan2.2
-  python -m venv --system-site-packages /workspace/wanenv
+  # Its own environment, not sharing the system's packages: run 86's install crashed (pip
+  # "expected string ... got 'NoneType'") while MMAudio was installing into the shared packages.
+  unset PIP_CONSTRAINT
+  python -m venv /workspace/wanenv
+  /workspace/wanenv/bin/pip install -q -U pip
+  TV=$(python -c "import torch; print(torch.__version__.split('+')[0])")
+  VV=$(python -c "import torchvision; print(torchvision.__version__.split('+')[0])")
+  AV=$(python -c "import torchaudio; print(torchaudio.__version__.split('+')[0])")
+  /workspace/wanenv/bin/pip install -q "torch==$TV" "torchvision==$VV" "torchaudio==$AV" \
+    --index-url https://download.pytorch.org/whl/cu128 --extra-index-url https://pypi.org/simple 2>&1 | tail -n 3
+  printf 'torch==%s\ntorchvision==%s\ntorchaudio==%s\n' "$TV" "$VV" "$AV" > /tmp/wan-pins.txt
   cd /workspace/Wan2.2
   # One file at a time with a newline after each: run 85 glued them ("numpy>=1.23.5,<2decord"),
   # pip refused the whole list and wan could not import. No editable installs, no torch, and no
@@ -66,7 +76,7 @@ step "downloading the models in the background"
   for f in requirements.txt requirements_s2v.txt requirements_animate.txt; do
     [ -e "$f" ] && { cat "$f"; echo; }
   done | grep -vE '^\s*(#|-e|$)' | grep -viE '^(torch|torchvision|torchaudio|flash.attn)([<>=! ]|$)' > /tmp/wan-req.txt
-  /workspace/wanenv/bin/pip install -q -r /tmp/wan-req.txt 2>&1 | tail -n 5
+  /workspace/wanenv/bin/pip install -q -c /tmp/wan-pins.txt -r /tmp/wan-req.txt 2>&1 | tail -n 8
   touch /workspace/job/WAN_ENV_READY
 ) > wan_env.log 2>&1 &
 (
@@ -241,11 +251,12 @@ def produce(bible: dict[str, Any], episode: dict[str, Any], out_dir: Path, kokor
     job = build_job(bible, shots, cfg)
     if reuse is not None and reuse.exists():  # pictures an earlier run already made, from the same prompts
         wanted = {r["file"] for r in job["references"]} | {f"shot_{s['index']:03d}.png" for s in job["shots"]}
-        # Clips too, except a talking shot that an earlier run could only make without lip sync.
+        # Every clip and line too. A talking shot an earlier run could only make without lip sync
+        # (no .talk marker) is still uploaded: the talking stage replaces it, and if S2V fails
+        # again it stays as the moving fallback, so nothing is paid for twice.
         for s in job["shots"]:
             i = s["index"]
-            if s["mode"] == "move" or any(reuse.rglob(f"clip_{i:03d}.talk")):
-                wanted |= {f"clip_{i:03d}.mp4", f"clip_{i:03d}.talk"}
+            wanted |= {f"clip_{i:03d}.mp4", f"clip_{i:03d}.talk", f"line_{i:03d}.wav"}
         kept = [p for p in reuse.rglob("*") if p.is_file() and p.name in wanted]
         for p in kept:
             shutil.copy(p, upload / p.name)

@@ -190,3 +190,36 @@ class StartTests(unittest.TestCase):
         with unittest.mock.patch.object(vastmod.time, "sleep"):
             with self.assertRaises(vastmod.VastError):
                 Fake().start(vastmod.Machine(1, 1.0, "x"), "/w", "run.sh", "run.log")
+
+
+class TalkFallbackTests(unittest.TestCase):
+    def _run_talk(self, succeed):
+        import importlib.util
+        worker = SCRIPT.parent.parent / "vast_drama_worker.py"
+        spec = importlib.util.spec_from_file_location("vast_drama_worker_t", worker)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as tmp:
+            out, repo = Path(tmp) / "out", Path(tmp) / "repo"
+            out.mkdir(), repo.mkdir()
+            (out / "shot_002.png").write_bytes(b"png")
+            (out / "line_002.wav").write_bytes(b"wav")
+            (out / "clip_002.mp4").write_bytes(b"earlier moving clip")
+
+            def fake_run(args, cwd=None, capture_output=True, text=True):
+                if succeed:
+                    Path(args[args.index("--save_file") + 1]).write_bytes(b"lip-synced clip")
+                    return subprocess.CompletedProcess(args, 0, "", "")
+                return subprocess.CompletedProcess(args, 1, "", "ModuleNotFoundError: easydict")
+
+            job = {"wan_repo": str(repo), "talk_dir": "/m", "shots": [
+                {"index": 2, "mode": "talk", "motion_prompt": "talks"}]}
+            with unittest.mock.patch.object(mod.subprocess, "run", fake_run):
+                mod.talk(job, out)
+            return (out / "clip_002.mp4").read_bytes(), (out / "clip_002.talk").exists()
+
+    def test_a_failed_lip_sync_keeps_the_earlier_moving_clip(self):
+        self.assertEqual(self._run_talk(False), (b"earlier moving clip", False))
+
+    def test_a_lip_synced_clip_replaces_it_and_is_marked(self):
+        self.assertEqual(self._run_talk(True), (b"lip-synced clip", True))

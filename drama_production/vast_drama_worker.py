@@ -169,15 +169,20 @@ def talk(job: dict, out: Path) -> None:
     for shot in [s for s in job["shots"] if s["mode"] == "talk"]:
         src, wav = out / f"shot_{shot['index']:03d}.png", out / f"line_{shot['index']:03d}.wav"
         dst = out / f"clip_{shot['index']:03d}.mp4"
-        if dst.exists() or not src.exists() or not wav.exists():
+        if (out / f"clip_{shot['index']:03d}.talk").exists() or not src.exists() or not wav.exists():
             continue
         started = time.time()
         args = [python, "run_s2v.py", "--task", "s2v-14B", "--size", job.get("talk_size", "1024*704"),
                 "--ckpt_dir", job["talk_dir"], "--offload_model", "False", "--convert_model_dtype",
                 "--sample_steps", str(job.get("talk_steps", 40)), "--base_seed", str(42 + shot["index"]),
                 "--prompt", shot["motion_prompt"], "--image", str(src), "--audio", str(wav), "--save_file", str(dst)]
+        fallback = dst.with_suffix(".move.mp4")
+        if dst.exists():  # a moving clip from an earlier run: kept unless S2V succeeds
+            dst.replace(fallback)
         result = subprocess.run(args, cwd=repo, capture_output=True, text=True)
         if result.returncode != 0 or not dst.exists():
+            if fallback.exists():
+                fallback.replace(dst)
             log("FAILED talk", shot["index"], (result.stderr + result.stdout)[-900:].replace("\n", " | "))
             continue
         (out / f"clip_{shot['index']:03d}.talk").write_text("Wan2.2-S2V")  # lip-synced, not a fallback
