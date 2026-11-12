@@ -1,7 +1,7 @@
 """Moving chalk: chosen scenes become real video clips.
 
-A drawn chalk picture goes to an image-to-video model (fal.ai, the same queue API as the
-drama pipeline) with a prompt that keeps the chalk-on-black look and asks only for the
+A drawn chalk picture goes to an image-to-video model (fal.ai's queue API, see media.py)
+with a prompt that keeps the chalk-on-black look and asks only for the
 movement the scene needs. Key moments come first, then the tensest scenes, within a
 budget per video. A clip that fails is simply left as the drawn scene with its camera move.
 """

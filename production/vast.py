@@ -34,7 +34,7 @@ QUERIES = (
 )
 
 
-DOWNLOAD_GB = 240  # run 77 pulled 172 GB for pipeline 2; the drama job's models come to about 240 GB
+DOWNLOAD_GB = 180  # measured: run 77 pulled 172 GB (Qwen-Image-Edit, Wan 2.2, software) before MMAudio
 UPLOAD_GB = 3  # the results brought back
 HOURS = 2.5  # a typical run
 # Run 77 paid $6.72 for downloads alone, so only hosts that charge nothing for downloads are

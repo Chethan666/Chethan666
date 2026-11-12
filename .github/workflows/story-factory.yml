@@ -4,8 +4,7 @@
 #   mode=story: also researches Wikipedia and generates one real story
 #   mode=bench: blind-compares the writing of `config` against `bench_against` on fixed pitches
 #   mode=recheck: runs the legend recognition test on approved retellings that never had it
-# Pipeline 1 (the story factory) and pipeline 2 (videos) are the stickman channel; the short-drama
-# pipelines moved to their own repository.
+# Pipeline 1 is the story factory and pipeline 2 turns its stories into videos.
 #   mode=video-bakeoff: pipeline 2 runs a few shots of a story (story_id, or the newest) through every
 #               candidate model side by side (capped at $10), saved as video-<run number>
 #   mode=video-approve / video-reject: after watching a video (story_id), approve it for publishing or not

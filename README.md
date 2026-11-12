@@ -10,6 +10,5 @@ Hollow Lines is a faceless YouTube horror storytelling channel for a global audi
 | 2 | Video production | stickman videos from those stories | `production/` | [PRODUCTION.md](PRODUCTION.md) |
 
 Both run in the same GitHub Actions workflow (one mode each) and share the model access,
-the database and the cost log; each has its own stages and settings. The short-drama
-pipelines (3 and 4) that used to live here moved to their own repository.
+the database and the cost log; each has its own stages and settings.
 

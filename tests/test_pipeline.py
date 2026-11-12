@@ -575,3 +575,24 @@ class ScriptCheckTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DramaLeftoverTests(unittest.TestCase):
+    def test_an_old_database_loses_the_short_drama_tables_and_spend(self):
+        import sqlite3
+        import tempfile
+        from story_factory import db
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = f"{tmp}/old.db"
+            conn = db.connect(path)
+            conn.execute("CREATE TABLE series (id INTEGER PRIMARY KEY)")
+            conn.execute("CREATE TABLE episodes (id INTEGER PRIMARY KEY)")
+            db.record_cost(conn, pipeline="drama", task="vast_gpu", model="x", input_units=0, output_units=1, usd=6.0)
+            db.record_cost(conn, pipeline="video", task="vast_gpu", model="x", input_units=0, output_units=1, usd=1.0)
+            conn.close()
+            conn = db.connect(path)
+            tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+            self.assertFalse({"series", "episodes"} & tables)
+            self.assertEqual([r[0] for r in conn.execute("SELECT pipeline FROM costs")], ["video"])
+            conn.close()
