@@ -12,10 +12,13 @@ from typing import Any, Sequence
 
 CHANNEL = """\
 Hollow Lines is an animated horror storytelling channel for a global audience of teens and
-adults (not made for kids). Every video is narrated by one calm voice and drawn as dark,
-hand-drawn stickman animation: white chalk-like figures on black ink paper with a single
-blood-red accent. The host, The Storyteller, is a tall stick figure with a red-flamed lantern
-who opens and closes long episodes, speaking directly to the viewer.
+adults (not made for kids). Every video is told in still, painted illustrations (a dark
+graphic-novel look: deep shadows, a muted cold palette and a single blood-red accent) over
+voices and music. The host, The Storyteller, a tall man in a long coat and wide-brimmed hat
+carrying a red-flamed lantern, opens and closes long episodes, speaking directly to the
+viewer. The story itself is usually told in the first person by the one it happened to (a
+first-person teller gets their own voice); characters speak their quoted lines in their own
+voices.
 
 Rules that are never broken:
 - Fiction or folklore only; never claim a story is true or happened to real people.
@@ -65,7 +68,7 @@ Writing for the ear:
 - Write for sound: a recurring sound can be a clue, and silence is a sound.
 - Use a refrain: a short line or image that returns and means something worse the second time.
 - Keep dialogue sparse and always clear about who is speaking.
-- Every image must be drawable: few figures, clear silhouettes, darkness, one red accent.
+- Every moment must make one strong still picture: few people, clear silhouettes, darkness, one red accent.
 - Never explain the twist or the theme. Trust the listener.
 - Avoid worn horror phrasing: "a chill ran down", "blood ran cold", "little did they know",
   "suddenly", "out of nowhere", "it was all a dream", "heart pounding in my chest",
@@ -158,8 +161,8 @@ Scoring guide (a competent, publishable story is 6-7; an 8 needs a reason you ca
   central image or turn you have not seen; 10 a new idea.
 - prose_for_the_ear: 4 cliches, named feelings, tangled sentences; 6 clean but generic; 8
   specific sensory detail, varied rhythm, easy to follow in one hearing; 10 every line lands aloud.
-- drawability: 4 needs crowds, faces or complex action; 6 mostly drawable; 8 strong simple
-  silhouettes and one iconic image; 10 an unforgettable red-accent image.
+- drawability: 4 needs crowds or complex action to make sense; 6 mostly works as still pictures;
+  8 strong simple compositions and one iconic image; 10 an unforgettable red-accent image.
 - follows_recipe: 4 ignores the ingredients; 6 uses them on the surface; 8 all used naturally;
   10 the recipe feels inevitable.
 """
@@ -680,7 +683,7 @@ def scene_plan(narration: str, scene_range: tuple[int, int], key_range: tuple[in
             "emotional peaks that deserve a brand-new image.\n"
             "Also write the cast: every character who appears, with one fixed look an illustrator "
             "can repeat in every image (build, height, clothing, hair or headwear, one distinctive "
-            "detail), in the channel's stickman style. Scenes refer to characters by these exact "
+            "detail), in the channel's painted illustration style. Scenes refer to characters by these exact "
             f"names.\n{canon}")
 
 

@@ -285,6 +285,86 @@ DEFAULTS: dict[str, Any] = {
         # Audio loudness for YouTube.
         "loudness_lufs": -14.0,
     },
+    # Pipeline 2, stills mode (the default): the story told in still painted illustrations, voices
+    # and music, made by a team of agents (production/stills). Runs free without keys (Kokoro,
+    # free picture services, synthesized sound); with FAL_KEY the paid models below are used.
+    "stills": {
+        "enabled": True,
+        # Spending cap per video in USD (estimates from `prices`); past it, free fallbacks.
+        "max_usd": 10.0,
+        # The channel's one house look, sent with every picture.
+        "style": ("A dark, painterly horror illustration in the style of a graphic novel: confident ink "
+                  "linework, textured brushwork, deep shadows and heavy chiaroscuro, a muted, desaturated "
+                  "palette of cold blue-greys, sickly greens and bone white, cinematic 16:9 composition with "
+                  "a single motivated light source. Moody and unsettling, never gory."),
+        # "none": every picture is held perfectly still; "drift": a slow push or pan across it.
+        "motion": "none",
+        "beat_min_seconds": 5.0, "beat_max_seconds": 11.0,
+        "scene_dip_seconds": 0.35,
+        # Painters tried in order until the critic passes a picture. fal:<role> needs FAL_KEY;
+        # cloudflare needs CF_ACCOUNT_ID and CF_API_TOKEN (free daily allowance); pollinations is keyless.
+        "chains": {
+            "reference": ["fal:reference", "cloudflare", "pollinations"],
+            "sheet": ["fal:sheet", "cloudflare", "pollinations"],
+            "beat": ["fal:shot", "fal:shot_alt", "cloudflare", "pollinations"],
+            "thumbnail": ["fal:thumbnail"],
+        },
+        "references": True,  # a style frame and character sheets keep the look and the people the same
+        "pollinations": True, "pollinations_gap_seconds": 16,
+        "cloudflare_model": "@cf/black-forest-labs/flux-1-schnell", "cloudflare_steps": 4,  # 4 keeps ~170 pictures a day free
+        "models": {
+            "reference": "fal-ai/nano-banana-2",                  # style frame (text only)
+            "sheet": "fal-ai/nano-banana-2/edit",                 # character sheets from the style frame
+            "shot": "fal-ai/bytedance/seedream/v4.5/edit",        # every beat, from the references
+            "shot_text": "fal-ai/bytedance/seedream/v4.5/text-to-image",
+            "shot_alt": "fal-ai/nano-banana-2/edit",              # the redraw when the critic rejects one
+            "thumbnail": "fal-ai/nano-banana-2/edit",
+            "voice": "fal-ai/elevenlabs/tts/eleven-v3",
+            "sfx": "fal-ai/elevenlabs/sound-effects/v2",
+            "music": "fal-ai/elevenlabs/music",
+            "vision": "fal-ai/any-llm/vision",                   # the critic's eye
+        },
+        # An edit model asked without references uses its text-to-image twin.
+        "text_roles": {"shot": "shot_text", "shot_alt": "reference", "sheet": "reference", "thumbnail": "reference"},
+        "model_args": {
+            "reference": {"aspect_ratio": "16:9", "num_images": 1},
+            "sheet": {"aspect_ratio": "16:9", "num_images": 1},
+            "shot": {"image_size": "landscape_16_9", "num_images": 1},
+            "shot_text": {"image_size": "landscape_16_9", "num_images": 1},
+            "shot_alt": {"aspect_ratio": "16:9", "num_images": 1},
+            "thumbnail": {"aspect_ratio": "16:9", "num_images": 1},
+            "voice": {"stability": 0.5},
+            "vision": {"model": "google/gemini-2.5-flash"},
+        },
+        # Estimated USD per picture, per 1,000 characters of speech, or per second of audio.
+        "prices": {
+            "fal-ai/nano-banana-2": 0.08, "fal-ai/nano-banana-2/edit": 0.08,
+            "fal-ai/bytedance/seedream/v4.5/edit": 0.04, "fal-ai/bytedance/seedream/v4.5/text-to-image": 0.04,
+            "fal-ai/elevenlabs/tts/eleven-v3": 0.10, "fal-ai/elevenlabs/sound-effects/v2": 0.002,
+            "fal-ai/elevenlabs/music": 0.01, "fal-ai/any-llm/vision": 0.002,
+        },
+        # Voices. The host reads the intro and outro; a first-person story's teller gets a voice
+        # matched to them; characters get distinct voices by kind. Kokoro names are the free fallback.
+        # point_of_view: "" decides from the text; "first" or "third" forces it.
+        "point_of_view": "", "teller_default": "man",
+        "host_voice": {"elevenlabs": "Brian", "kokoro": "am_michael"},
+        "teller_voices": {
+            "elevenlabs": {"man": "Callum", "woman": "Charlotte", "old_man": "Bill", "old_woman": "Dorothy"},
+            "kokoro": {"man": "am_fenrir", "woman": "af_heart", "old_man": "bm_lewis", "old_woman": "bf_isabella"},
+        },
+        "cast_voices": {
+            "elevenlabs": {"man": ["George", "Daniel", "Callum"], "woman": ["Alice", "Lily", "Charlotte"],
+                           "old_man": ["Bill"], "old_woman": ["Dorothy"], "boy": ["Liam"], "girl": ["Laura"]},
+            "kokoro": {"man": ["am_echo", "bm_george", "am_liam", "am_fenrir"],
+                       "woman": ["bf_emma", "af_nicole", "af_sarah", "af_heart"],
+                       "old_man": ["bm_daniel", "bm_lewis"], "old_woman": ["bf_alice", "bf_isabella"],
+                       "boy": ["am_puck"], "girl": ["af_sky", "af_bella"]},
+        },
+        "parallel": 4, "render_workers": 3, "max_effects": 30,
+        "cold_open": True, "title_seconds": 3.0, "end_screen_seconds": 20.0,
+        "burn_captions": False, "shorts": 2, "short_max_seconds": 55.0, "thumbnails": 3,
+        "loudness_lufs": -14.0, "synthetic_media": False,
+    },
     # Pipeline 2 on open models: a 40-60 s piece made on a rented Vast.ai GPU (mode video-vast).
     "vast": {
         "max_usd": 12.0,  # the GPU rental cap; the job stops before it would pass it

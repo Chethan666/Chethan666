@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS costs (
 
 WORLD_SEED = [
     ("character", "The Storyteller",
-     "The channel's host. A tall stick figure in a long coat who carries a lantern with a "
+     "The channel's host. A tall man in a long coat and wide-brimmed hat who carries a lantern with a "
      "red flame. Calm, kind, a little ominous. He collects stories from the hollows and "
      "never says how he found them."),
     ("rule", "The Hollow",

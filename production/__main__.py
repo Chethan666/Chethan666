@@ -2,7 +2,8 @@
 
     python -m production --config config.aws-open.toml produce            # next approved long story
     python -m production --config config.aws-open.toml produce --story 12 # a chosen story, status unchanged
-    python -m production --config config.aws-open.toml check              # what each studio model expects (no spend)
+    python -m production --config config.aws-open.toml produce --studio   # the older chalk studio mode (clips)
+    python -m production --config config.aws-open.toml check              # what each paid model expects (no spend)
 """
 
 from __future__ import annotations
@@ -60,14 +61,17 @@ def main(argv: list[str] | None = None) -> int:
                    help="direct scenes from keywords only (no model calls)")
     p.add_argument("--keep-work", action="store_true", help="keep the scene pictures and clips")
     p.add_argument("--no-motion", action="store_true", help="drawn scenes only (no paid moving clips)")
-    p.add_argument("--drawn", action="store_true", help="the drawn pipeline even when FAL_KEY is set")
+    p.add_argument("--drawn", action="store_true", help="the old drawn chalk pipeline")
+    p.add_argument("--studio", action="store_true", help="the old chalk studio mode with moving clips")
     p.add_argument("--max-usd", type=float, help="studio spending cap for this video")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
     cfg = apply_overrides(load_config(args.config), args.set)
     if args.command == "check":
-        return check(cfg.get("studio", {}))
+        stills = cfg.get("stills", {})
+        return check(cfg.get("studio", {}), {f"stills:{k}": v for k, v in stills.get("models", {}).items()},
+                     stills.get("model_args", {}))
     if args.command in ("vast-check", "vast-cleanup"):
         return vast_admin(args.command)
     conn = db.connect(cfg["database"])
@@ -113,10 +117,22 @@ def main(argv: list[str] | None = None) -> int:
     studio_cfg = dict(cfg.get("studio", {}))
     if args.max_usd is not None:
         studio_cfg["max_usd"] = args.max_usd
+    stills_cfg = dict(cfg.get("stills", {}))
+    if args.max_usd is not None:
+        stills_cfg["max_usd"] = args.max_usd
+    use_stills = stills_cfg.get("enabled") and not args.drawn and not args.studio
     use_studio = (studio_cfg.get("enabled") and os.environ.get("FAL_KEY") and not args.drawn
                   and not args.no_motion)
     try:
-        if use_studio:
+        if use_stills:
+            from .stills import pipeline as stills
+            fal = None
+            if os.environ.get("FAL_KEY"):
+                from production.media import Fal
+                fal = Fal()
+            animator = None
+            summary = stills.produce(story, out_dir, narrator, router, stills_cfg, fal, conn, args.keep_work)
+        elif use_studio:
             from production.media import Fal
 
             from . import studio
@@ -296,14 +312,15 @@ ALTERNATES = [
 ]
 
 
-def check(studio: dict) -> int:
-    """Every studio model's inputs and choices, from fal's public descriptions. No spend."""
+def check(studio: dict, extra: dict | None = None, extra_args: dict | None = None) -> int:
+    """Every paid model's inputs and choices, from fal's public descriptions. No spend."""
     from production.media import Fal
 
     print("FAL_KEY:", "set" if os.environ.get("FAL_KEY") else "MISSING (add it as a GitHub Actions secret)")
     fal = Fal(key=os.environ.get("FAL_KEY") or "not-needed-to-read-schemas")
     failed = 0
-    roles = dict(studio.get("models", {}))
+    roles = dict(extra or {})
+    roles.update({f"studio:{k}": v for k, v in studio.get("models", {}).items()})
     seen = set(roles.values())
     roles.update({f"(alt) {e}": e for e in ALTERNATES if e not in seen})
     for role, endpoint in roles.items():
@@ -317,7 +334,8 @@ def check(studio: dict) -> int:
               f"    required: {', '.join(info['required'])}")
         for field, choices in info.get("options", {}).items():
             print(f"    {field}: {json.dumps(choices)[:1500]}")
-        args = studio.get("model_args", {}).get(role, {})
+        group, _, name = role.partition(":")
+        args = (extra_args or {}).get(name, {}) if group == "stills" else studio.get("model_args", {}).get(name, {})
         unknown = set(args) - set(info["fields"]) if info["fields"] else set()
         if unknown:
             print(f"    WARNING: configured arguments the model doesn't list: {sorted(unknown)}")

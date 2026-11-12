@@ -25,7 +25,7 @@ find "$src" -type f -name '*.mp4' -path '*bakeoff*' | while read -r v; do
   name=$(echo "${v#$src/}" | tr '/' '_')
   ffmpeg -nostdin -hide_banner -loglevel error -y -i "$v" -vf "fps=2,scale=320:-2,tile=5x2" -frames:v 1 -q:v 5 "$dest/${name%.*}_strip.jpg" || true
 done
-find "$src" -type f \( -name 'report.json' -o -name 'bakeoff.json' -o -name 'shots.json' -o -name 'metadata.json' \) \
+find "$src" -type f \( -name 'report.json' -o -name 'bakeoff.json' -o -name 'shots.json' -o -name 'beats.json' -o -name 'metadata.json' \) \
   ! -path '*/work/*' | while read -r f; do cp "$f" "$dest/$(echo "${f#$src/}" | tr '/' '_')"; done
 cd "$RUNNER_TEMP/review"
 git init -q

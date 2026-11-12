@@ -1,6 +1,61 @@
 # Production (pipeline 2)
 
-Pipeline 2 turns an approved story into a finished video. It has two modes:
+Pipeline 2 turns an approved story into a finished video. The default is **stills mode**: the
+story told in still, painted illustrations over voices and music, with no moving clips and no
+stick figures. The older chalk modes are kept below (`--studio`, `--drawn`, or
+`stills.enabled=false`).
+
+## Stills mode: the agent team
+
+A team of agents, each with one job, works on a shared board (`production/stills/`). The
+showrunner runs them in order, times them, and keeps each one's report in `report.json`. An
+agent that is not critical (art references, sound, packaging, QA) falls back instead of
+stopping the video.
+
+| # | Agent | Job | Paid (with `FAL_KEY`) | Free fallback |
+|---|---|---|---|---|
+| 1 | Casting | Who speaks: the host, the teller, each character; picks the voices | the planner model (Bedrock) | words around each quote |
+| 2 | Voice | Reads everything chunk by chunk, so every line's time is exact; dramatic pauses | ElevenLabs v3 on fal | Kokoro |
+| 3 | Storyboard | Cuts the timeline into beats of 5-11 s and stages each as one picture | the planner model | the scene plan |
+| 4 | Art director | One house look; a design per character; a style frame and character sheets | Nano Banana 2 | Cloudflare FLUX, Pollinations |
+| 5 | Illustrator + critic | One picture per beat from the references; each checked in code and by a vision model, a rejected one redrawn by the next painter | Seedream 4.5 edit, then Nano Banana 2 edit | Cloudflare FLUX, Pollinations, a neighbour's picture |
+| 6 | Edit plan | Cold open, title card, the story, end screen; captions | | |
+| 7 | Sound | Score cues that follow the tension, room tone, effects, a stinger per scare | ElevenLabs music and effects | synthesized drone and cues |
+| 8 | Edit | Every still for exactly its frames (held still, or `stills.motion=drift`), a dip to black between scenes, -14 LUFS | | |
+| 9 | Packager | Three thumbnails, Shorts, chapters, metadata, contact sheet, 60 s preview | Nano Banana 2 edit | the key picture with lettering |
+| 10 | QA | Checks length, streams, missing files, fallbacks; `pass` or `check` with the reasons | | |
+
+**Voices.** The Storyteller (host) reads the intro and outro in the third person, always in the
+same voice. A first-person story (decided from the text) is told by its teller in a voice of
+their own, matched to them by the planner (a man, a woman, an older person). Every quoted line
+is read by its speaker in a distinct voice. A third-person story is told by the host throughout.
+
+**Pictures.** One house look for the channel (`stills.style`: a dark, painterly graphic-novel
+illustration, muted cold palette, one blood-red accent). Older stories' stick-figure cast notes
+are turned into real character designs. Painters are tried in order (`stills.chains`) until
+the critic passes a picture: Seedream 4.5 edit with the style frame and character sheets
+(about $0.04), Nano Banana 2 edit as the redraw (about $0.08), then the free ones. The free
+painters need no fal key: Cloudflare Workers AI's FLUX.1 schnell (secrets `CF_ACCOUNT_ID` and
+`CF_API_TOKEN`; 10,000 free neurons a day, roughly 170 pictures; square output, cropped to
+16:9; text only, so characters vary more) and Pollinations (keyless, slow, no guarantee).
+
+**Cost.** About $5-8 for an 8.5-minute story with `FAL_KEY` (about 50-70 beats at $0.04-0.08,
+references $0.5, voices about $1, music and effects about $1-2, checks a few cents), capped by
+`stills.max_usd` (default $10). Free without any key, at lower quality.
+
+**Outputs:** `video.mp4` (1080p), `thumbnail_1-3.jpg`, `short_1-2.mp4`, `captions.srt`,
+`metadata.json`, `beats.json`, `contact_sheet.jpg`, `preview_60s.mp4`, `narration.wav`,
+`report.json` (every agent's report, the spend by step, and QA's verdict). Review, approve and
+publish work exactly as below.
+
+**Keys for a first test** (GitHub, Settings, Secrets and variables, Actions): `FAL_KEY` (fal.ai:
+pictures, voices, music, the critic), `AWS_BEARER_TOKEN_BEDROCK` (already set: the planner),
+and optionally `CF_ACCOUNT_ID` + `CF_API_TOKEN` for the free picture fallback. Run
+`mode = video-check` first (lists what every model expects, no spend), then `mode = video`.
+
+## The older chalk modes
+
+The chalk modes below are kept for comparison:
 
 - **Studio mode** (the default whenever the `FAL_KEY` secret is set): every shot is a generated
   chalk picture, the key shots are real clips, ElevenLabs performs the narration, a generated
