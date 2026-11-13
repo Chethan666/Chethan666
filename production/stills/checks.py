@@ -163,8 +163,10 @@ THUMB_SYSTEM = "You check YouTube thumbnails for a horror channel. Answer with J
 def thumbnail_ok(studio: Any, image: Path, words: str) -> tuple[bool, str]:
     """Do the thumbnail's words read exactly as planned, large and clear, with nothing else written?"""
     want = f'the words "{words.upper()}" spelled exactly, large and readable at phone size' if words else "no text"
-    verdict = ask_vision(studio, f"This thumbnail should have {want}, nothing else written, a dark horror image "
-                                 "with one clear focal point and no warped faces or hands. Reply exactly as JSON: "
+    verdict = ask_vision(studio, f"This thumbnail should have {want}, on a dark horror image with one clear focal "
+                                 "point. Fail it ONLY if: the planned words are missing, misspelled, cut off or hard "
+                                 "to read; other LARGE words compete with them (a small sign or label that belongs "
+                                 "in the scene is fine); or a face or hand is clearly warped. Reply exactly as JSON: "
                                  '{"ok": true or false, "reason": "short reason"}', image, "thumbnail_check",
                          THUMB_SYSTEM, width=1024)
     if verdict is None or "ok" not in verdict:

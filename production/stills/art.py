@@ -63,19 +63,24 @@ def designs(router: Any, cast: list[dict[str, Any]], style: str, people: str = "
             "character_design", "You are the character designer and casting director of a horror channel. "
             "JSON only.",
             f"House style: {style}\n\nCharacters and their notes (older notes may describe stick figures: "
-            f"ignore that and design real people):\n{listing}\n\nFor each character write one design that "
-            f"can be repeated exactly in every picture, in 40-70 words, for {people or 'real people'}: age, "
-            "ethnicity or skin tone, build, face shape and one facial feature, hair (colour, length, how it is "
-            "worn), one outfit with colours that never changes, and one distinctive detail. Accessories are "
-            "fixed: write 'always wears ...' or 'never wears glasses'; nothing 'sometimes' or 'often'. Keep "
-            "what the notes say; do not add a feature the notes contradict. Keep each name exactly as written.",
+            f"ignore that and design real people):\n{listing}\n\nThe notes are fixed by the script and are "
+            "kept word for word. For each character write ONLY what the notes leave out, so the person can be "
+            f"repeated exactly in every picture, in 25-50 words, for {people or 'real people'}: age if not "
+            "given, ethnicity or skin tone, build, face shape and one facial feature, hair (colour, length, how "
+            "it is worn), and the colours of any clothing the notes do not describe. Never change, replace or "
+            "contradict anything in the notes (their clothes, colours, age, a hidden face). Accessories are "
+            "fixed: write 'always wears ...' or 'never wears glasses'; nothing 'sometimes' or 'often'. Keep each "
+            "name exactly as written.",
             DESIGN_SCHEMA)
     except (LLMError, ValueError, TypeError) as exc:
         log.warning("Character designs from the cast notes: %s", exc)
         return plain
     for item in result.get("characters", []) if isinstance(result, dict) else []:
         if isinstance(item, dict) and item.get("name") in plain and str(item.get("design", "")).strip():
-            plain[item["name"]] = str(item["design"]).strip()[:500]
+            notes = plain[item["name"]]
+            added = str(item["design"]).strip()[:400]
+            # The script's own notes come first and always stay: the designer only adds to them.
+            plain[item["name"]] = f"{notes}; {added}" if notes and notes.lower() not in added.lower() else added
     return plain
 
 

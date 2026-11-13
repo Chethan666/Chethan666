@@ -93,6 +93,10 @@ class Director(unittest.TestCase):
         self.assertEqual(marks, {})
         self.assertFalse(report["directed"])
 
+    def test_tags_written_without_brackets_count(self):
+        self.assertEqual([performance.normal(t) for t in ("whispers", "[Nervously]", " none ", "", "Plain")],
+                         ["[whispers]", "[nervously]", "", "", ""])
+
     def test_rules(self):
         self.assertEqual(performance.rules(["[sighs]", "[sighs]", "[nervously]", "[nervously]", "[nervously]"]),
                          ["[sighs]", "", "[nervously]", "[nervously]", ""])

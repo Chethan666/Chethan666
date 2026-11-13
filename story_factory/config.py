@@ -399,7 +399,7 @@ DEFAULTS: dict[str, Any] = {
         # paragraph's sentences in one take so the voice flows instead of restarting flat at every
         # full stop; voice_pace speeds the reading up without changing pitch (1.0 = as recorded);
         # voice_gap_scale shortens the silences between paragraphs and at story pauses.
-        "performance_director": True, "voice_takes": True, "voice_pace": 1.07, "voice_gap_scale": 0.8,
+        "performance_director": True, "voice_takes": True, "voice_pace": 1.12, "voice_gap_scale": 0.7,
         # The listener transcribes the paid narration (Whisper, free, on the CPU) and has any take
         # that skipped or invented words read again; "" turns it off.
         "listener": "base.en",

@@ -211,7 +211,7 @@ class EditAgent:
         codec = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p"] if vf else ["-c:v", "copy"]
         video = board.out / "video.mp4"
         _ff(["-i", "picture.mp4", "-i", str(d["mix"]), *vf, *codec,
-             "-af", f"loudnorm=I={float(cfg.get('loudness_lufs', -14.0))}:TP=-1.5:LRA=11", "-ar", "48000",
+             "-af", loudnorm(Path(d["mix"]), float(cfg.get("loudness_lufs", -14.0))), "-ar", "48000",
              "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", str(video)], work)
         d.update(video=video, end_line=end_line, titles=titles)
         return {"segments": len(segs), "motion": motion, "seconds": round(probe(video), 1)}
@@ -372,6 +372,25 @@ class QAAgent:
                 issues.append(f"{name} failed: {report['error'][:120]}")
         return {"status": "pass" if not issues else "check", "issues": issues, "video_seconds": round(seconds, 1),
                 "loudness_lufs": lufs, "true_peak_dbtp": peak}
+
+
+def loudnorm(path: Path, target: float) -> str:
+    """FFmpeg's loudness filter, measured first: one pass alone lands a short video a couple of
+    LUFS under the target (run 94: -16.1 for -14); with the file's own measurements it lands on it."""
+    plain = f"loudnorm=I={target}:TP=-1.5:LRA=11"
+    result = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-af",
+                             plain + ":print_format=json", "-f", "null", "-"], capture_output=True, text=True)
+    match = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", result.stderr)
+    try:
+        m = json.loads(match.group(0)) if match else {}
+        values = [float(m[k]) for k in ("input_i", "input_tp", "input_lra", "input_thresh", "target_offset")]
+    except (KeyError, TypeError, ValueError):
+        return plain
+    if any(v != v or abs(v) == float("inf") for v in values):  # silence measures as -inf
+        return plain
+    i, tp, lra, thresh, offset = values
+    return (f"{plain}:measured_I={i}:measured_TP={tp}:measured_LRA={lra}:measured_thresh={thresh}"
+            f":offset={offset}:linear=true")
 
 
 def loudness(path: Path) -> tuple[float | None, float | None]:

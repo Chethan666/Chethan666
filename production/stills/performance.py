@@ -71,20 +71,29 @@ def direct(router: Any, story: dict[str, Any], narration: str, pauses: list[dict
         log.warning("Performance by scene cues: %s", exc)
         return {}, {"directed": False, "error": str(exc)[:200]}
     raw: dict[int, str] = {}
+    unknown: list[str] = []
     for m in result.get("marks", []) if isinstance(result, dict) else []:
         try:
-            n, tag = int(m.get("n")), str(m.get("tag") or "").strip().lower()
+            n, tag = int(m.get("n")), normal(m.get("tag"))
         except (AttributeError, TypeError, ValueError):
             continue
         if 1 <= n <= len(chunks):
             raw[n] = tag if tag in ALLOWED else ""
+            if tag and tag not in ALLOWED:
+                unknown.append(tag)
     if len(raw) < len(chunks) / 2:  # too little answered to trust: keep the scene cues
         return {}, {"directed": False, "answered": len(raw)}
     tags = rules([raw.get(i, "") for i in range(1, len(chunks) + 1)])
     marks = {c.start: tag for c, tag in zip(chunks, tags)}
     used = [t for t in tags if t]
     return marks, {"directed": True, "sentences": len(chunks), "plain": len(tags) - len(used),
-                   "tags": {t: used.count(t) for t in sorted(set(used))}}
+                   "tags": {t: used.count(t) for t in sorted(set(used))}, "unknown_tags": unknown[:10]}
+
+
+def normal(tag: Any) -> str:
+    """A tag as the model may write it ("whispers", "Whispers", "[whispers]", "none") -> "[whispers]" or ""."""
+    t = str(tag or "").strip().lower().strip("[]()\"' .").strip()
+    return "" if t in ("", "none", "plain", "neutral", "normal", "-") else f"[{t}]"
 
 
 def rules(tags: list[str]) -> list[str]:

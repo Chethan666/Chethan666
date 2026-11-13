@@ -39,7 +39,7 @@ same voice. A first-person story (decided from the text) is told by its teller i
 their own, matched to them by the planner (a man, a woman, an older person). Every quoted line
 is read by its speaker in a distinct voice. A third-person story is told by the host throughout.
 
-**Delivery.** A narrator that reads every sentence on its own sounds flat: each one starts again at the same pitch. So the narrator reads a paragraph's sentences in one take (story pauses still break it), and the performance director (the planner model) gives each sentence a v3 tag such as [nervously], [whispers] or [ominously], keeping most sentences plain and whispers rare. Settings: `performance_director`, `voice_takes`, `voice_pace` (1.07: 7% quicker, same pitch) and `voice_gap_scale` (0.8: shorter silences between paragraphs and at story pauses).
+**Delivery.** A narrator that reads every sentence on its own sounds flat: each one starts again at the same pitch. So the narrator reads a paragraph's sentences in one take (story pauses still break it), and the performance director (the planner model) gives each sentence a v3 tag such as [nervously], [whispers] or [ominously], keeping most sentences plain and whispers rare. Settings: `performance_director`, `voice_takes`, `voice_pace` (1.12: 12% quicker, same pitch) and `voice_gap_scale` (0.7: shorter silences between paragraphs and at story pauses).
 
 **Pictures.** One house look for the channel, `stills.look`:
 - `cinematic` (the default): frames of a slow-burn horror film shot on 35mm. Real-looking
