@@ -186,3 +186,65 @@ class LibraryOnly(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StoryboardMatch(unittest.TestCase):
+    def beats(self):
+        texts = ["Just fields, and one dead streetlight.", "I checked the mirror. One passenger.",
+                 "Standing right behind my seat."]
+        return [Shot(index=i, scene=0, t0=i, t1=i + 1, text=t) for i, t in enumerate(texts)]
+
+    def test_pictures_go_to_the_line_they_quote_not_their_number(self):
+        from production.stills.storyboard import match
+        beats = self.beats()
+        items = [{"index": 0, "line": "I checked the mirror. One passenger.", "picture": "mirror"},
+                 {"index": 1, "line": "Standing right behind my seat.", "picture": "behind"},
+                 {"index": 2, "line": "", "picture": "no quote"}]
+        pairs = {b.index: item["picture"] for item, b in match(items, beats)}
+        self.assertEqual(pairs, {1: "mirror", 2: "behind"})  # the unquoted one's number is already taken
+
+    def test_the_check_rewrites_pictures_that_do_not_show_their_line(self):
+        from production.stills import storyboard
+        beats = self.beats()
+        beats[2].picture = "Her pale fingers rest on his headrest."
+        router = SimpleNamespace(one=lambda role: SimpleNamespace(generate_json=lambda *a: {"fix": [
+            {"index": 2, "problem": "the line says standing; the picture shows only fingers",
+             "picture": "She stands right behind the driver's seat, hood up, face hidden.",
+             "characters": ["The Woman in Yellow"]}]}))
+        b = Board(story={}, out=Path("."), work=Path("."), cfg={}, router=router)
+        b.data["cast"] = [{"name": "The Woman in Yellow", "look": "face always hidden"}]
+        report = storyboard.check(b, beats, [], set())
+        self.assertEqual(beats[2].picture, "She stands right behind the driver's seat, hood up, face hidden.")
+        self.assertEqual(beats[2].characters, ["The Woman in Yellow"])
+        self.assertEqual(report["fixed"][0]["beat"], 2)
+
+
+class CorrectedPicture(unittest.TestCase):
+    def test_when_every_painter_is_refused_one_try_is_told_what_was_wrong(self):
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent))
+        from test_stills import painted
+        from production.stills.images import Painter
+
+        with tempfile.TemporaryDirectory() as tmp:
+            prompts, looks = [], []
+
+            class Critic:
+                def look(self, image, picture):
+                    looks.append(picture)
+                    return (len(looks) == 3, "she is leaning, the line says standing")
+
+            class P(Painter):
+                def available(self, step):
+                    return True
+
+                def _one(self, step, prompt, refs, raw, key):
+                    prompts.append(prompt)
+                    return painted(raw, seed=len(prompts)) or raw
+
+            p = P(None, {}, Path(tmp), Critic())
+            out, step = p.paint("She stands behind him.", [], Path(tmp) / "beat.png", "k",
+                                ["fal:shot", "fal:shot_alt"], check="standing")
+            self.assertEqual(step, "fal:shot (corrected)")
+            self.assertIn("Correct this: she is leaning", prompts[-1])
+            self.assertEqual(len(prompts), 3)

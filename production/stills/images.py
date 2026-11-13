@@ -183,7 +183,7 @@ class Painter:
         return False
 
     def paint(self, prompt: str, refs: list[Path], out: Path, key: Any, chain: list[str],
-              check: str | None = None) -> tuple[Path | None, str]:
+              check: str | None = None, correct: bool = True) -> tuple[Path | None, str]:
         """The first picture in the chain that the critic passes (or, failing that, the first one that
         passed the code check). `check` is what the picture should show; None skips the critic."""
         doubted: tuple[Path, str] | None = None
@@ -219,6 +219,21 @@ class Painter:
             with self.lock:
                 self.rejections.append(f"{out.stem} ({step}): {why}")
             log.info("%s from %s rejected (%s); next painter", out.stem, step, why)
+        mine = f"{out.stem} ("
+        last_why = next((r.split("): ", 1)[1] for r in reversed(self.rejections) if r.startswith(mine)), "") \
+            if check is not None and correct else ""
+        first = next((s for s in chain if self.available(s) and s.startswith("fal:")), None)
+        if last_why and first is not None:
+            # Every painter was rejected: one more try that tells the first painter what was wrong,
+            # rather than putting a picture the critic refused into the video.
+            trial = out.with_name(f"{out.stem}_corrected{out.suffix}")
+            before = sum(1 for r in self.rejections if r.startswith(f"{trial.stem} ("))
+            fixed, step = self.paint(f"{prompt} Correct this: {last_why[:300]}", refs, trial,
+                                     [key, "correct", last_why[:120]], [first], check, correct=False)
+            passed = sum(1 for r in self.rejections if r.startswith(f"{trial.stem} (")) == before
+            if fixed is not None and passed:
+                fixed.replace(out)
+                return out, step + " (corrected)"
         if doubted is not None:
             doubted[0].replace(out)
             self._count(doubted[1] + " (doubted)")

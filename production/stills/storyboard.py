@@ -12,6 +12,7 @@ own plan fills the beat in.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from story_factory.llm import LLMError
@@ -31,9 +32,11 @@ SYSTEM = ("You are the storyboard artist of Hollow Lines, a horror storytelling 
 SCHEMA = {
     "type": "object", "required": ["beats"],
     "properties": {"beats": {"type": "array", "items": {
-        "type": "object", "required": ["index", "framing", "picture", "characters", "sound", "scare", "importance"],
+        "type": "object", "required": ["index", "line", "framing", "picture", "characters", "sound", "scare",
+                                       "importance"],
         "properties": {
             "index": {"type": "integer"},
+            "line": {"type": "string"},
             "framing": {"type": "string", "enum": list(FRAMINGS)},
             "picture": {"type": "string"},
             "characters": {"type": "array", "items": {"type": "string"}},
@@ -60,12 +63,15 @@ def prompt(beats: list[Shot], scenes: list[dict[str, Any]], cast: list[dict[str,
                       f"{', '.join(map(str, sc.get('characters') or []))}; mood: {sc.get('mood', '')}; "
                       f"key moment: {bool(sc.get('key_moment'))}\n  plan: {sc.get('visual', '')}\n{lines}")
     return (f"Cast (fixed designs): {cast_text}\nThe story's red accent: {red or 'none'}\n\n" + "\n\n".join(blocks) +
-            "\n\nStage every beat listed above as ONE still picture (use its number as index):\n"
+            "\n\nStage every beat listed above as ONE still picture, one entry per beat, in order:\n"
+            "- index: the beat's number; line: the beat's narrated words, copied exactly (this is how your "
+            "picture is matched to its words: a picture belongs to its own line, never the next one)\n"
             "- framing: vary it within a scene (establish wide, then medium, close, insert); never the same "
             "framing three times in a row\n"
             "- picture: two concrete sentences a cinematographer can shoot: who is where, doing what, with what "
             "expression and body language, the setting with its few telling objects, the light source, and "
-            "where the red accent is if it is in frame. Show the exact moment the words describe. Keep the "
+            "where the red accent is if it is in frame. Show exactly what THIS beat's words describe (the same "
+            "action, pose and place: 'standing behind' is standing, not leaning), nothing from a later line. Keep the "
             "threat half-seen: a silhouette, a shape in a doorway, eyes in the dark, placed off-centre. "
             f"Beats marked [HOST] show {HOST}, the channel's host, in his place between the worlds, speaking "
             "to us; describe him with the moment's mood\n"
@@ -98,11 +104,15 @@ class StoryboardAgent:
                              f"\"{b.text[:160]}\"")
         names = [str(c.get("name")) for c in d["cast"] if c.get("name")] + [HOST]
         directed = self._direct(board, beats, scenes, names, host_beats)
+        left = [b for b in beats if not b.directed]
+        if left and directed:  # the model skipped some: ask again for just those
+            directed += self._direct(board, left, scenes, names, host_beats)
+        checked = check(board, beats, scenes, host_beats)
         for b in beats:
             b.tier = "still"
         d.update(beats=beats, host_beats=host_beats)
         return {"beats": len(beats), "directed_by_model": directed, "host_beats": len(host_beats),
-                "scares": sum(1 for b in beats if b.scare),
+                "scares": sum(1 for b in beats if b.scare), "check": checked,
                 "average_seconds": round(timeline.duration / max(len(beats), 1), 1)}
 
     def _host_beats(self, beats: list[Shot], timeline: Any, d: dict[str, Any]) -> set[int]:
@@ -133,10 +143,8 @@ class StoryboardAgent:
             except (LLMError, ValueError, TypeError) as exc:
                 log.warning("Storyboard for scenes %s from the scene plan: %s", sorted(wanted), exc)
                 continue
-            by_index = {b.index: b for b in group}
-            for item in result.get("beats", []) if isinstance(result, dict) else []:
-                beat = by_index.get(item.get("index")) if isinstance(item, dict) else None
-                if beat is None or not str(item.get("picture", "")).strip():
+            for item, beat in match(result.get("beats", []) if isinstance(result, dict) else [], group):
+                if beat.directed or not str(item.get("picture", "")).strip():
                     continue
                 beat.framing = item.get("framing") if item.get("framing") in FRAMINGS else beat.framing
                 beat.picture = str(item["picture"]).strip()[:700]
@@ -153,3 +161,81 @@ class StoryboardAgent:
                 beat.directed = True
                 got += 1
         return got
+
+
+def _words(text: str) -> list[str]:
+    return re.findall(r"[a-z0-9']+", text.lower())
+
+
+def match(items: list[Any], group: list[Shot]) -> list[tuple[dict[str, Any], Shot]]:
+    """Each staged picture with the beat whose words it quotes. Run 94: the model numbered its
+    pictures one beat late, so matching by number put every picture under the line before it."""
+    out = []
+    taken: set[int] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        quoted = _words(str(item.get("line", "")))
+        best, score = None, 0.0
+        for b in group:
+            if b.index in taken:
+                continue
+            words = _words(b.text)
+            if not words or not quoted:
+                continue
+            same = sum(1 for w in quoted if w in words) / max(len(quoted), len(words))
+            if same > score:
+                best, score = b, same
+        if best is None or score < 0.6:  # no clear quote: fall back to the number
+            best = next((b for b in group if b.index == item.get("index") and b.index not in taken), None)
+            if best is None:
+                continue
+        taken.add(best.index)
+        out.append((item, best))
+    return out
+
+
+CHECK_SYSTEM = ("You are the script supervisor of Hollow Lines, a horror channel told in still pictures over a "
+                "narrator. You make sure every picture shows exactly what is being said while it is on screen. "
+                "Answer with JSON only.")
+CHECK_SCHEMA = {"type": "object", "required": ["fix"], "properties": {"fix": {"type": "array", "items": {
+    "type": "object", "required": ["index", "problem", "picture"],
+    "properties": {"index": {"type": "integer"}, "problem": {"type": "string"}, "picture": {"type": "string"},
+                   "characters": {"type": "array", "items": {"type": "string"}}}}}}}
+
+
+def check(board: Board, beats: list[Shot], scenes: list[dict[str, Any]], host_beats: set[int]) -> dict[str, Any]:
+    """The storyboard gate, before any picture is paid for: every picture description is held
+    against its narrated line, the lines before it and the cast's fixed looks; the ones that
+    don't match are rewritten. A description costs nothing to fix; a picture does."""
+    if board.router is None or not beats:
+        return {"checked": False}
+    cast = "; ".join(f"{c.get('name')}: {c.get('look', '')}" for c in board.data.get("cast", []) if c.get("name"))
+    rows = "\n".join(f"{b.index}. LINE: \"{b.text}\"\n   PICTURE: {b.picture}\n   PEOPLE: "
+                     f"{', '.join(b.characters) or 'none'}" for b in beats if b.index not in host_beats)
+    text = (f"Cast (fixed looks): {cast or 'none'}\n\n{rows}\n\nEach PICTURE is on screen while its LINE is "
+            "narrated. Find every picture that does not show what its own line says: a different action or pose "
+            "(the line says standing, the picture says leaning or only a hand), a different place, something from "
+            "an earlier or later line instead of this one, a person the line does not involve, or a person's fixed "
+            "look broken (a face the cast notes hide must stay hidden). For each, give the problem and a new "
+            "PICTURE in the same style (two concrete sentences: who is where doing what, the light, the threat "
+            "half-seen) that shows exactly this line, and its PEOPLE. Leave pictures that match out. "
+            '{"fix": [{"index": N, "problem": "...", "picture": "...", "characters": [...]}]}')
+    try:
+        result = board.router.one("planner").generate_json("storyboard_check", CHECK_SYSTEM, text, CHECK_SCHEMA)
+    except (LLMError, ValueError, TypeError) as exc:
+        log.warning("Storyboard check unavailable: %s", exc)
+        return {"checked": False}
+    names = [str(c.get("name")) for c in board.data.get("cast", []) if c.get("name")]
+    by_index = {b.index: b for b in beats if b.index not in host_beats}
+    fixed = []
+    for f in result.get("fix", []) if isinstance(result, dict) else []:
+        beat = by_index.get(f.get("index")) if isinstance(f, dict) else None
+        picture = str((f or {}).get("picture", "")).strip() if isinstance(f, dict) else ""
+        if beat is None or len(picture) < 20:
+            continue
+        beat.picture = picture[:700]
+        if isinstance(f.get("characters"), list):
+            beat.characters = [shotlist._canonical(str(n), names + [HOST]) for n in f["characters"] if str(n).strip()][:3]
+        fixed.append({"beat": beat.index, "problem": str(f.get("problem", ""))[:200]})
+    return {"checked": True, "fixed": fixed}

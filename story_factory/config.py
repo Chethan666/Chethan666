@@ -334,8 +334,9 @@ DEFAULTS: dict[str, Any] = {
         # phone, an old photo); otherwise every beat is a film frame. Only used with the cinematic look.
         "cameras": {
             "film": "",
-            "cctv": ("Seen on a security camera: high fixed corner angle, wide lens distortion, grainy "
-                     "monochrome night-vision greys, soft focus, no timestamp or text"),
+            "cctv": ("Seen on a security camera at night: high fixed corner angle, wide lens distortion, grainy "
+                     "dark monochrome night-vision, mostly black with dim grey shapes, soft focus, no timestamp "
+                     "or text; as dark as the rest of the film, never bright or evenly lit"),
             "phone": ("A phone photo taken in the dark: harsh direct flash, blown highlights close to the lens, "
                       "deep black behind, slight motion blur, tilted framing"),
             "polaroid": ("An old instant photograph: faded warm colours, soft focus, light leaks at one edge, "
@@ -375,8 +376,9 @@ DEFAULTS: dict[str, Any] = {
         "model_args": {
             "reference": {"aspect_ratio": "16:9", "num_images": 1},
             "sheet": {"aspect_ratio": "16:9", "num_images": 1},
-            "shot": {"image_size": "landscape_16_9", "num_images": 1},
-            "shot_text": {"image_size": "landscape_16_9", "num_images": 1},
+            # 2560x1440: the "landscape_16_9" preset is a small picture that went soft at 1080p (run 94).
+            "shot": {"image_size": {"width": 2560, "height": 1440}, "num_images": 1},
+            "shot_text": {"image_size": {"width": 2560, "height": 1440}, "num_images": 1},
             "shot_alt": {"aspect_ratio": "16:9", "num_images": 1},
             "thumbnail": {"aspect_ratio": "16:9", "num_images": 1},
             "voice": {"stability": 0.5},

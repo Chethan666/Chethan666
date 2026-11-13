@@ -185,7 +185,9 @@ class IllustratorAgent:
     def check_text(beat: Shot, cast: dict[str, str]) -> str:
         """What the critic compares the picture with: the moment, and each named person's design."""
         people = "; ".join(f"{n}: {cast[n]}" for n in beat.characters if cast.get(n))
-        return beat.picture + (f" People in it: {people}" if people else "")
+        return (beat.picture + (f" People in it: {people}" if people else "")
+                + f" | The narrator says over it: \"{beat.text[:200]}\" - fail the picture if it shows a "
+                "different action, pose or place than these words.")
 
     def run(self, board: Board) -> dict[str, Any]:
         cfg, d = board.cfg, board.data
