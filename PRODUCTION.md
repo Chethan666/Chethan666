@@ -52,8 +52,36 @@ painters need no fal key: Cloudflare Workers AI's FLUX.1 schnell (secrets `CF_AC
 `CF_API_TOKEN`; 10,000 free neurons a day, roughly 170 pictures; square output, cropped to
 16:9; text only, so characters vary more) and Pollinations (keyless, slow, no guarantee).
 
-**Cost.** About $5-8 for an 8.5-minute story with `FAL_KEY` (about 50-70 beats at $0.04-0.08,
-references $0.5, voices about $1, music and effects about $1-2, checks a few cents), capped by
+**Sound library.** Music, room tones, effects and stings come first from the channel's own
+library (`production/library.py`), published as the GitHub release `sound-library`: a catalogue
+(`library.json`, one entry per sound with its kind, moods, intensity, tags, length, license,
+source page and credit line) and one Ogg file per sound. The sound director lists every need
+(a cue per mood, a room tone per place, an effect per beat, the sting), searches the catalogue
+for a short list per need, and the planner model picks one or none from each list. Picks cost
+nothing; only what the library lacks is generated, and those sounds are added to the library
+after the run (the workflow's "Save this video's new sounds" step), so each sound is paid for
+once. The least-used tracks are preferred, so videos don't all sound alike. CC BY credit lines
+(Kevin MacLeod's) go into the video description automatically.
+
+Build or extend it with the workflow's `sound-library` mode (free; about 20-40 minutes) or
+`sound-library-music` (also 9 ACE-Step score cues on fal.ai, about $0.25). Sources are listed in
+`sounds/sources.json`:
+
+| Source | What | License |
+|---|---|---|
+| Kevin MacLeod (incompetech) | dark, suspenseful and intense tracks | CC BY 4.0, credit line added automatically |
+| OpenGameArt | horror music, ambiences and effects, hand-picked pages and searches | CC0 or CC BY only (checked per page) |
+| Free Music Archive (Hugging Face dataset) | instrumental tracks in dark genres | CC0 or CC BY only (checked per track) |
+| Sonniss GDC bundle part (optional) | professional effects and ambiences | royalty-free, no credit; paste a part's zip URL and enable it |
+| ACE-Step on fal.ai (optional) | score cues for each mood | generated, ours |
+
+Non-commercial, no-derivatives and share-alike files are never added. `python -m production
+library show` lists what the library holds. Settings: `stills.sound_library` (turn it off,
+use a local folder, never generate, how close an effect must match).
+
+**Cost.** About $4-6 for an 8.5-minute story with `FAL_KEY` (about 50-70 beats at $0.04-0.08,
+references $0.5, voices about $1, checks a few cents, and music and effects about $0-0.5 from the
+sound library; generating all of it instead costs about $7-8 more, mostly music), capped by
 `stills.max_usd` (default $10). Free without any key, at lower quality.
 
 **Outputs:** `video.mp4` (1080p), `thumbnail_1-3.jpg`, `short_1-2.mp4`, `captions.srt`,

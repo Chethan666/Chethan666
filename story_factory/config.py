@@ -385,7 +385,8 @@ DEFAULTS: dict[str, Any] = {
             "fal-ai/nano-banana-2": 0.08, "fal-ai/nano-banana-2/edit": 0.08,
             "fal-ai/bytedance/seedream/v4.5/edit": 0.04, "fal-ai/bytedance/seedream/v4.5/text-to-image": 0.04,
             "fal-ai/elevenlabs/tts/eleven-v3": 0.10, "fal-ai/elevenlabs/sound-effects/v2": 0.002,
-            "fal-ai/elevenlabs/music": 0.01, "fal-ai/any-llm/vision": 0.002,
+            # ElevenLabs music on fal: $0.80 a minute, billed in whole minutes (the score rounds up).
+            "fal-ai/elevenlabs/music": 0.80 / 60, "fal-ai/any-llm/vision": 0.002,
         },
         # Voices. The host reads the intro and outro; a first-person story's teller gets a voice
         # matched to them; characters get distinct voices by kind. Kokoro names are the free fallback.
@@ -407,6 +408,18 @@ DEFAULTS: dict[str, Any] = {
         "parallel": 4, "render_workers": 3, "max_effects": 30,
         "cold_open": True, "title_seconds": 3.0, "end_screen_seconds": 20.0,
         "burn_captions": False, "shorts": 2, "short_max_seconds": 55.0, "thumbnails": 3,
+        # The channel's sound library (production/library.py; built by the sound-library workflow
+        # from Kevin MacLeod, OpenGameArt CC0, the Free Music Archive, Sonniss packs and ACE-Step).
+        # The sound director picks from it first; only what it lacks is generated, and saved back.
+        "sound_library": {
+            "enabled": True,
+            "repo": "",  # owner/name of the GitHub repo holding the release; "" = this repository
+            "release_tag": "sound-library",
+            "local_dir": "",  # a folder with library.json and the files, instead of the release
+            "min_score": 0.55,  # how well an effect must match its description to be used
+            "generate_missing": True,  # False: never pay for sound (missing sounds are synthesized)
+            "save_generated": True,  # paid-for sounds go into the library after the run
+        },
         # YouTube's "altered or synthetic content" flag: None follows the look (on for cinematic).
         "loudness_lufs": -14.0, "synthetic_media": None,
     },

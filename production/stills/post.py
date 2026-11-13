@@ -15,10 +15,12 @@ import soundfile
 from .. import assemble, draw, edit, package, shots as shotlist, timing
 from ..edit import FPS, Segment, _ff, probe
 from ..look import W, H
+from ..library import Library
 from ..score import Score
 from ..shots import Shot
 from .board import Board
 from .images import Painter
+from . import sounds
 
 log = logging.getLogger(__name__)
 
@@ -66,7 +68,11 @@ class EditPlanAgent:
 
 
 class SoundAgent:
-    """Score cues that follow the tension, room tone per place, effects, a stinger per scare."""
+    """Score cues that follow the tension, room tone per place, effects, a stinger per scare.
+
+    Sounds come from the channel's sound library first (picked by the planner from a short
+    list per need); only what the library cannot cover is generated, and that is saved for
+    the library afterwards."""
 
     name = "sound"
     critical = False
@@ -76,6 +82,21 @@ class SoundAgent:
         score = Score(board.studio, board.work / "sound", d["rate"], int(board.cfg.get("parallel", 4)))
         score.cue_names = list(board.cfg.get("music_cues") or score.cue_names)
         score.min_music = float(board.cfg.get("music_min_seconds", 60.0))
+        lib_cfg = dict(board.cfg.get("sound_library") or {})
+        library_report: dict[str, Any] = {"used": False}
+        library = None
+        if lib_cfg.get("enabled", True):
+            library = Library.load(lib_cfg, board.work / "library")
+        if library is not None and library.sounds:
+            chosen, library_report = sounds.pick(board, library, score.cue_names,
+                                                 int(board.cfg.get("max_effects", 30)),
+                                                 float(lib_cfg.get("min_score", 0.55)))
+            score.chosen = sounds.fetch_all(library, chosen, int(board.cfg.get("parallel", 4)))
+            used = [chosen[n].id for n in score.chosen]
+            d["sounds_used"] = used
+            d["credits"] = library.credits(used)
+            library_report.update(used=True, fetched=len(score.chosen), credits=len(d["credits"]))
+        score.generate_missing = bool(lib_cfg.get("generate_missing", True))
         stings = [d["cold_seconds"]] if d["cold"] and d["title_seconds"] else []
         try:
             mixed = score.mix(d["track"], d["speech"], d["beats"], d["offset"], d["scenes"], {}, stings=stings,
@@ -87,7 +108,10 @@ class SoundAgent:
         board.data["mix"] = board.work / "mix.wav"
         soundfile.write(board.data["mix"], mixed, d["rate"])
         soundfile.write(board.out / "narration.wav", d["audio"], d["rate"])
-        return dict(score.report)
+        saved = sounds.save_generated(score.generated, board.out, board.story) \
+            if lib_cfg.get("save_generated", True) else 0
+        (board.out / "sounds_used.json").write_text(json.dumps(d.get("sounds_used", [])))
+        return dict(score.report, library=library_report, generated=len(score.generated), saved_for_library=saved)
 
 
 def render(seg: Segment, work: Path, motion: str) -> str:
@@ -212,6 +236,8 @@ class PackagerAgent:
         package.preview(d["video"], board.out / "preview_60s.mp4")
         chapters = shotlist.chapters(board.router, d["scenes"], beats, d["offset"])
         description = str(d["packaging"].get("description", ""))
+        if d.get("credits"):  # CC BY music and sounds: the credit lines their licenses ask for
+            description += "\n\nMusic and sound:\n" + "\n".join(d["credits"])
         if chapters:
             description += "\n\n" + "\n".join(f"{shotlist.stamp(t)} {name}" for t, name in chapters)
         story = board.story
@@ -221,6 +247,7 @@ class PackagerAgent:
             "pinned_comment": d["packaging"].get("pinned_comment", "") or story.get("comment_question", ""),
             "end_screen_line": d["end_line"], "credit": story.get("description_credit", ""), "made_for_kids": False,
             "duration_seconds": round(d["total"], 1), "chapters": [[round(t, 1), n] for t, n in chapters],
+            "sound_credits": d.get("credits", []), "sounds_used": d.get("sounds_used", []),
             "thumbnails": [p.name for p in thumbs], "shorts": [p.name for p in shorts],
             "shorts_windows": [[round(a, 1), round(b, 1)] for a, b in windows],
             "end_screen_starts": round(d["offset"] + d["story_seconds"], 1),

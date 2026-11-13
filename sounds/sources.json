@@ -1,0 +1,253 @@
+{
+  "_about": "Free, commercially usable sources for the channel's sound library, built by .github/workflows/sound-library.yml. Only CC0, CC BY, Sonniss and generated sounds are ever added; non-commercial, no-derivatives and share-alike files are skipped automatically. A source that fails is skipped. Edit freely: add pages, titles or packs, then run the workflow again (it adds to the existing library).",
+  "sources": [
+    {
+      "type": "incompetech",
+      "name": "Kevin MacLeod (CC BY 4.0, credit added to each video's description)",
+      "catalogue": "https://incompetech.com/music/royalty-free/pieces.json",
+      "files": "https://incompetech.com/music/royalty-free/mp3-royaltyfree/",
+      "feels": [
+        "dark",
+        "mysterious",
+        "suspenseful",
+        "unnerving",
+        "eerie",
+        "somber",
+        "intense",
+        "tense",
+        "ominous",
+        "haunting",
+        "creepy"
+      ],
+      "genres": [
+        "horror",
+        "dark ambient",
+        "soundtrack"
+      ],
+      "exclude_feels": [
+        "bright",
+        "happy",
+        "uplifting",
+        "humorous",
+        "bouncy",
+        "playful",
+        "romantic",
+        "silly",
+        "funny"
+      ],
+      "max": 70,
+      "titles": [
+        "Gathering Darkness",
+        "Darkest Child",
+        "Lightless Dawn",
+        "Dark Fog",
+        "Long Note One",
+        "Long Note Two",
+        "Long Note Three",
+        "Long Note Four",
+        "Ossuary 1 - A Beginning",
+        "Ossuary 2 - Turn",
+        "Ossuary 5 - Rest",
+        "Ossuary 6 - Air",
+        "Unseen Horrors",
+        "Anxiety",
+        "Echoes of Time",
+        "Static Motion",
+        "Giant Wyrm",
+        "Dark Times",
+        "Night of Chaos",
+        "Evening of Chaos",
+        "Penumbra",
+        "Ghost Story",
+        "Gloom Horizon",
+        "Oppressive Gloom",
+        "Hush",
+        "Ghostpocalypse - 1 Arrival",
+        "Despair and Triumph",
+        "Dread March",
+        "Suspended Animation",
+        "Classic Horror 1",
+        "Classic Horror 2",
+        "Classic Horror 3",
+        "Bump in the Night",
+        "Come Play with Me",
+        "Corruption",
+        "Decisions",
+        "Deep Haze",
+        "Drone Horror",
+        "Echoes of Time v2",
+        "Final Count",
+        "Hiding Your Reality",
+        "Ice Demon",
+        "Industrial Cinematic",
+        "Killers",
+        "Midnight Tale",
+        "Mystery Sax",
+        "Night Cave",
+        "Not As It Seems",
+        "Phantom from Space",
+        "Return of Lazarus",
+        "Satiate - Only Strings",
+        "Sinister",
+        "Stay the Course",
+        "Swamp Fever",
+        "The Hive",
+        "The Descent",
+        "Truth of the Legend",
+        "Unholy Knight",
+        "Village Consort",
+        "Wretched Destroyer"
+      ]
+    },
+    {
+      "type": "opengameart",
+      "name": "OpenGameArt horror music (hand-picked pages; licenses checked per page)",
+      "kind": "music",
+      "pages": [
+        "https://opengameart.org/content/ambient-horror-track-01",
+        "https://opengameart.org/content/ambience-pack-1-sci-fi-horror",
+        "https://opengameart.org/content/a-lurking-evil-horror-ambience",
+        "https://opengameart.org/content/horror-loop",
+        "https://opengameart.org/content/horror-cliche",
+        "https://opengameart.org/content/music-horror",
+        "https://opengameart.org/content/terrifying-emotional-pack",
+        "https://opengameart.org/content/ambient-sound-creepy"
+      ],
+      "collections": [
+        "https://opengameart.org/content/horror-tracks"
+      ],
+      "searches": [
+        "https://opengameart.org/art-search-advanced?keys=horror&field_art_type_tid%5B%5D=12&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=dark+ambient&field_art_type_tid%5B%5D=12&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=creepy&field_art_type_tid%5B%5D=12&sort_by=count&sort_order=DESC"
+      ],
+      "max_pages": 45,
+      "max_files_per_page": 6
+    },
+    {
+      "type": "opengameart",
+      "name": "OpenGameArt horror sound effects and ambiences",
+      "kind": "sfx",
+      "pages": [
+        "https://opengameart.org/content/dark-ambiences"
+      ],
+      "searches": [
+        "https://opengameart.org/art-search-advanced?keys=horror&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=door+creak&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=footsteps&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=ambience&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=scary&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=rain&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=wind&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC"
+      ],
+      "max_pages": 50,
+      "max_files_per_page": 6
+    },
+    {
+      "type": "fma",
+      "name": "Free Music Archive: CC0 / CC BY instrumental tracks in dark genres (Hugging Face dataset)",
+      "dataset": "benjamin-paine/free-music-archive-full",
+      "genres": [
+        "ambient",
+        "drone",
+        "dark",
+        "soundtrack",
+        "experimental",
+        "noise",
+        "sound art",
+        "musique",
+        "industrial",
+        "minimal"
+      ],
+      "max": 30,
+      "scan": 40000,
+      "minutes": 25
+    },
+    {
+      "type": "zip",
+      "name": "sonniss-gdc",
+      "enabled": false,
+      "_how": "Sonniss GDC Game Audio Bundles: royalty-free, commercial use, no credit (training AI on them is not allowed; we only play them). Download links change each year: paste one part's direct .zip URL here, set enabled to true, and narrow `include` to the sounds you want.",
+      "url": "",
+      "page": "https://sonniss.com/gameaudiogdc",
+      "license": "sonniss",
+      "kind": "sfx",
+      "include": "door|creak|footstep|knock|wind|rain|thunder|whisper|heart|clock|phone|glass|drip|hum|room|forest|night|scream|impact|hit|riser|drone",
+      "max": 200
+    },
+    {
+      "type": "acestep",
+      "name": "ACE-Step on fal.ai: newly made score cues (only when the workflow is started with generate_music)",
+      "model": "fal-ai/ace-step/prompt-to-audio",
+      "usd_per_second": 0.0002,
+      "args": {
+        "instrumental": true
+      },
+      "tracks": [
+        {
+          "mood": "unease",
+          "intensity": 2,
+          "seconds": 150,
+          "title": "Hollow Unease I",
+          "prompt": "dark ambient horror soundtrack, slow evolving low drone, distant detuned piano notes, soft eerie synth textures, sparse, patient, no drums, instrumental"
+        },
+        {
+          "mood": "unease",
+          "intensity": 2,
+          "seconds": 150,
+          "title": "Hollow Unease II",
+          "prompt": "minimal dark ambient, sub-bass hum, faint metallic resonances, breathy noise swells, lonely and cold, no melody, no drums, instrumental"
+        },
+        {
+          "mood": "unease",
+          "intensity": 1,
+          "seconds": 150,
+          "title": "Hollow Unease III",
+          "prompt": "haunting music box melody slowed down, tape hiss, reverb, melancholy and unsettling, very quiet, instrumental"
+        },
+        {
+          "mood": "dread",
+          "intensity": 3,
+          "seconds": 150,
+          "title": "Hollow Dread I",
+          "prompt": "tense horror score, slow heartbeat-like sub pulse, rising dissonant synth pads, creeping and suspenseful, dark electronic, instrumental"
+        },
+        {
+          "mood": "dread",
+          "intensity": 3,
+          "seconds": 150,
+          "title": "Hollow Dread II",
+          "prompt": "cinematic dark suspense, low cello drone, ticking pulse, uneasy string clusters slowly rising, instrumental"
+        },
+        {
+          "mood": "dread",
+          "intensity": 4,
+          "seconds": 150,
+          "title": "Hollow Dread III",
+          "prompt": "industrial dark ambient, distant mechanical rumble, pulsing low synth, menacing and claustrophobic, instrumental"
+        },
+        {
+          "mood": "terror",
+          "intensity": 5,
+          "seconds": 120,
+          "title": "Hollow Terror I",
+          "prompt": "intense horror climax, pounding low percussion, aggressive distorted synth bass, screeching dissonant textures, frantic, instrumental"
+        },
+        {
+          "mood": "terror",
+          "intensity": 5,
+          "seconds": 120,
+          "title": "Hollow Terror II",
+          "prompt": "frantic horror chase score, fast pulsing strings ostinato, brass stabs, rising panic, dark orchestral, instrumental"
+        },
+        {
+          "mood": "terror",
+          "intensity": 4,
+          "seconds": 120,
+          "title": "Hollow Terror III",
+          "prompt": "dark electronic horror, glitching noise bursts over a relentless low pulse, chaotic and terrifying, instrumental"
+        }
+      ]
+    }
+  ]
+}

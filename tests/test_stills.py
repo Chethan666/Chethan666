@@ -81,6 +81,7 @@ def cfg(**over):
     from story_factory.config import DEFAULTS
 
     c = copy.deepcopy(DEFAULTS["stills"])
+    c["sound_library"] = dict(c["sound_library"], enabled=False)  # no release downloads in tests
     c.update({"end_screen_seconds": 3.0, "title_seconds": 2.0, "max_usd": 5.0, "parallel": 2, "pollinations": False,
               "beat_min_seconds": 2.0, "beat_max_seconds": 5.0}, **over)
     return c

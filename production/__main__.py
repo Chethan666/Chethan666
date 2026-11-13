@@ -66,6 +66,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--drawn", action="store_true", help="the old drawn chalk pipeline")
     p.add_argument("--studio", action="store_true", help="the old chalk studio mode with moving clips")
     p.add_argument("--max-usd", type=float, help="studio spending cap for this video")
+    lib = sub.add_parser("library", help="the sound library: build it from free sources, sync, or show it")
+    lib.add_argument("action", choices=("build", "sync", "show"))
+    lib.add_argument("--sources", default="sounds/sources.json")
+    lib.add_argument("--out", default="build/library", help="where new files and library.json are written")
+    lib.add_argument("--existing", help="the current library.json (default: downloaded from the release)")
+    lib.add_argument("--only", default="", help="comma-separated source types to run (e.g. incompetech,opengameart)")
+    lib.add_argument("--generate-music", action="store_true", help="also make the ACE-Step cues (paid, capped)")
+    lib.add_argument("--max-usd", type=float, default=1.0, help="cap for --generate-music")
+    lib.add_argument("--runs", nargs="*", default=[], help="sync: video output folders (each with sounds_used.json)")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
@@ -76,6 +85,8 @@ def main(argv: list[str] | None = None) -> int:
                      stills.get("model_args", {}))
     if args.command in ("vast-check", "vast-cleanup"):
         return vast_admin(args.command)
+    if args.command == "library":
+        return library(args, cfg)
     conn = db.connect(cfg["database"])
     if args.command == "bakeoff":
         return bakeoff(args, cfg, conn)
@@ -322,6 +333,45 @@ ALTERNATES = [
     "fal-ai/minimax-music/v2", "fal-ai/lyria2", "beatoven/music-generation", "fal-ai/ace-step/prompt-to-audio",
     "openrouter/router/vision", "fal-ai/any-llm/vision", "fal-ai/imageutils/depth",
 ]
+
+
+def library(args: argparse.Namespace, cfg: dict) -> int:
+    """Build, sync or show the sound library (production/library.py)."""
+    from . import library_build
+    from .library import Library, read_catalogue, release_base
+
+    lib_cfg = dict(cfg.get("stills", {}).get("sound_library") or {})
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    existing = Path(args.existing) if args.existing else None
+    if existing is None:
+        base = release_base(lib_cfg)
+        got = out.parent / "library-current.json"
+        try:
+            if not base:
+                raise ValueError("no repository known (set GITHUB_REPOSITORY or stills.sound_library.repo)")
+            got.write_bytes(library_build.fetch(f"{base}/library.json"))
+            existing = got
+        except Exception as exc:  # noqa: BLE001 - the first build starts an empty library
+            print(f"No current library ({str(exc)[:120]}); starting a new one")
+    if args.action == "show":
+        sounds = read_catalogue(existing) if existing else []
+        lib = Library(sounds, out, out)
+        print(json.dumps({"total": len(lib.sounds), "by_kind": lib.summary()}, indent=2))
+        for s in sorted(lib.sounds, key=lambda s: (s.kind, s.title))[:400]:
+            print(f"{s.kind:8} {s.seconds:6.1f}s  {','.join(s.moods):14} {s.license:10} uses {s.uses:3}  {s.title}")
+        return 0
+    if args.action == "sync":
+        print(json.dumps(library_build.sync([Path(r) for r in args.runs], existing, out), indent=2))
+        return 0
+    fal = None
+    if args.generate_music and os.environ.get("FAL_KEY"):
+        from .media import Fal
+        fal = Fal()
+    only = {x.strip() for x in args.only.split(",") if x.strip()} or None
+    summary = library_build.build(Path(args.sources), out, existing, only, fal, args.max_usd)
+    print(json.dumps(summary, indent=2))
+    return 0
 
 
 def check(studio: dict, extra: dict | None = None, extra_args: dict | None = None) -> int:

@@ -19,6 +19,10 @@
 #               Vast.ai GPU (capped by `overrides`, e.g. vast.max_usd=12; default $12), saved as video-<run number>
 #   mode=video-vast-check: the Vast.ai balance and the best GPU offers (no spend)
 #   mode=video-check: pipeline 2 lists what each studio model on fal.ai expects (no spend)
+#   mode=sound-library: builds or extends the channel's sound library (published as the GitHub release
+#               "sound-library") from free sources in sounds/sources.json: Kevin MacLeod, OpenGameArt CC0,
+#               the Free Music Archive (and a Sonniss pack if one is listed). No paid calls.
+#   mode=sound-library-music: the same, plus 9 score cues made with ACE-Step on fal.ai (about $0.25, capped at $1)
 #   mode=video: pipeline 2 turns the next approved story (or story_id) into a stills video (painted
 #               pictures, host + teller + character voices, music; made by the agent team in
 #               production/stills), saved as an artifact named video-<run number> for 14 days.
@@ -36,7 +40,7 @@ on:
       mode:
         description: "check = tests and model access only; story = generate one story; video = make the next approved story's video; bench = compare two model setups; recheck = re-check approved legends"
         type: choice
-        options: [check, story, video, video-test, video-vast, video-vast-check, video-check, video-bakeoff, video-approve, video-reject, video-publish, video-stats, video-share, bench, recheck]
+        options: [check, story, video, video-test, sound-library, sound-library-music, video-vast, video-vast-check, video-check, video-bakeoff, video-approve, video-reject, video-publish, video-stats, video-share, bench, recheck]
         default: check
       series:
         description: Series to generate in story mode
@@ -203,6 +207,41 @@ jobs:
           status=${PIPESTATUS[0]}
           { echo '## Video'; echo '```'; tail -c 60000 video-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           exit $status
+
+      - name: Save this video's new sounds into the sound library
+        # Sounds the library lacked were generated (and paid for) once: they are added to the library so
+        # later videos reuse them, and the library sounds used are counted (the least used are preferred).
+        if: success() && (env.MODE == 'video' || env.MODE == 'video-test')
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mapfile -t RUNS < <(find out -name sounds_used.json -printf '%h\n' | sort -u)
+          if [ "${#RUNS[@]}" -eq 0 ]; then echo "No sound report"; exit 0; fi
+          if ! gh release view sound-library >/dev/null 2>&1; then echo "No sound library yet (run mode sound-library)"; exit 0; fi
+          python -m production --config "$CONFIG" library sync --runs "${RUNS[@]}" --out build/library-sync
+          gh release upload sound-library build/library-sync/* --clobber
+
+      - name: Build the sound library
+        if: startsWith(env.MODE, 'sound-library')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          pip install -q numpy soundfile datasets
+          GEN=()
+          if [ "$MODE" = sound-library-music ]; then GEN=(--generate-music --max-usd 1); fi
+          python -m production --config "$CONFIG" library build "${GEN[@]}" --out build/library 2>&1 | tee library.txt
+          if ! gh release view sound-library >/dev/null 2>&1; then
+            gh release create sound-library --title "Sound library" --latest=false \
+              --notes "The channel's music and sound library, built from sounds/sources.json. library.json is the catalogue; CREDITS.md lists every source and license."
+          fi
+          FILES=(build/library/*)
+          echo "Uploading ${#FILES[@]} files"
+          gh release upload sound-library "${FILES[@]}" --clobber
+          python -m production --config "$CONFIG" library show --existing build/library/library.json --out build/show | head -80 > library-show.txt
+          { echo '## Sound library'; echo '```'; tail -c 30000 library.txt; echo; cat library-show.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Give back any Vast.ai machine this run rented
         if: always() && env.MODE == 'video-vast'

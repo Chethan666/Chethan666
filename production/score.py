@@ -11,6 +11,7 @@ generated sound fails, the synthesized drone and cues from `sound.py` fill in.
 from __future__ import annotations
 
 import logging
+import math
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -52,15 +53,29 @@ class Score:
         self.studio, self.work, self.rate, self.parallel = studio, work, rate, parallel
         self.cue_names = list(CUES)  # which score cues to generate (fewer is cheaper)
         self.min_music = 60.0  # shortest cue generated, in seconds
+        # Sounds picked from the library by the sound director, by name (music_dread, room_<place>,
+        # fx_007, sting): used instead of generating. `generate_missing` False never pays for sound.
+        self.chosen: dict[str, Path] = {}
+        self.generate_missing = True
+        self.generated: list[dict[str, Any]] = []  # what was paid for, to be saved into the library
         self.report: dict[str, Any] = {"music": [], "ambience": 0, "effects": 0, "foley": 0, "synthesized": []}
         work.mkdir(parents=True, exist_ok=True)
 
     # --- generated sounds -----------------------------------------------------------
     def _gen(self, role: str, args: dict[str, Any], name: str, units: float = 1.0) -> np.ndarray | None:
-        if self.studio is None or role not in self.studio.models:
+        picked = self.chosen.get(name)
+        if picked is not None:
+            try:
+                return decode(picked, self.rate)
+            except MediaError as exc:
+                log.warning("Library sound for %s unreadable: %s", name, str(exc)[:120])
+        if not self.generate_missing or self.studio is None or role not in self.studio.models:
             return None
         try:
             path = self.studio.call(role, args, "audio", self.work / f"{name}.mp3", f"sound_{role}", units=units)
+            self.generated.append({"name": name, "role": role, "path": path,
+                                   "text": str(args.get("prompt") or args.get("text") or ""),
+                                   "loop": bool(args.get("loop")), "model": self.studio.models.get(role, "")})
             return decode(path, self.rate)
         except (MediaError, OverBudget) as exc:
             log.warning("Sound %s not generated: %s", name, str(exc)[:200])
@@ -71,7 +86,8 @@ class Score:
         def one(item: tuple[str, str]) -> tuple[str, np.ndarray | None]:
             key, prompt = item
             return key, self._gen("music", {"prompt": prompt, "music_length_ms": length * 1000,
-                                            "force_instrumental": True}, f"music_{key}", units=length)
+                                            "force_instrumental": True}, f"music_{key}",
+                             units=math.ceil(length / 60) * 60)  # billed in whole minutes
         with ThreadPoolExecutor(max_workers=3) as pool:
             got = {k: v for k, v in pool.map(one, [(k, CUES[k]) for k in self.cue_names if k in CUES])
                    if v is not None and v.size}
