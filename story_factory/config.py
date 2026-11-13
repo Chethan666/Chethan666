@@ -394,6 +394,12 @@ DEFAULTS: dict[str, Any] = {
         # matched to them; characters get distinct voices by kind. Kokoro names are the free fallback.
         # point_of_view: "" decides from the text; "first" or "third" forces it.
         "point_of_view": "", "teller_default": "man",
+        # How the narration sounds. The performance director gives each sentence its delivery (a
+        # v3 tag such as [whispers] or [nervously], most sentences plain); the narrator reads a
+        # paragraph's sentences in one take so the voice flows instead of restarting flat at every
+        # full stop; voice_pace speeds the reading up without changing pitch (1.0 = as recorded);
+        # voice_gap_scale shortens the silences between paragraphs and at story pauses.
+        "performance_director": True, "voice_takes": True, "voice_pace": 1.07, "voice_gap_scale": 0.8,
         "host_voice": {"elevenlabs": "Brian", "kokoro": "am_michael"},
         "teller_voices": {
             "elevenlabs": {"man": "Callum", "woman": "Charlotte", "old_man": "Bill", "old_woman": "Dorothy"},

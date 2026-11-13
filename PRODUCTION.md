@@ -15,7 +15,7 @@ stopping the video.
 | # | Agent | Job | Paid (with `FAL_KEY`) | Free fallback |
 |---|---|---|---|---|
 | 1 | Casting | Who speaks: the host, the teller, each character; picks the voices | the planner model (Bedrock) | words around each quote |
-| 2 | Voice | Reads everything chunk by chunk, so every line's time is exact; dramatic pauses | ElevenLabs v3 on fal | Kokoro |
+| 2 | Voice | A performance director gives each sentence its delivery; the narrator reads each paragraph in one flowing take, cut back into timed sentences at its own pauses; a little quicker than recorded | ElevenLabs v3 on fal (+ the planner model) | Kokoro |
 | 3 | Storyboard | Cuts the timeline into beats of 5-11 s and stages each as one picture | the planner model | the scene plan |
 | 4 | Art director | One house look; a design per character; a style frame and character sheets | Nano Banana 2 | Cloudflare FLUX, Pollinations |
 | 5 | Illustrator + critic | One picture per beat from the references; each checked in code and by a vision model, a rejected one redrawn by the next painter | Seedream 4.5 edit, then Nano Banana 2 edit | Cloudflare FLUX, Pollinations, a neighbour's picture |
@@ -29,6 +29,8 @@ stopping the video.
 same voice. A first-person story (decided from the text) is told by its teller in a voice of
 their own, matched to them by the planner (a man, a woman, an older person). Every quoted line
 is read by its speaker in a distinct voice. A third-person story is told by the host throughout.
+
+**Delivery.** A narrator that reads every sentence on its own sounds flat: each one starts again at the same pitch. So the narrator reads a paragraph's sentences in one take (story pauses still break it), and the performance director (the planner model) gives each sentence a v3 tag such as [nervously], [whispers] or [ominously], keeping most sentences plain and whispers rare. Settings: `performance_director`, `voice_takes`, `voice_pace` (1.07: 7% quicker, same pitch) and `voice_gap_scale` (0.8: shorter silences between paragraphs and at story pauses).
 
 **Pictures.** One house look for the channel, `stills.look`:
 - `cinematic` (the default): frames of a slow-burn horror film shot on 35mm. Real-looking

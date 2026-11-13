@@ -24,12 +24,17 @@ from .paid import OverBudget, Studio, digest
 
 log = logging.getLogger(__name__)
 
-TAGS = {"steady": "", "slow": "[slowly]", "hushed": "[whispers]", "tense": "[nervously]",
+# A scene's delivery as a v3 audio tag, used when the performance director gave a sentence none.
+# "slow" has no tag: [slowly] made whole scenes drag; pace comes from tempo and pauses instead.
+TAGS = {"steady": "", "slow": "", "hushed": "[quietly]", "tense": "[nervously]",
         "urgent": "[urgently]", "tender": "[softly]"}
 
 
-def decode(path: Path, rate: int) -> np.ndarray:
-    result = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(path), "-ac", "1",
+def decode(path: Path, rate: int, tempo: float = 1.0) -> np.ndarray:
+    """Mono float samples; `tempo` speeds speech up (or slows it) without changing its pitch."""
+    tempo = min(max(tempo, 0.5), 2.0)
+    speed = ["-af", f"atempo={tempo:.3f}"] if abs(tempo - 1.0) > 0.005 else []
+    result = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(path), *speed, "-ac", "1",
                              "-ar", str(rate), "-f", "f32le", "-"], capture_output=True)
     if result.returncode != 0:
         raise MediaError(f"could not decode {path.name}: {result.stderr.decode(errors='replace')[-200:]}")
@@ -43,13 +48,20 @@ class ElevenVoice:
     expressive = True
 
     def __init__(self, studio: Studio, voice: str, fallback: Any, work: Path, parallel: int = 4,
-                 shared: dict[str, Any] | None = None):
+                 shared: dict[str, Any] | None = None, pace: float = 1.0, takes: bool = False):
         self.studio, self.voice, self.fallback, self.work, self.parallel = studio, voice, fallback, work, parallel
         self.shared = shared if shared is not None else {"failed": 0, "lines": 0, "lock": threading.Lock()}
+        self.pace = pace  # tempo applied to everything this voice reads (1.08 = 8% quicker, same pitch)
+        self.takes = takes  # read whole passages in one take (voice.narrate)
         work.mkdir(parents=True, exist_ok=True)
 
     def speaker(self, voice: str, fallback: Any = None) -> "ElevenVoice":
-        return ElevenVoice(self.studio, voice, fallback or self.fallback, self.work, self.parallel, self.shared)
+        return ElevenVoice(self.studio, voice, fallback or self.fallback, self.work, self.parallel, self.shared,
+                           self.pace, self.takes)
+
+    def tempo(self, speed: float) -> float:
+        """The scene's reading speed, half as strong as Kokoro's (v3 already acts the delivery)."""
+        return self.pace * (1.0 + (speed - 1.0) * 0.5)
 
     def _path(self, text: str) -> Path:
         return self.work / f"say_{digest(self.voice, text)}.mp3"
@@ -76,7 +88,7 @@ class ElevenVoice:
         path = self._make(text)
         if path is not None:
             try:
-                return decode(path, self.sample_rate)
+                return decode(path, self.sample_rate, self.tempo(speed))
             except MediaError as exc:
                 log.warning("%s", exc)
         with self.shared["lock"]:
@@ -84,7 +96,7 @@ class ElevenVoice:
         plain = " ".join(w for w in text.split() if not (w.startswith("[") and w.endswith("]")))
         from .voice import _resample
 
-        audio = self.fallback.say(plain, speed)
+        audio = self.fallback.say(plain, speed * self.pace)
         return _resample(audio, self.fallback.sample_rate, self.sample_rate)
 
 

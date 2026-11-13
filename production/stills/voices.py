@@ -22,6 +22,7 @@ from story_factory.llm import LLMError
 from .. import dialogue, timing, voice
 from ..run import _json
 from ..speech import ElevenVoice
+from . import performance
 from .board import Board
 
 log = logging.getLogger(__name__)
@@ -121,7 +122,8 @@ class VoiceAgent:
         eleven = None
         if casting["engine"] == "elevenlabs":
             eleven = ElevenVoice(board.studio, casting["host"], board.kokoro, board.work / "voice",
-                                 int(cfg.get("parallel", 4)))
+                                 int(cfg.get("parallel", 4)), pace=float(cfg.get("voice_pace", 1.0)),
+                                 takes=bool(cfg.get("voice_takes", True)))
         kokoro_cfg = cfg.get("cast_voices", {}).get("kokoro") or voice.KOKORO_CAST
         host_k = cfg.get("host_voice", {}).get("kokoro", "am_michael")
         teller_k = cfg.get("teller_voices", {}).get("kokoro", {}).get(casting["teller_kind"], host_k)
@@ -138,11 +140,18 @@ class VoiceAgent:
             cast_voices["host"] = host
             lines += [dialogue.Line(a, b, d["narration"][a:b], "host") for a, b in d["frames"]]
         spans = timing.scene_spans(d["narration"], d["scenes"])
-        audio, timeline = voice.narrate(teller, d["narration"], _json(board.story.get("pauses"), []),
+        pauses = _json(board.story.get("pauses"), [])
+        marks, directed = {}, {"directed": False}
+        if eleven is not None and cfg.get("performance_director", True):
+            marks, directed = performance.direct(board.router, board.story, d["narration"], pauses, lines,
+                                                 d["scenes"], spans)
+        audio, timeline = voice.narrate(teller, d["narration"], pauses,
                                         _json(board.story.get("pronunciations"), []), d["scenes"], spans, lines,
-                                        cast_voices)
+                                        cast_voices, marks=marks, gap_scale=float(cfg.get("voice_gap_scale", 1.0)))
         d.update(audio=audio, timeline=timeline, rate=teller.sample_rate, spans=spans)
         failed = eleven.shared["failed"] if eleven is not None else 0
         return {"seconds_of_speech": round(timeline.duration, 1), "chunks": len(timeline.chunks),
-                "speakers": sorted({c.speaker for c in timeline.chunks}), "lines_read_by_kokoro": failed}
+                "speakers": sorted({c.speaker for c in timeline.chunks}), "lines_read_by_kokoro": failed,
+                "words_per_minute": round(len(d["narration"].split()) / max(timeline.duration, 1) * 60),
+                "performance": directed}
 

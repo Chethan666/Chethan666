@@ -100,46 +100,94 @@ def delivery_for(offset: int, spans: list[tuple[int, int]], scenes: list[dict[st
 
 def narrate(voice: Voice, narration: str, pauses: list[dict[str, Any]], pronunciations: list[dict[str, Any]],
             scenes: list[dict[str, Any]], spans: list[tuple[int, int]], lines: list[Any] | None = None,
-            cast_voices: dict[str, Voice] | None = None) -> tuple[np.ndarray, Timeline]:
+            cast_voices: dict[str, Voice] | None = None, marks: dict[int, str] | None = None,
+            gap_scale: float = 1.0) -> tuple[np.ndarray, Timeline]:
     """Read the whole narration. Returns (mono audio, timeline with every chunk's times).
-    With `lines` and `cast_voices`, each quoted line is read in its speaker's own voice."""
+    With `lines` and `cast_voices`, each quoted line is read in its speaker's own voice.
+
+    An expressive voice with `takes` reads consecutive sentences of a paragraph in one take
+    (up to TAKE_CHARS), so its intonation runs on from sentence to sentence like a real
+    reader's instead of restarting flat at every full stop; the take is cut back into its
+    sentences at its own pauses. `marks` (chunk start -> a v3 audio tag such as [whispers])
+    is the performance director's delivery for each sentence; otherwise the scene's delivery
+    is used. `gap_scale` shortens or lengthens every silence we add."""
     chunks: list[Chunk] = split_lines(narration, split_chunks(narration, pauses), lines or [])
     cast_voices = cast_voices or {}
+    marks = marks or {}
     rate = voice.sample_rate
-    pieces: list[np.ndarray] = []
-    t = 0.0
-    lead_in = np.zeros(int(0.6 * rate), dtype=np.float32)  # a breath before the first word
-    pieces.append(lead_in)
-    t += len(lead_in) / rate
-    plan = []  # (chunk, reader, text): what each voice reads
+    expressive = getattr(voice, "expressive", False)
+    plan = []  # (chunk, reader, tag, text, speed): what each voice reads
     for chunk in chunks:
         reader = cast_voices.get(chunk.speaker, voice) if chunk.speaker != "narrator" else voice
         text = respell(chunk.text, pronunciations)
+        tag, speed = "", 1.0
         if reader is not voice:
-            text = text.strip("“”\"").strip() or text
-        elif getattr(voice, "expressive", False):  # an expressive voice performs the scene's delivery
-            from .speech import tagged
-            text = tagged(text, delivery_for(chunk.start, spans, scenes))
-        plan.append((chunk, reader, text))
+            text = text.strip("\u201c\u201d\"").strip() or text
+        else:
+            speed = speed_for(chunk.start, spans, scenes)
+            if expressive:  # an expressive voice performs the delivery
+                from .speech import TAGS
+                tag = marks.get(chunk.start, TAGS.get(delivery_for(chunk.start, spans, scenes), ""))
+        plan.append((chunk, reader, tag, text, speed))
+    # Group the narrator's sentences into takes: same paragraph, no story pause between, one speed.
+    units: list[tuple[list[Chunk], Any, str, float]] = []
+    group: list[tuple[Chunk, str, str]] = []
+    group_speed = 1.0
+    def close() -> None:
+        if group:
+            text, last_tag = [], None
+            for _, tag, t in group:
+                text.append(f"{tag} {t}".strip() if tag and tag != last_tag else t)
+                last_tag = tag or last_tag
+            units.append(([c for c, _, _ in group], voice, " ".join(text), group_speed))
+            group.clear()
+    takes = expressive and getattr(voice, "takes", False)
+    for chunk, reader, tag, text, speed in plan:
+        if reader is not voice:
+            close()
+            prev = units[-1] if units else None
+            if (prev is not None and prev[1] is reader and getattr(reader, "takes", False)
+                    and prev[0][-1].speaker == chunk.speaker and prev[0][-1].gap_ms <= TAKE_JOIN_MS
+                    and len(prev[2]) + len(text) <= TAKE_CHARS):  # the host's intro flows too
+                units[-1] = (prev[0] + [chunk], reader, f"{prev[2]} {text}", 1.0)
+            else:
+                units.append(([chunk], reader, text, 1.0))
+            continue
+        joinable = (takes and group and speed == group_speed and group[-1][0].gap_ms <= TAKE_JOIN_MS
+                    and sum(len(t) for _, _, t in group) + len(text) <= TAKE_CHARS)
+        if not joinable:
+            close()
+            group_speed = speed
+        group.append((chunk, tag, text))
+        if not takes:
+            close()
+    close()
     readers: dict[int, tuple[Any, list[str]]] = {}
-    for _, reader, text in plan:
+    for _, reader, text, _ in units:
         readers.setdefault(id(reader), (reader, []))[1].append(text)
-    for reader, texts in readers.values():  # paid voices read every chunk at once, in parallel
+    for reader, texts in readers.values():  # paid voices read every take at once, in parallel
         if hasattr(reader, "prepare"):
             reader.prepare(texts)
-    for chunk, reader, text in plan:
+    pieces: list[np.ndarray] = []
+    lead_in = np.zeros(int(0.6 * rate), dtype=np.float32)  # a breath before the first word
+    pieces.append(lead_in)
+    t = len(lead_in) / rate
+    for group_chunks, reader, text, speed in units:
         if reader is not voice:
             audio = _resample(reader.say(text, 1.0), reader.sample_rate, rate)
         else:
-            audio = voice.say(text, speed_for(chunk.start, spans, scenes))
+            audio = voice.say(text, speed)
         audio = _trim(audio, rate)
         if reader is not voice:  # the cast sit a little behind the narrator in the mix
             audio = _match_level(audio, 0.85)
-        chunk.t0, chunk.t1 = t, t + len(audio) / rate
+        cuts = split_take(audio, rate, [len(c.text) for c in group_chunks])
+        for chunk, (a, b) in zip(group_chunks, zip([0] + cuts, cuts + [audio.size])):
+            chunk.t0, chunk.t1 = t + a / rate, t + b / rate
         pieces.append(audio)
-        gap = np.zeros(int(chunk.gap_ms / 1000 * rate), dtype=np.float32)
+        last = group_chunks[-1]
+        gap = np.zeros(int(last.gap_ms * gap_scale / 1000 * rate), dtype=np.float32)
         pieces.append(gap)
-        t = chunk.t1 + len(gap) / rate
+        t = last.t1 + len(gap) / rate
     tail = np.zeros(int(1.5 * rate), dtype=np.float32)  # let the last line breathe
     pieces.append(tail)
     audio = np.concatenate(pieces)
@@ -147,6 +195,47 @@ def narrate(voice: Voice, narration: str, pauses: list[dict[str, Any]], pronunci
     if peak > 0:
         audio = audio * (0.89 / peak)
     return audio.astype(np.float32), Timeline(narration, chunks, len(audio) / rate)
+
+
+TAKE_CHARS = 600  # longest take: a few sentences, well inside the voice model's limit
+TAKE_JOIN_MS = 300  # sentences separated by no more than an ordinary sentence gap share a take
+
+
+def split_take(audio: np.ndarray, rate: int, weights: list[int]) -> list[int]:
+    """Where one take's sentences meet: the pause nearest each boundary the text predicts.
+    Returns len(weights) - 1 sample positions, in order."""
+    n = len(weights)
+    if n <= 1 or audio.size == 0:
+        return []
+    hop = max(int(0.01 * rate), 1)
+    frames = audio[: audio.size // hop * hop].reshape(-1, hop)
+    energy = np.sqrt(np.mean(frames ** 2, axis=1)) if frames.size else np.zeros(0)
+    quiet = energy < max(0.004, 0.08 * float(np.percentile(energy, 90)) if energy.size else 0.0)
+    runs: list[tuple[int, int]] = []  # (centre sample, length in frames) of every pause of 80 ms or more
+    i = 0
+    while i < quiet.size:
+        if quiet[i]:
+            j = i
+            while j < quiet.size and quiet[j]:
+                j += 1
+            if j - i >= 8:
+                runs.append(((i + j) // 2 * hop, j - i))
+            i = j
+        else:
+            i += 1
+    total = float(sum(max(w, 1) for w in weights))
+    cuts: list[int] = []
+    acc, previous = 0.0, 0
+    for k, w in enumerate(weights[:-1]):
+        acc += max(w, 1)
+        expected = int(audio.size * acc / total)
+        window = 0.35 * audio.size / n
+        near = [(abs(c - expected) / (1 + 0.15 * length), c) for c, length in runs
+                if c > previous and abs(c - expected) <= window]
+        cut = min(near)[1] if near else max(expected, previous + 1)
+        cuts.append(min(cut, audio.size - (n - 1 - k)))
+        previous = cuts[-1]
+    return cuts
 
 
 def _trim(audio: np.ndarray, rate: int, threshold: float = 0.004) -> np.ndarray:
