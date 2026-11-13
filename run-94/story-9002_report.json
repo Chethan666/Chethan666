@@ -1,0 +1,271 @@
+{
+  "mode": "stills",
+  "video": "/home/runner/work/Horror/Horror/out/story-9002/video.mp4",
+  "seconds": 66.4,
+  "story_seconds": 60.4,
+  "beats": 13,
+  "point_of_view": "first",
+  "voices": {
+    "engine": "elevenlabs",
+    "host": "Brian",
+    "teller": "Callum",
+    "teller_kind": "man",
+    "characters": {}
+  },
+  "usd": 1.6,
+  "usd_by_task": {
+    "art_review": 0.0,
+    "picture_reference": 0.08,
+    "picture_sheet": 0.24,
+    "picture_shot": 0.6,
+    "picture_shot_alt": 0.4,
+    "picture_thumbnail": 0.16,
+    "thumbnail_check": 0.0,
+    "vision": 0.04,
+    "voice": 0.07
+  },
+  "fal_balance_ran_out": false,
+  "qa": {
+    "status": "check",
+    "issues": [
+      "art review 4/10: Tomas's uniform is grayscale in a color image, and the woman in yellow is not we; The Woman in Yellow's face is clearly visible, contradicting the description 'Fa; The Storyteller's face is too clearly visible and too old for the description 'i",
+      "thumbnail 1: Thumbnail has additional text 'PUSH TO STOP' and 'STOP' on the light. The focal point in the mirror also shows a figure with a partially obscured, potentially warped face.",
+      "loudness -16.1 LUFS (target -14)"
+    ],
+    "video_seconds": 66.4,
+    "loudness_lufs": -16.1,
+    "true_peak_dbtp": -1.3,
+    "seconds": 0.4
+  },
+  "agents": {
+    "script_check": {
+      "words": 137,
+      "estimated_seconds": 51.2,
+      "target_seconds": 52.0,
+      "scenes": 8,
+      "issues": [],
+      "seconds": 0.0
+    },
+    "casting": {
+      "point_of_view": "first",
+      "teller": "man",
+      "why": "The opening directly states the protagonist is Tomas, the night bus driver from the story bible, and the narrative matches his experience.",
+      "engine": "elevenlabs",
+      "host_voice": "Brian",
+      "teller_voice": "Callum",
+      "quoted_lines": 0,
+      "character_voices": {},
+      "seconds": 1.7
+    },
+    "voice": {
+      "seconds_of_speech": 60.4,
+      "chunks": 22,
+      "speakers": [
+        "host",
+        "narrator"
+      ],
+      "lines_read_by_kokoro": 0,
+      "words_per_minute": 136,
+      "performance": {
+        "directed": true,
+        "sentences": 18,
+        "plain": 18,
+        "tags": {}
+      },
+      "listener": {
+        "model": "base.en",
+        "takes": 9,
+        "reread": 0,
+        "worst_match": 0.89
+      },
+      "seconds": 36.0
+    },
+    "storyboard": {
+      "beats": 13,
+      "directed_by_model": 11,
+      "host_beats": 2,
+      "scares": 2,
+      "average_seconds": 4.6,
+      "seconds": 23.0
+    },
+    "art": {
+      "style_frame": true,
+      "style_frame_by": "fal:reference",
+      "sheets": [
+        "The Storyteller",
+        "The Woman in Yellow",
+        "Tomas"
+      ],
+      "designs": {
+        "Tomas": "Caucasian man, 52-56, slim-athletic build, tired oval face with prominent nose bridge. Short, thinning grey-peppered hair, always slightly uncombed. Wears the same worn navy polyester-cotton bus driver's jacket with faded silver reflective stripes over a grey crewneck t-shirt. Always wears a simple gold wedding band. Grey stubble, heavy-lidded blue eyes with deep creases at the corners.",
+        "The Woman in Yellow": "Any race, female, late 20s to 30s, gaunt and thin build. Face forever obscured by the deep shadow of a soaked yellow PVC raincoat hood. Only her pale hands are ever visible, slender with short, clean nails. The hooded raincoat, a specific flat lemon-yellow, is always dripping, worn directly over bare skin or simple garments. Never seen without it; her posture is perpetually hunched and still.",
+        "The Storyteller": "a tall, gaunt man of indeterminate age in a long, worn charcoal coat and a wide-brimmed hat, his face mostly in shadow except for pale, kind, tired eyes; he always carries an old iron lantern whose flame burns blood red"
+      },
+      "seconds": 34.7
+    },
+    "illustrator": {
+      "look": "cinematic",
+      "cameras": {
+        "10": "cctv",
+        "11": "cctv"
+      },
+      "pictures": 13,
+      "borrowed_neighbour": 0,
+      "placeholders": 0,
+      "by_painter": {
+        "fal:reference": 1,
+        "fal:sheet": 3,
+        "fal:shot": 8,
+        "fal:shot (doubted)": 2,
+        "fal:shot_alt": 3
+      },
+      "rejected": [
+        "beat_010 (fal:shot): The Woman in Yellow is not a silhouette as described, but clearly visible and coloured. The STOP bell is too bright and lacks a bloody smear, and the red color on Tomas's jacket is a separate spot rat",
+        "beat_011 (fal:shot): The Woman in Yellow's face is visible, contradicting the description that it is forever obscured by the hood's shadow.",
+        "beat_010 (fal:shot_alt): The Woman in Yellow is not framed in the aisle doorway behind Tomas's seat, she is standing further back in the bus.",
+        "beat_011 (fal:shot_alt): The Woman in Yellow's raincoat is not the specific flat lemon-yellow described; it appears muted and desaturated like the rest of the image. The image is not zoomed on the driver's seat as described, ",
+        "beat_010 (pollinations): The image does not show a bus, Tomas, or the Woman in Yellow in the specified context. It appears to show a woman's silhouette next to a lamp in a room, not a bus security camera view.",
+        "beat_005 (fal:shot): Tomas is not a silhouette looking back; he is clearly visible looking forward. The woman in yellow is not on the very back seat, but rather on a seat closer to the front, and is quite visible rather t",
+        "beat_004 (fal:shot): it looks like a cartoon, drawing, painting or 3D render instead of a real film frame",
+        "beat_002 (fal:shot): it looks like a cartoon, drawing, painting or 3D render instead of a real film frame"
+      ],
+      "seconds": 289.6
+    },
+    "art_review": {
+      "reviewed": true,
+      "score": 4,
+      "flagged": [
+        {
+          "picture": 10,
+          "problem": "Tomas's uniform is grayscale in a color image, and the woman in yellow is not wearing a raincoat, contradicting her description and previous appearance. She should be in a yellow raincoat, face obscur"
+        },
+        {
+          "picture": 11,
+          "problem": "The Woman in Yellow's face is clearly visible, contradicting the description 'Face forever obscured by the deep shadow of a soaked yellow PVC raincoat hood.' Her face should be in deep shadow."
+        },
+        {
+          "picture": 12,
+          "problem": "The Storyteller's face is too clearly visible and too old for the description 'indeterminate age, face mostly in shadow except for pale, kind, tired eyes.' His face should be more obscured by shadow, "
+        },
+        {
+          "picture": 3,
+          "problem": "The woman in yellow appears to be a young girl, not a woman in her late 20s to 30s as described. She should appear as an adult woman."
+        },
+        {
+          "picture": 1,
+          "problem": "Tomas is not wearing the 'sleeveless blue work shirt' described; he's in a long-sleeved jacket. He should be in the described shirt."
+        },
+        {
+          "picture": 5,
+          "problem": "Tomas's head is strangely tilted, and the woman in yellow looks like a young girl. Tomas's posture should be natural, and the woman should appear as an adult."
+        }
+      ],
+      "redrawn": [
+        {
+          "picture": 10,
+          "problem": "Tomas's uniform is grayscale in a color image, and the woman in yellow is not wearing a raincoat, contradicting her description and previous appearance. She should be in a yellow raincoat, face obscur"
+        },
+        {
+          "picture": 11,
+          "problem": "The Woman in Yellow's face is clearly visible, contradicting the description 'Face forever obscured by the deep shadow of a soaked yellow PVC raincoat hood.' Her face should be in deep shadow."
+        }
+      ],
+      "strongest_picture": 11,
+      "seconds": 114.8
+    },
+    "edit_plan": {
+      "cold_open_beats": [],
+      "cold_open_seconds": 0.0,
+      "total_seconds": 66.4,
+      "seconds": 0.0
+    },
+    "sound": {
+      "music": [
+        "dread",
+        "terror",
+        "unease"
+      ],
+      "ambience": 3,
+      "effects": 4,
+      "foley": 0,
+      "synthesized": [],
+      "library": {
+        "library_sounds": 279,
+        "needs": 15,
+        "decided_by_model": 14,
+        "from_library": 10,
+        "made_new": 0,
+        "left_out": 5,
+        "from_library_by_kind": {
+          "music": 3,
+          "ambience": 3,
+          "sfx": 3,
+          "sting": 1
+        },
+        "picks": {
+          "music_unease": "music-measured-paces-10bb0bc5",
+          "music_dread": "music-night-break-ec6d60d8",
+          "music_terror": "music-classic-horror-3-8bd37ec8",
+          "room_b9d1c7a39a8e47b3": "ambience-crickets-ambient-noise-loopable-72ae31b2",
+          "room_2a4966e2915c57cb": "ambience-electric-sound-effects-library-a-16d69d12",
+          "sting": "sting-horror-hit-dd612c9d",
+          "fx_001": "sfx-30-cc0-sfx-loops-rain-d6b10192",
+          "fx_006": "sfx-unleeched-sound-effects-pack-doo-be310b22",
+          "fx_010": "sfx-electric-sound-effects-library-s-6aeb4e13",
+          "room_68a97afb8fe76ce4": "ambience-park-ambiences-91f3e2a5"
+        },
+        "made": {},
+        "library": true,
+        "fetched": 10,
+        "credits": 5
+      },
+      "generated": 0,
+      "saved_for_library": 0,
+      "mix": {
+        "checked": true,
+        "voice_over_bed_db": 11.3,
+        "after_db": 12.0,
+        "bed_lowered_db": 0.7
+      },
+      "seconds": 20.8
+    },
+    "edit": {
+      "segments": 15,
+      "motion": "none",
+      "seconds": 31.4
+    },
+    "packager": {
+      "thumbnails": 1,
+      "shorts": 1,
+      "chapters": 0,
+      "thumbnail_checks": [
+        {
+          "thumbnail": 1,
+          "ok": false,
+          "why": "The words \"LAST STOP\" are present, but there is also a \"STOP\" sign in the image, violating the 'nothing else written' rule."
+        },
+        {
+          "thumbnail": 1,
+          "repainted": true,
+          "ok": false,
+          "why": "Thumbnail has additional text 'PUSH TO STOP' and 'STOP' on the light. The focal point in the mirror also shows a figure with a partially obscured, potentially warped face."
+        }
+      ],
+      "seconds": 67.9
+    },
+    "qa": {
+      "status": "check",
+      "issues": [
+        "art review 4/10: Tomas's uniform is grayscale in a color image, and the woman in yellow is not we; The Woman in Yellow's face is clearly visible, contradicting the description 'Fa; The Storyteller's face is too clearly visible and too old for the description 'i",
+        "thumbnail 1: Thumbnail has additional text 'PUSH TO STOP' and 'STOP' on the light. The focal point in the mirror also shows a figure with a partially obscured, potentially warped face.",
+        "loudness -16.1 LUFS (target -14)"
+      ],
+      "video_seconds": 66.4,
+      "loudness_lufs": -16.1,
+      "true_peak_dbtp": -1.3,
+      "seconds": 0.4
+    }
+  },
+  "review": "pending",
+  "render_minutes": 10.3
+}

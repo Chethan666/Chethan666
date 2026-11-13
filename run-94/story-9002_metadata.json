@@ -1,0 +1,53 @@
+{
+  "story_id": 9002,
+  "title": "Route 14",
+  "other_titles": [
+    "The Bell After the Last Stop"
+  ],
+  "description": "A night bus driver hears the bell ring after the last stop. A Hollow Lines test story.\n\nMusic and sound:\n\"Measured Paces\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"Night Break\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"Classic Horror 3\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"Electric Sound Effects Library\" by little-robot-sound-factory (OpenGameArt.org, https://opengameart.org/content/electric-sound-effects-library), licensed CC-BY-3.0\n\"Horror Hit\" by vividreality (OpenGameArt.org, https://opengameart.org/content/horror-hit), licensed CC-BY-3.0",
+  "tags": [
+    "horror",
+    "scary story",
+    "night bus",
+    "creepy"
+  ],
+  "pinned_comment": "Would you have kept driving?",
+  "end_screen_line": "The bell is ringing again.",
+  "credit": "",
+  "made_for_kids": false,
+  "duration_seconds": 66.4,
+  "chapters": [],
+  "sound_credits": [
+    "\"Measured Paces\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"Night Break\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"Classic Horror 3\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"Electric Sound Effects Library\" by little-robot-sound-factory (OpenGameArt.org, https://opengameart.org/content/electric-sound-effects-library), licensed CC-BY-3.0",
+    "\"Horror Hit\" by vividreality (OpenGameArt.org, https://opengameart.org/content/horror-hit), licensed CC-BY-3.0"
+  ],
+  "sounds_used": [
+    "music-measured-paces-10bb0bc5",
+    "music-night-break-ec6d60d8",
+    "music-classic-horror-3-8bd37ec8",
+    "ambience-crickets-ambient-noise-loopable-72ae31b2",
+    "ambience-electric-sound-effects-library-a-16d69d12",
+    "sting-horror-hit-dd612c9d",
+    "sfx-30-cc0-sfx-loops-rain-d6b10192",
+    "sfx-unleeched-sound-effects-pack-doo-be310b22",
+    "sfx-electric-sound-effects-library-s-6aeb4e13",
+    "ambience-park-ambiences-91f3e2a5"
+  ],
+  "thumbnails": [
+    "thumbnail_1.jpg"
+  ],
+  "shorts": [
+    "short_1.mp4"
+  ],
+  "shorts_windows": [
+    [
+      13.1,
+      55.7
+    ]
+  ],
+  "end_screen_starts": 62.4,
+  "synthetic_media": true
+}
