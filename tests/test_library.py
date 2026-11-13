@@ -144,6 +144,18 @@ class BuilderTests(unittest.TestCase):
         self.assertTrue((self.root / "lib" / cat[0]["file"]).exists())
         self.assertEqual(summary["sources"]["opengameart"]["skipped_license"], 1)
 
+    def test_a_hand_picked_pack_of_numbered_files_is_kept(self):
+        page = OGA_CC0.replace("Creepy Night Loop", "Horror Hit Soundpack").replace("creepy_loop.wav", "hits.zip")
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            for k in range(3):
+                z.writestr(f"{k + 1}.wav", wav_bytes(2, 300 + 80 * k))
+        summary = self.build([{"type": "opengameart", "kind": "sfx", "pages": ["https://oga/hits"],
+                               "require": "sfx", "require_file": "sfx_file"}],
+                             {"https://oga/hits": page.encode(),
+                              "https://opengameart.org/sites/default/files/hits.zip": buf.getvalue()})
+        self.assertEqual(summary["by_kind"]["sting"], 3)
+
     def test_kevin_macleod_tracks_carry_his_credit_line(self):
         pieces = [{"title": "Gathering Darkness", "feel": "Dark, Suspenseful", "genre": "Horror"},
                   {"title": "Happy Bee", "feel": "Bright, Bouncy", "genre": "Pop"}]

@@ -239,6 +239,8 @@ jobs:
             gh release delete sound-library --yes --cleanup-tag || true
             GEN+=(--fresh)
           fi
+          # overrides "only=opengameart,fma": run just those sources (adds to the current library)
+          for kv in $OVERRIDES; do case "$kv" in only=*) GEN+=(--only "${kv#only=}") ;; esac; done
           python -m production --config "$CONFIG" library build "${GEN[@]}" --out build/library 2>&1 | tee library.txt
           if ! gh release view sound-library >/dev/null 2>&1; then
             gh release create sound-library --title "Sound library" --latest=false \

@@ -281,7 +281,9 @@ class Builder:
             raw = self.http(url)
             members = [(Path(url).name, raw)] if not url.lower().endswith(".zip") else unzip_audio(raw)
             prefer = [m for m in members if m[0].lower().endswith((".ogg", ".flac", ".wav"))] or members
-            useful = [m for m in prefer if relevant(words_from_filename(m[0]), src.get("require_file"))]
+            # a hand-picked pack's files may just be numbered (1.wav, 2.wav): judge them with the page title
+            useful = [m for m in prefer if relevant(
+                f"{title if hand_picked else ''} {words_from_filename(m[0])}", src.get("require_file"))]
             for name, data in useful[: int(src.get("max_files_per_pack", 12))]:
                 kind = classify(name, title, kind_hint)
                 credit = (f'"{title}" by {author or "unknown"} (OpenGameArt.org, {page}), licensed {lic.upper()}'
