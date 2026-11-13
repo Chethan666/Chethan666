@@ -1,0 +1,208 @@
+[
+  {
+    "index": 0,
+    "scene": 0,
+    "t0": 0.0,
+    "t1": 5.627800453514739,
+    "text": "Some voices carry further than they should. The lantern is lit.",
+    "framing": "extreme_close",
+    "picture": "The Storyteller's hand holds the handle of a red-paned storm lantern low by his thigh, its light casting a red glow upwards onto his chin and the mist swirling around his heavy boots. Far behind him, out of focus and distant, a single upstairs window of an isolated house glows faintly yellow through the fog.",
+    "characters": [
+      "The Storyteller"
+    ],
+    "sound": "the low, metallic rasp of a lantern mantle igniting",
+    "scare": false,
+    "importance": 1,
+    "directed": true,
+    "view": "film",
+    "atmosphere": [
+      "fog"
+    ]
+  },
+  {
+    "index": 1,
+    "scene": 1,
+    "t0": 5.627800453514739,
+    "t1": 9.268276643990928,
+    "text": "My daughter Lily is four. She sleeps with the baby monitor on.",
+    "framing": "wide",
+    "picture": "Lily sleeps peacefully on her back under a star-patterned duvet in her small bedroom, her messy fair hair spread on the pillow. On the bedside table beside her, a ceramic star night-light glows warmly, and the base unit of a baby monitor sits with its single red power LED lit.",
+    "characters": [
+      "Lily"
+    ],
+    "sound": "\"",
+    "scare": false,
+    "importance": 2,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 2,
+    "scene": 2,
+    "t0": 9.268276643990928,
+    "t1": 13.788253968253967,
+    "text": "Last night, at twelve past three, it crackled.",
+    "framing": "insert",
+    "picture": "A tight shot of the baby monitor receiver on Mara's dark bedside table; its small digital clock reads 3:12, and the row of red LED sound-level indicators pulses erratically with static. Mara is seen out of focus in the deep background, a still shape under the blankets.",
+    "characters": [
+      "Mara"
+    ],
+    "sound": "the sharp crackle and pop of electronic interference",
+    "scare": false,
+    "importance": 3,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 3,
+    "scene": 2,
+    "t0": 13.788253968253967,
+    "t1": 17.82251700680272,
+    "text": "Lily was whispering. \"I can't. Mummy will hear.\"",
+    "framing": "close",
+    "picture": "Return to Lily's room in the dark; she is now curled on her side facing away from the camera, her duvet pulled up to her chin. Her shoulders are tense. Her bedside table is in the foreground, the baby monitor's red light now a brighter, more intense point in the gloom.",
+    "characters": [
+      "Lily"
+    ],
+    "sound": "the faint, whispered words \"I can't. Mummy will hear.\" muffled by static",
+    "scare": false,
+    "importance": 4,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 4,
+    "scene": 3,
+    "t0": 17.82251700680272,
+    "t1": 22.854625850340135,
+    "text": "Then another voice. Low. Patient. \"Mummy is asleep.\"",
+    "framing": "close",
+    "picture": "Mara is awake in bed, propped on one elbow, her face illuminated only by the glow from the monitor. Her eyes are wide with terror and locked on the device, her lips slightly parted as she holds her breath. The red sound-level LEDs on the monitor are frozen at a high level.",
+    "characters": [
+      "Mara"
+    ],
+    "sound": "a low, patient, genderless whisper: \"Mummy is asleep.\"",
+    "scare": true,
+    "importance": 4,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 5,
+    "scene": 4,
+    "t0": 22.854625850340135,
+    "t1": 29.187324263038544,
+    "text": "I ran. Her door was shut. Her night-light was off. I had left it on.",
+    "framing": "medium",
+    "picture": "Mara stands in a dark, narrow upstairs hallway lit by one flickering bare bulb. She faces Lily's closed bedroom door, her hand gripping the handle. No light escapes from under the door. She wears her grey cardigan over her pyjamas, her body rigid with tension.",
+    "characters": [
+      "Mara"
+    ],
+    "sound": "the frantic rustle of bedsheets and a single footstep on creaking floorboards",
+    "scare": false,
+    "importance": 3,
+    "directed": true,
+    "view": "film",
+    "atmosphere": [
+      "flicker"
+    ]
+  },
+  {
+    "index": 6,
+    "scene": 5,
+    "t0": 29.187324263038544,
+    "t1": 34.069410430839,
+    "text": "Lily was asleep, facing the wall. Nobody else.",
+    "framing": "wide",
+    "picture": "The camera looks from the bedroom doorway, showing the full room dimly lit by the grey light of a pre-dawn window. Lily lies asleep in her small bed, facing the wall, her back to the camera. The night-light on the bedside table is dark. The room's corners are pools of deep, solid black. The red accent is not in frame.",
+    "characters": [
+      "Lily"
+    ],
+    "sound": "",
+    "scare": false,
+    "importance": 2,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 7,
+    "scene": 6,
+    "t0": 34.069410430839,
+    "t1": 37.889410430839,
+    "text": "I sat on her floor until dawn, the monitor in my lap.",
+    "framing": "medium",
+    "picture": "Mara sits against Lily's bedroom wall, legs drawn up, back slumped from exhaustion. Her head rests against the wall, eyes closed. The baby monitor receiver lies in her lap, its small screen dark. Faint grey light seeps through the window behind her, illuminating a thin, low fog just outside the glass. Lily sleeps in her bed beside Mara, unmoving.",
+    "characters": [
+      "Mara",
+      "Lily"
+    ],
+    "sound": "",
+    "scare": false,
+    "importance": 2,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 8,
+    "scene": 6,
+    "t0": 37.889410430839,
+    "t1": 43.17950113378684,
+    "text": "At twenty to five, it crackled again. Lily hadn't moved.",
+    "framing": "insert",
+    "picture": "A wider shot from Mara's perspective: Mara sits against the wall in Lily's dim bedroom, her lap cradling the crackling baby monitor with its bright red power light. In the bed beside her, Lily lies asleep facing the wall, her position unchanged. The grey pre-dawn light seeps through the window, casting long shadows, but Lily remains still.",
+    "characters": [
+      "Mara",
+      "Lily"
+    ],
+    "sound": "electronic static crackle",
+    "scare": false,
+    "importance": 3,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 9,
+    "scene": 7,
+    "t0": 43.17950113378684,
+    "t1": 49.88020408163265,
+    "text": "Then the voice came, so close it touched the microphone. \"Mummy's awake now.\"",
+    "framing": "close",
+    "picture": "Mara sits rigid against the wall, frozen, her eyes wide and fixed in terror on something off-camera right behind her. The baby monitor is still in her lap. In the deep shadow of the corner beside the bed, just behind Mara's shoulder, a tall, impossibly thin silhouette bends forward, its featureless head tilted toward her ear. It is a solid shape of darkness, darker than the surrounding room.",
+    "characters": [
+      "Mara"
+    ],
+    "sound": "a dry, whisper-close rustle",
+    "scare": true,
+    "importance": 5,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 10,
+    "scene": 8,
+    "t0": 49.88020408163265,
+    "t1": 56.804308390022676,
+    "text": "Lily is five now. She still won't sleep without the monitor. She says he likes to listen.",
+    "framing": "wide",
+    "picture": "The Storyteller stands alone in his misty hollow, a desolate, grey expanse. He holds a rusty red lantern low by his side, its light casting inky shadows. Far in the distance behind him, at the top of a steep slope, is a small, warmly lit upstairs house window. Inside that window, a single, tiny red dot—the baby monitor's light—glows steadily in the dark room.",
+    "characters": [
+      "The Storyteller"
+    ],
+    "sound": "",
+    "scare": false,
+    "importance": 4,
+    "directed": true,
+    "view": "film",
+    "atmosphere": [
+      "fog"
+    ]
+  }
+]

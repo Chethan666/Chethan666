@@ -1,0 +1,56 @@
+{
+  "story_id": 9003,
+  "title": "The Baby Monitor",
+  "other_titles": [
+    "Mummy's Awake Now"
+  ],
+  "description": "At 3:12 the baby monitor picked up two voices. A Hollow Lines test story.\n\nMusic and sound:\n\"Measured Paces\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"Night Break\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"Controlled Chaos\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"Horror Sound Effects Library\" by little-robot-sound-factory (OpenGameArt.org, https://opengameart.org/content/horror-sound-effects-library), licensed CC-BY-3.0\n\"Electric Sound Effects Library\" by little-robot-sound-factory (OpenGameArt.org, https://opengameart.org/content/electric-sound-effects-library), licensed CC-BY-3.0\n\"Stepping Sounds\" by dklon (OpenGameArt.org, https://opengameart.org/content/stepping-sounds), licensed CC-BY-3.0",
+  "tags": [
+    "horror",
+    "scary story",
+    "baby monitor",
+    "creepy",
+    "short horror"
+  ],
+  "pinned_comment": "Would you have stayed in that room?",
+  "end_screen_line": "The monitor is still on.",
+  "credit": "",
+  "made_for_kids": false,
+  "duration_seconds": 62.8,
+  "chapters": [],
+  "sound_credits": [
+    "\"Measured Paces\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"Night Break\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"Controlled Chaos\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"Horror Sound Effects Library\" by little-robot-sound-factory (OpenGameArt.org, https://opengameart.org/content/horror-sound-effects-library), licensed CC-BY-3.0",
+    "\"Electric Sound Effects Library\" by little-robot-sound-factory (OpenGameArt.org, https://opengameart.org/content/electric-sound-effects-library), licensed CC-BY-3.0",
+    "\"Stepping Sounds\" by dklon (OpenGameArt.org, https://opengameart.org/content/stepping-sounds), licensed CC-BY-3.0"
+  ],
+  "sounds_used": [
+    "music-measured-paces-10bb0bc5",
+    "music-night-break-ec6d60d8",
+    "music-controlled-chaos-6e9fbb84",
+    "ambience-horror-sound-effects-library-amb-065f11ad",
+    "ambience-horror-sound-effects-library-amb-065f11ad",
+    "ambience-horror-sound-effects-library-amb-065f11ad",
+    "ambience-horror-sound-effects-library-amb-065f11ad",
+    "sting-horror-hit-soundpack-1-c7a7ebdf",
+    "sfx-electric-sound-effects-library-s-f25a5a3d",
+    "sfx-stepping-sounds-69d51a61",
+    "sfx-electric-sound-effects-library-s-f25a5a3d"
+  ],
+  "thumbnails": [
+    "thumbnail_1.jpg"
+  ],
+  "shorts": [
+    "short_1.mp4"
+  ],
+  "shorts_windows": [
+    [
+      19.8,
+      51.9
+    ]
+  ],
+  "end_screen_starts": 58.8,
+  "synthetic_media": true
+}
