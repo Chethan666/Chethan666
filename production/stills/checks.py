@@ -176,7 +176,8 @@ def thumbnail_ok(studio: Any, image: Path, words: str) -> tuple[bool, str]:
     verdict = ask_vision(studio, f"This thumbnail should have {want}, on a dark horror image with one clear focal "
                                  "point. Fail it ONLY if: the planned words are missing, misspelled, cut off or hard "
                                  "to read; other LARGE words compete with them (a small sign or label that belongs "
-                                 "in the scene is fine); or a face or hand is clearly warped. Reply exactly as JSON: "
+                                 "in the scene is fine); there is any logo, play button, channel name or brand-like "
+                                 "text (a fake YouTube logo fails it); or a face or hand is clearly warped. Reply exactly as JSON: "
                                  '{"ok": true or false, "reason": "short reason"}', image, "thumbnail_check",
                          THUMB_SYSTEM, width=1024)
     if verdict is None or "ok" not in verdict:
