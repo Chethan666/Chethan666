@@ -70,6 +70,8 @@ class SourceRuleTests(unittest.TestCase):
         self.assertTrue(relevant("DOOR Wood Creak Open", "sfx_file"))
         self.assertFalse(relevant("ui click 3", "sfx_file"))
         self.assertFalse(relevant("Rabbit eating salad", "sfx_file"))
+        self.assertFalse(relevant("Free Crowd Cheering Sounds ambience", "sfx"))
+        self.assertFalse(relevant("Cozy Farm SFX door", "sfx_file"))
 
 
 class SearchTests(unittest.TestCase):
@@ -155,6 +157,16 @@ class BuilderTests(unittest.TestCase):
         self.assertIn("Kevin MacLeod (incompetech.com)", s["credit"])
         self.assertEqual(s["license"], "cc-by-4.0")
         self.assertIn("dread", s["moods"])
+
+    def test_a_pack_of_equal_length_hits_is_not_mistaken_for_duplicates(self):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            for k in range(4):
+                z.writestr(f"hits/horror_hit_{k:02d}.wav", wav_bytes(2, 200 + 50 * k))
+        summary = self.build([{"type": "zip", "url": "https://pack/h.zip", "license": "cc0", "kind": "sfx"}],
+                             {"https://pack/h.zip": buf.getvalue()})
+        self.assertEqual(summary["added"], 4)
+        self.assertEqual(summary["by_kind"]["sting"], 4)
 
     def test_a_zip_pack_becomes_effects_and_ambiences(self):
         buf = io.BytesIO()

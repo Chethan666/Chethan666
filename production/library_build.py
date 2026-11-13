@@ -154,7 +154,7 @@ class Builder:
         if kind == "ambience" and seconds < 8:
             kind = "sfx"
         twin = next((x for x in self.sounds if x.source == source and x.kind == kind
-                     and abs(x.seconds - seconds) < 0.5), None)
+                     and slug(x.title, 120) == slug(title, 120) and abs(x.seconds - seconds) < 0.5), None)
         if twin is not None:
             (self.out / file).unlink(missing_ok=True)
             self.count(origin, "duplicate")
@@ -304,6 +304,7 @@ class Builder:
         wanted, added = int(src.get("max", 30)), 0
         deadline = time.time() + float(src.get("minutes", 25)) * 60
         why: dict[str, int] = {}
+        per_artist: dict[str, int] = {}
         labels: dict[str, list[str]] | None = None
         report = self.report.setdefault("fma", {})
         report["files"] = len(files)
@@ -322,6 +323,11 @@ class Builder:
                 keep = []
                 for i, row in enumerate(rows):
                     reason = fma_reason(row, labels, genres)
+                    artist = str(row.get("artist") or "")
+                    if reason == "ok" and per_artist.get(artist, 0) >= int(src.get("max_per_artist", 2)):
+                        reason = "artist_cap"
+                    if reason == "ok":
+                        per_artist[artist] = per_artist.get(artist, 0) + 1
                     why[reason] = why.get(reason, 0) + 1
                     if reason == "ok":
                         keep.append(i)
@@ -418,9 +424,18 @@ SFX_WORDS = ("door", "creak", "footstep", "step", "walk", "knock", "wind", "rain
              "room", "cave", "church", "organ", "piano", "drone", "car", "engine", "night", "dog", "creature")
 
 
+NEVER = ("cheer", "applause", "crowd cheering", "farm", "cozy", "cute", "seagull", "gull", "platformer", "8-bit",
+         "8bit", "chiptune", "chip tune", "retro game", "arcade", "coin", "powerup", "power up", "power-up", "laser",
+         "pickup", "pick up", "zipper", "blanket", "cartoon", "comedy", "funny", "kids", "jrpg", "rpg town",
+         "victory", "fanfare", "tiki", "pirate", "casino", "beach", "party", "sex", "orgy")
+NEVER_RE = re.compile(r"\b(?:" + "|".join(re.escape(w) for w in NEVER) + r")", re.I)
+
+
 def relevant(text: str, require: str | None) -> bool:
     """Whether a page or file is about what we want: "horror" (dark words), "sfx" (useful effects), or anything."""
     t = text.lower()
+    if require and NEVER_RE.search(t):
+        return False
     if require == "horror":
         return any(w in t for w in HORROR_WORDS)
     if require == "sfx":
@@ -493,6 +508,8 @@ def fma_reason(row: dict[str, Any], labels: dict[str, list[str]] | None, genres:
     g = genre_text(r).lower()
     if genres and not any(x in g for x in genres):
         return "genre"
+    if NEVER_RE.search(str(r.get("title", "")).lower()):
+        return "title"
     return "ok"
 
 

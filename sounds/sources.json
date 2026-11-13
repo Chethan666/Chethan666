@@ -187,20 +187,20 @@
         "drone",
         "dark",
         "soundtrack",
-        "experimental",
-        "noise",
+        "electroacoustic",
+        "minimal",
+        "industrial",
         "sound art",
         "musique",
-        "industrial",
-        "minimal",
-        "field recording",
-        "sound collage",
-        "electroacoustic"
+        "modern composition",
+        "post-rock",
+        "new age"
       ],
       "max": 40,
       "scan": 40000,
       "minutes": 30,
-      "max_files": 972
+      "max_files": 972,
+      "max_per_artist": 2
     },
     {
       "type": "zip",
