@@ -7,7 +7,7 @@ Hollow Lines is a faceless YouTube horror storytelling channel for a global audi
 | # | Pipeline | What it makes | Code | Docs |
 |---|---|---|---|---|
 | 1 | Story factory | horror stories for Hollow Lines | `story_factory/` | [STORY_FACTORY.md](STORY_FACTORY.md) |
-| 2 | Video production | illustrated stills videos from those stories | `production/` | [PRODUCTION.md](PRODUCTION.md) |
+| 2 | Video production | film-still videos (1440p, camera moves, atmosphere) from those stories | `production/` | [PRODUCTION.md](PRODUCTION.md) |
 
 Both run in the same GitHub Actions workflow (one mode each) and share the model access,
 the database and the cost log; each has its own stages and settings.

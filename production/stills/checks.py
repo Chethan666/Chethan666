@@ -24,8 +24,7 @@ from production.media import MediaError, data_uri
 
 from .. import package
 from ..paid import OverBudget, _small
-from ..run import _json
-from .board import Board
+from .board import Board, _json
 
 log = logging.getLogger(__name__)
 
@@ -114,7 +113,7 @@ class ArtReviewAgent:
         beats = d.get("beats", [])
         fixes_allowed = int(cfg.get("art_review_fixes", 2))
         sheet = board.work / "review_sheet.jpg"
-        package.contact_sheet(beats, d["pictures"], {}, sheet, columns=4, thumb=(480, 270))
+        package.contact_sheet(beats, d["pictures"], sheet, columns=4, thumb=(480, 270))
         lines = "\n".join(f"{k}. {str(b.text)[:140]}" for k, b in enumerate(beats, 1))
         cast = "; ".join(f"{c.get('name')}: {str(c.get('design', ''))[:160]}" for c in d.get("cast", [])
                          if isinstance(c, dict) and c.get("design"))

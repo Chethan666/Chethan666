@@ -5,30 +5,24 @@
 #   mode=bench: blind-compares the writing of `config` against `bench_against` on fixed pitches
 #   mode=recheck: runs the legend recognition test on approved retellings that never had it
 # Pipeline 1 is the story factory and pipeline 2 turns its stories into videos.
-#   mode=video-test: pipeline 2 makes a ~35 s stills video from the script in production/samples/test_story.json
+#   mode=video-test: pipeline 2 makes a ~35 s video from the script in production/samples/test_story.json
 #     (overrides "script=one_minute.json" picks another script in production/samples, e.g. the 60 s test)
 #               (no story database needed), capped at $1.50
-#   mode=video-bakeoff: pipeline 2 runs a few shots of a story (story_id, or the newest) through every
-#               candidate model side by side (capped at $10), saved as video-<run number>
 #   mode=video-approve / video-reject: after watching a video (story_id), approve it for publishing or not
 #               (video-reject takes the reason in `overrides`)
 #   mode=video-publish: uploads an approved video (story_id) to YouTube as private; set the time in
 #               `overrides` (e.g. 2026-11-20T17:00:00Z) to schedule it instead
 #   mode=video-stats: reads every published video's YouTube stats into the performance table
 #   mode=video-share: re-shares an earlier video run's review images (story_id = that run's id)
-#   mode=video-vast: a 40-60 s piece of a story (story_id, or the newest) made with open models on a rented
-#               Vast.ai GPU (capped by `overrides`, e.g. vast.max_usd=12; default $12), saved as video-<run number>
-#   mode=video-vast-check: the Vast.ai balance and the best GPU offers (no spend)
-#   mode=video-check: pipeline 2 lists what each studio model on fal.ai expects (no spend)
+#   mode=video-check: pipeline 2 lists what each paid model on fal.ai expects (no spend)
 #   mode=sound-library: builds or extends the channel's sound library (published as the GitHub release
 #               "sound-library") from free sources in sounds/sources.json: Kevin MacLeod, OpenGameArt CC0,
 #               the Free Music Archive (and a Sonniss pack if one is listed). No paid calls.
 #   mode=sound-library-music: the same, plus 9 score cues made with ACE-Step on fal.ai (about $0.25, capped at $1)
-#   mode=video: pipeline 2 turns the next approved story (or story_id) into a stills video (painted
-#               pictures, host + teller + character voices, music; made by the agent team in
-#               production/stills), saved as an artifact named video-<run number> for 14 days.
-#               overrides: stills.max_usd=10, stills.motion=none (pictures held still), or stills.enabled=false for the old
-#               chalk studio mode
+#   mode=video: pipeline 2 turns the next approved story (or story_id) into a video (film-still
+#               pictures under camera moves, host + teller + character voices, music; made by the agent
+#               team in production/stills), saved as an artifact named video-<run number> for 14 days.
+#               overrides: stills.max_usd=10, stills.motion=none (pictures held still)
 # The story database carries over between runs (saved as an artifact, restored at the
 # start of the next run), so stories never repeat and the shared world keeps growing.
 # Keep this repository private: run logs, artifacts, review images and the sound library release are
@@ -41,7 +35,7 @@ on:
       mode:
         description: "check = tests and model access only; story = generate one story; video = make the next approved story's video; bench = compare two model setups; recheck = re-check approved legends"
         type: choice
-        options: [check, story, video, video-test, sound-library, sound-library-music, video-vast, video-vast-check, video-check, video-bakeoff, video-approve, video-reject, video-publish, video-stats, video-share, bench, recheck]
+        options: [check, story, video, video-test, sound-library, sound-library-music, video-check, video-approve, video-reject, video-publish, video-stats, video-share, bench, recheck]
         default: check
       series:
         description: Series to generate in story mode
@@ -106,7 +100,6 @@ jobs:
       YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
       YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
-      VAST_API_KEY: ${{ secrets.VAST_API_KEY }}
       MODE: ${{ inputs.mode }}
       SERIES: ${{ inputs.series }}
       CONFIG: ${{ inputs.config }}
@@ -171,30 +164,22 @@ jobs:
           python -m story_factory --config "$CONFIG" "${SETS[@]}" generate "$SERIES"
 
       - name: Cache the narrator voice and listener models
-        if: env.MODE == 'video' || env.MODE == 'video-test' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast'
+        if: env.MODE == 'video' || env.MODE == 'video-test'
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
           key: kokoro-82m-whisper-base-v2  # a new key: the listener's Whisper model joins the cache
 
       - name: Install video tools
-        if: env.MODE == 'video' || env.MODE == 'video-test' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast'
+        if: env.MODE == 'video' || env.MODE == 'video-test'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg espeak-ng fonts-dejavu-core
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements-video.txt
 
-      - name: Vast.ai tools
-        if: startsWith(env.MODE, 'video-vast')
-        run: pip install vastai
-
-      - name: Vast.ai balance and offers
-        if: env.MODE == 'video-vast-check'
-        run: python -m production --config "$CONFIG" vast-check | tee -a "$GITHUB_STEP_SUMMARY"
-
       - name: Make the video
-        if: env.MODE == 'video' || env.MODE == 'video-test' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast'
+        if: env.MODE == 'video' || env.MODE == 'video-test'
         env:
           GH_TOKEN: ${{ github.token }}  # reads the sound library release (private when the repository is)
         run: |
@@ -208,11 +193,8 @@ jobs:
               *) SETS+=(--set "$kv") ;;
             esac
           done
-          COMMAND=produce
-          if [ "$MODE" = video-bakeoff ]; then COMMAND=bakeoff; fi
-          if [ "$MODE" = video-vast ]; then COMMAND=vast-video; fi
           if [ "$MODE" = video-test ]; then ARGS=(--script "$SCRIPT"); fi
-          python -m production --config "$CONFIG" "${SETS[@]}" "$COMMAND" "${ARGS[@]}" 2>&1 | tee video-summary.txt
+          python -m production --config "$CONFIG" "${SETS[@]}" produce "${ARGS[@]}" 2>&1 | tee video-summary.txt
           status=${PIPESTATUS[0]}
           { echo '## Video'; echo '```'; tail -c 60000 video-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           exit $status
@@ -259,12 +241,8 @@ jobs:
           python -m production --config "$CONFIG" library show --existing build/library/library.json --out build/show > library-show.txt
           { echo '## Sound library'; echo '```'; tail -c 30000 library.txt; echo; head -250 library-show.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Give back any Vast.ai machine this run rented
-        if: always() && env.MODE == 'video-vast'
-        run: python -m production --config "$CONFIG" vast-cleanup || true
-
       - name: Share review images
-        if: always() && (env.MODE == 'video' || env.MODE == 'video-test' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast')
+        if: always() && (env.MODE == 'video' || env.MODE == 'video-test')
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
@@ -272,7 +250,7 @@ jobs:
         run: .github/scripts/share-review.sh
 
       - name: Save the video
-        if: always() && (env.MODE == 'video' || env.MODE == 'video-test' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast')
+        if: always() && (env.MODE == 'video' || env.MODE == 'video-test')
         uses: actions/upload-artifact@v6
         with:
           name: video-${{ github.run_number }}
@@ -315,13 +293,13 @@ jobs:
           mkdir -p out && unzip -o -q "$RUNNER_TEMP/v.zip" -d out
           GITHUB_RUN_NUMBER=$number .github/scripts/share-review.sh
 
-      - name: Studio model check
+      - name: Paid model check
         if: env.MODE == 'video-check'
         run: |
           SETS=()
           for kv in $OVERRIDES; do SETS+=(--set "$kv"); done
           python -m production --config "$CONFIG" "${SETS[@]}" check 2>&1 | tee video-check.txt
-          { echo '## Studio models'; echo '```'; tail -c 60000 video-check.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          { echo '## Paid models'; echo '```'; tail -c 60000 video-check.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Re-check approved retold legends
         if: env.MODE == 'recheck'

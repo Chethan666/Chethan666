@@ -83,6 +83,7 @@ def cfg(**over):
     c = copy.deepcopy(DEFAULTS["stills"])
     c["sound_library"] = dict(c["sound_library"], enabled=False)  # no release downloads in tests
     c["listener"] = ""  # no Whisper download in tests (the listener has its own tests)
+    c["video_size"], c["picture_size"] = [1280, 720], [1376, 774]  # a smaller frame: quicker tests
     c.update({"end_screen_seconds": 3.0, "title_seconds": 2.0, "max_usd": 5.0, "parallel": 2, "pollinations": False,
               "beat_min_seconds": 2.0, "beat_max_seconds": 5.0}, **over)
     return c
@@ -137,7 +138,8 @@ class Planner:
             import re
             return {"beats": [{"index": int(i), "framing": "close", "picture": f"Beat {i}: Dana grips the wheel",
                                "characters": ["dana"], "sound": "", "scare": i == "3", "importance": 4,
-                               "view": "cctv" if i == "3" else "film"}
+                               "view": "cctv" if i == "3" else "film",
+                               "atmosphere": ["rain", "flicker", "snow"] if i == "1" else []}
                               for i in re.findall(r"beat (\d+) \(", prompt)]}
         if task == "character_design":
             return {"characters": [{"name": "Dana", "design": "a woman of forty in a navy driver's jacket"}]}
@@ -230,7 +232,7 @@ class PainterTests(unittest.TestCase):
         self.assertTrue(out.exists())
         self.assertIn("too bright", painter.rejections[0])
         with Image.open(out) as im:
-            self.assertEqual(im.size, (2560, 1440))  # kept larger than the frame until the edit
+            self.assertEqual(im.size, (1376, 774))  # kept larger than the frame until the edit
         prompts = [a["prompt"] for e, a in fal.calls if "any-llm" not in e]
         self.assertEqual(prompts[0], "a bus")
         self.assertIn("Correct this from the previous attempt: too bright", prompts[1])
@@ -288,7 +290,8 @@ class TeamTests(unittest.TestCase):
         probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=width,height",
                                 "-of", "json", str(out / "video.mp4")], capture_output=True, text=True)
         info = json.loads(probe.stdout)
-        self.assertEqual((info["streams"][0]["width"], info["streams"][0]["height"]), (1920, 1080))
+        self.assertEqual((info["streams"][0]["width"], info["streams"][0]["height"]), (1280, 720))
+        self.assertEqual(DEFAULTS["stills"]["video_size"], [2560, 1440])  # the channel's videos are 1440p
         self.assertAlmostEqual(float(info["format"]["duration"]), summary["seconds"], delta=0.6)
         self.assertEqual(summary["qa"]["status"], "pass", summary["qa"])
         self.assertEqual(summary["point_of_view"], "third")
@@ -337,7 +340,8 @@ class TeamTests(unittest.TestCase):
         prompts = [a.get("prompt", "") for e, a in fal.calls if "seedream" in e]
         self.assertTrue(any("navy driver's jacket" in p for p in prompts))  # the designed character
         self.assertFalse(any("stick figure" in p for p in prompts))
-        self.assertTrue(any("security camera" in p for p in prompts))  # beat 3 is seen on a camera
+        hero_prompts = [a.get("prompt", "") for e, a in fal.calls if "nano-banana-pro" in e]
+        self.assertTrue(any("security camera" in p for p in prompts + hero_prompts))  # beat 3 is seen on a camera
         self.assertTrue(all("identical face" in p for p in prompts if "character sheet of Dana" in p))
         # the bus is designed once and every picture set in it is painted from its sheet
         places = summary["agents"]["art"]["places"]
@@ -359,6 +363,15 @@ class TeamTests(unittest.TestCase):
         self.assertFalse(any(i.startswith("reference:") for i in summary["qa"]["issues"]))
         self.assertEqual(summary["agents"]["illustrator"]["look"], "cinematic")
         self.assertTrue(json.loads((out / "metadata.json").read_text())["synthetic_media"])
+        # the scare is painted by the strongest painter; the rest by the everyday one
+        self.assertEqual(summary["agents"]["illustrator"]["scare_shots"], [3])
+        hero = [a.get("prompt", "") for e, a in fal.calls if e == "fal-ai/nano-banana-pro/edit"]
+        self.assertEqual(len(hero), 1)
+        self.assertIn("security camera", hero[0])
+        # beat 1 has rain and a failing light, as the storyboard said ("snow" is not an atmosphere)
+        beats = {b["index"]: b for b in json.loads((out / "beats.json").read_text())}
+        self.assertEqual(beats[1]["atmosphere"], ["rain", "flicker"])
+        self.assertEqual(summary["agents"]["edit"]["atmosphere"], {"rain": 1, "flicker": 1})
 
     def test_by_default_only_pictures_voice_and_checks_are_paid_for(self):
         summary, _, fal = self.make(FakeFal)

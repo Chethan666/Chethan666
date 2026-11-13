@@ -93,7 +93,7 @@ class Camera(unittest.TestCase):
         x = np.arange(2560) - 0.30 * 2560
         im = 30 + 200 * np.exp(-0.5 * (x / 3.0) ** 2)[None, :] * np.ones((1440, 1))
         Image.fromarray(np.clip(im, 0, 255).astype("uint8")).convert("RGB").save(self.root / "line.png")
-        seg = Segment("seg_push.mp4", 0.0, 4.0, self.root / "line.png", None, "push_in")
+        seg = Segment("seg_push.mp4", 0.0, 4.0, self.root / "line.png", "push_in")
         render(seg, self.root, {"grain": 0.0, "vignette": 0.0}, 1)
         video = self.root / "seg_push.mp4"
         info = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_frames", "-show_entries",
@@ -120,7 +120,7 @@ class Camera(unittest.TestCase):
         from production.stills.post import render
 
         src = flat(self.root / "red.png", (150, 12, 12), (2560, 1440))
-        render(Segment("seg_red.mp4", 0.0, 1.0, src, None, "none"), self.root, {"grain": 0.0, "vignette": 0.0}, 1)
+        render(Segment("seg_red.mp4", 0.0, 1.0, src, "none"), self.root, {"grain": 0.0, "vignette": 0.0}, 1)
         shown = frame(self.root / "seg_red.mp4", 0.5)[500:580, 900:1000].mean((0, 1))
         # with FFmpeg's default (standard-definition) matrix an HD player shows (160, 25, 8): orange-red
         self.assertLess(np.abs(shown - np.array([150, 12, 12])).max(), 5)
@@ -131,7 +131,7 @@ class Camera(unittest.TestCase):
 
         src = flat(self.root / "grey.png", (120, 120, 120), (2560, 1440))
         for move in ("none", "pan_left"):
-            seg = Segment(f"seg_{move}.mp4", 0.0, 1.0, src, None, move)
+            seg = Segment(f"seg_{move}.mp4", 0.0, 1.0, src, move)
             render(seg, self.root, {"grain": 0.0, "vignette": 0.3}, 1)
             for at in (0.0, 0.9):
                 v = frame(self.root / seg.name, at).mean(2)
@@ -139,6 +139,60 @@ class Camera(unittest.TestCase):
                 left, right = v[:60, :60].mean(), v[:60, -60:].mean()
                 self.assertLess(left, centre * 0.8)
                 self.assertAlmostEqual(left, right, delta=2.0)  # the same in both corners, wherever the pan is
+
+
+@unittest.skipUnless(HAVE, "video libraries or ffmpeg not installed")
+class Atmosphere(unittest.TestCase):
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+
+    def test_textures_wrap_so_they_can_scroll_for_ever(self):
+        from production.stills.camera import fog_texture, rain_texture
+
+        size = (320, 180)
+        rain = np.asarray(Image.open(rain_texture(self.root / "rain.png", size)))
+        self.assertEqual(rain.shape, (360, 640, 4))  # a 2x2 tile
+        np.testing.assert_array_equal(rain[:180, :320], rain[180:, 320:])
+        self.assertGreater(rain[..., 3].max(), 60)  # streaks
+        self.assertLess(rain[..., 3].mean(), 30)  # mostly clear air
+        fog = np.asarray(Image.open(fog_texture(self.root / "fog.png", size)), dtype=np.float32)
+        self.assertEqual(fog.shape, (180, 640, 4))  # two tiles wide
+        seam = np.abs(fog[:, 319, 3] - fog[:, 320, 3]).mean()  # where one tile meets the next
+        inside = np.abs(fog[:, 159, 3] - fog[:, 160, 3]).mean()
+        self.assertLess(seam, inside + 3)
+        self.assertGreater(fog[-30:, :, 3].mean(), fog[:30, :, 3].mean())  # the mist lies low
+
+    def test_a_shot_with_rain_fog_and_flicker_renders(self):
+        from production.edit import FPS, Segment
+        from production.stills.camera import fog_texture, rain_texture
+        from production.stills.post import render
+
+        size = (640, 360)
+        textures = {"rain": rain_texture(self.root / "rain.png", size), "fog": fog_texture(self.root / "fog.png", size)}
+        src = flat(self.root / "dark.png", (25, 25, 30), (704, 396))
+        plain = Segment("plain.mp4", 0.0, 2.0, src, "push_in")
+        stormy = Segment("stormy.mp4", 0.0, 2.0, src, "push_in", atmosphere=("rain", "fog", "flicker"))
+        for seg in (plain, stormy):
+            render(seg, self.root, {"grain": 0.0, "vignette": 0.0}, 1, size, textures)
+
+        def frames(name):
+            raw = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(self.root / name), "-f",
+                                  "rawvideo", "-pix_fmt", "gray", "-"], capture_output=True).stdout
+            return np.frombuffer(raw, dtype=np.uint8).reshape(-1, 360, 640).astype(np.float32)
+
+        a, b = frames("plain.mp4"), frames("stormy.mp4")
+        self.assertEqual((len(a), len(b)), (2 * FPS, 2 * FPS))
+        self.assertLess(np.abs(np.diff(a, axis=0)).mean(), 0.5)  # a still under a slow push barely changes
+        self.assertGreater(np.abs(np.diff(b, axis=0)).mean(), 1.0)  # rain falls, the light stutters
+        self.assertGreater(b[:, 300:].mean(), a[:, 300:].mean())  # mist lightens the bottom of the frame
+
+    def test_rain_is_never_put_over_an_interior(self):
+        from production.shots import atmosphere_in
+
+        self.assertEqual(atmosphere_in("Rain lashes the empty road; fog rolls over the fields."), ["rain", "fog"])
+        self.assertEqual(atmosphere_in("Inside the bus, rain streaks the windows."), [])
+        self.assertEqual(atmosphere_in("A candle gutters on the table."), ["flicker"])
 
 
 @unittest.skipUnless(HAVE, "video libraries or ffmpeg not installed")

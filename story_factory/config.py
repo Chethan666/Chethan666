@@ -202,94 +202,15 @@ DEFAULTS: dict[str, Any] = {
         "compare_plans": 6000, "compare_endings": 4000, "recognition": 6000, "grade_guesses": 4000,
         "predict_ending": 2000,
     },
-    # Pipeline 2: the narrator's voice (Kokoro, open source, runs on the CPU). Kokoro
-    # voices: am_michael, am_fenrir, am_onyx, bm_george, bm_lewis... lang "a" is US
+    # Pipeline 2's free narrator (Kokoro, open source, runs on the CPU), behind every paid line.
+    # Kokoro voices: am_michael, am_fenrir, am_onyx, bm_george, bm_lewis... lang "a" is US
     # English, "b" British English.
-    "video": {
-        "voice": "am_michael", "lang": "a", "speed": 0.92,
-        # Characters read their own quoted lines (voices by kind of speaker; see production/voice.py).
-        "character_voices": True,
-        # Moving chalk: up to `motion_scenes` scenes (key moments first) become real video clips
-        # on fal.ai when FAL_KEY is set, within `motion_max_usd` per video. 0 scenes turns it off.
-        "motion_scenes": 8,
-        "motion_max_usd": 2.0,
-        "motion_model": "fal-ai/bytedance/seedance/v1/lite/image-to-video",
-        "motion_args": {"duration": "5", "resolution": "720p", "aspect_ratio": "16:9"},
-        "motion_usd_per_second": 0.036,
-    },
-    # Pipeline 2, studio mode (with FAL_KEY): every shot a generated chalk picture, key shots
-    # as real clips, an expressive narrator, a scored soundtrack, and a broadcast edit.
-    # Without the key, or with `enabled = false`, the drawn pipeline above runs instead.
-    "studio": {
-        "enabled": True,
-        # Spending cap per video (estimates from `prices`); work past it falls back to free steps.
-        "max_usd": 45.0,
-        "models": {
-            "sheet": "fal-ai/nano-banana-pro",           # the style frame and character sheets
-            "shot": "fal-ai/nano-banana-pro/edit",       # every shot, from the sheets
-            "shot_cheap": "fal-ai/bytedance/seedream/v4.5/edit",  # the redraw when a picture fails
-            "shot_alt": "fal-ai/nano-banana-2/edit",            # compared in the bake-off
-            "hero": "bytedance/seedance-2.0/fast/image-to-video",
-            "hero_alt": "fal-ai/kling-video/v3/pro/image-to-video",
-            "medium": "fal-ai/bytedance/seedance/v1/lite/image-to-video",
-            "voice": "fal-ai/elevenlabs/tts/eleven-v3",
-            "foley": "fal-ai/mmaudio-v2",
-            "sfx": "fal-ai/elevenlabs/sound-effects/v2",
-            "music": "fal-ai/elevenlabs/music",
-            "thumbnail": "fal-ai/nano-banana-pro/edit",
-            "vision": "fal-ai/any-llm/vision",           # checks every picture and clip frame
-        },
-        # Extra arguments per model role (checked against each model's inputs by `check`).
-        "model_args": {
-            "sheet": {"aspect_ratio": "16:9", "num_images": 1},
-            "shot": {"aspect_ratio": "16:9", "num_images": 1, "resolution": "2K"},
-            "shot_cheap": {"image_size": "landscape_16_9", "num_images": 1},
-            "shot_alt": {"aspect_ratio": "16:9", "num_images": 1, "resolution": "2K"},
-            "hero": {"resolution": "720p", "aspect_ratio": "16:9", "generate_audio": False},
-            "hero_alt": {"generate_audio": False, "negative_prompt": "colour, colors, realistic, 3d, shading, "
-                         "faces, text, blur, distortion, morphing"},
-            "medium": {"resolution": "720p", "aspect_ratio": "16:9"},
-            "voice": {"stability": 0.5},
-            "thumbnail": {"aspect_ratio": "16:9", "num_images": 1, "resolution": "2K"},
-            "vision": {"model": "google/gemini-2.5-flash"},
-        },
-        # Clip lengths each motion model accepts, in seconds (from `check`).
-        "durations": {"hero": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-                      "hero_alt": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-                      "medium": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]},
-        # Estimated USD per picture, per second of clip or audio, or per 1,000 characters of speech.
-        "prices": {
-            "fal-ai/nano-banana-pro": 0.15, "fal-ai/nano-banana-pro/edit": 0.15,
-            "fal-ai/nano-banana-2/edit": 0.08, "fal-ai/bytedance/seedream/v4.5/edit": 0.04,
-            "bytedance/seedance-2.0/fast/image-to-video": 0.2419,
-            "bytedance/seedance-2.0/image-to-video": 0.3024,
-            "fal-ai/kling-video/v3/pro/image-to-video": 0.224,
-            "fal-ai/bytedance/seedance/v1/lite/image-to-video": 0.036,
-            "fal-ai/elevenlabs/tts/eleven-v3": 0.10, "fal-ai/mmaudio-v2": 0.002,
-            "fal-ai/elevenlabs/sound-effects/v2": 0.002, "fal-ai/elevenlabs/music": 0.01,
-            "fal-ai/any-llm/vision": 0.002,
-        },
-        # Shots: 3-6 s each; how many become clips, by tier (the rest are living stills).
-        "shot_min_seconds": 3.0, "shot_max_seconds": 6.5,
-        "hero_shots": 20, "medium_shots": 40,
-        "parallel": 6,
-        # Narrator and cast voices on ElevenLabs v3 (names from `check`); Kokoro if a line fails.
-        "narrator_voice": "Brian",
-        "cast_voices": {"man": ["George", "Daniel", "Callum"], "woman": ["Charlotte", "Alice", "Lily"],
-                        "old_man": ["Bill"], "old_woman": ["Dorothy"], "boy": ["Liam"], "girl": ["Laura"]},
-        # The edit.
-        "cold_open": True, "title_seconds": 2.0, "end_screen_seconds": 20.0,
-        "burn_captions": False,  # long videos upload captions.srt instead; Shorts always burn them
-        "shorts": 3, "short_max_seconds": 55.0,
-        "thumbnails": 3,
-        # Audio loudness for YouTube.
-        "loudness_lufs": -14.0,
-    },
-    # Pipeline 2, stills mode (the default): the story told in still pictures (cinematic film stills), voices
-    # and music, made by a team of agents (production/stills). Runs free without keys (Kokoro,
-    # free picture services, synthesized sound); with FAL_KEY the paid models below are used.
+    "video": {"voice": "am_michael", "lang": "a", "speed": 0.92},
+    # Pipeline 2: the story told in still pictures (cinematic film stills, each a shot under a
+    # slow camera move), voices and music, made by a team of agents (production/stills). Runs
+    # free without keys (Kokoro, free picture services, synthesized sound); with FAL_KEY the paid
+    # models below are used.
     "stills": {
-        "enabled": True,
         # Spending cap per video in USD (estimates from `prices`); past it, free fallbacks.
         "max_usd": 10.0,
         # The channel's house look, sent with every picture: "cinematic" (stills from a dark horror
@@ -348,14 +269,23 @@ DEFAULTS: dict[str, Any] = {
         # pan, close ones push in, a scare lunges and settles, a security camera holds still);
         # "none": every picture is held perfectly still.
         "motion": "drift",
-        # Pictures are painted and kept at this size until the edit, so a push-in ends on real detail.
-        "picture_size": [2560, 1440],
+        # The video's frame. 1440p, not 1080p: YouTube gives 1440p uploads its better codec (VP9/AV1)
+        # even when watched at 1080p, and dark, grainy pictures are where the plain one bands and
+        # blocks. About twice the render time of 1080p.
+        "video_size": [2560, 1440],
+        # Pictures are painted and kept at this size until the edit: the 1440p frame plus the room a
+        # camera move needs (a push-in ends on real detail, never on an enlargement).
+        "picture_size": [2752, 1548],
+        # What moves in the air of a shot (the storyboard decides per beat): rain, fog, a flickering light.
+        "atmosphere": True,
         # The colorist: a picture whose brightness, contrast or colour cast lies outside the film's
         # tolerance is brought this far back to it; pictures inside are not touched (0 = off).
         "grade_strength": 0.75,
         # The set designer gives each place the story returns to a fixed design (free), and the
         # most-used places a location sheet the pictures set there are painted from (one picture each).
         "set_design": True, "location_sheets": 3,
+        # How many scare beats are painted by the strongest painter (`chains.scare`, about $0.15 each).
+        "scare_shots": 4,
         "beat_min_seconds": 5.0, "beat_max_seconds": 11.0,
         "scene_dip_seconds": 0.35,
         # Painters tried in order until the critic passes a picture; each is told what the critic
@@ -367,6 +297,9 @@ DEFAULTS: dict[str, Any] = {
             "reference": ["fal:reference", "fal:reference", "cloudflare", "pollinations"],
             "sheet": ["fal:sheet", "fal:sheet", "cloudflare", "pollinations"],
             "beat": ["fal:shot", "fal:shot_alt", "cloudflare", "pollinations"],
+            # The scares (at most `scare_shots`, most important first) are the frames a viewer
+            # remembers and the ones a thumbnail is made from: the strongest painter first.
+            "scare": ["fal:hero", "fal:shot", "cloudflare", "pollinations"],
             "thumbnail": ["fal:thumbnail"],
         },
         "references": True,  # a style frame, character sheets and location sheets keep look, people and places the same
@@ -378,6 +311,8 @@ DEFAULTS: dict[str, Any] = {
             "shot": "fal-ai/bytedance/seedream/v4.5/edit",        # every beat, from the references
             "shot_text": "fal-ai/bytedance/seedream/v4.5/text-to-image",
             "shot_alt": "fal-ai/nano-banana-2/edit",              # the redraw when the critic rejects one
+            "hero": "fal-ai/nano-banana-pro/edit",                # the scare shots
+            "hero_text": "fal-ai/nano-banana-pro",
             "thumbnail": "fal-ai/nano-banana-2/edit",
             "voice": "fal-ai/elevenlabs/tts/eleven-v3",
             "sfx": "fal-ai/elevenlabs/sound-effects/v2",
@@ -387,16 +322,19 @@ DEFAULTS: dict[str, Any] = {
             "vision": "fal-ai/any-llm/vision",                   # the critic's eye
         },
         # An edit model asked without references uses its text-to-image twin.
-        "text_roles": {"shot": "shot_text", "shot_alt": "reference", "sheet": "reference", "thumbnail": "reference"},
+        "text_roles": {"shot": "shot_text", "shot_alt": "reference", "sheet": "reference", "thumbnail": "reference",
+                       "hero": "hero_text"},
         "model_args": {
             "reference": {"aspect_ratio": "16:9", "num_images": 1},
             "sheet": {"aspect_ratio": "16:9", "num_images": 1},
-            # Pictures that go into the film are painted at 2K, larger than the 1080p frame, so they
-            # stay sharp under a camera move. Seedream: 2560x1440 is its smallest custom size. Nano
-            # Banana 2: "2K" (its default "1K" is 1376x768, which goes soft when enlarged).
-            "shot": {"image_size": {"width": 2560, "height": 1440}, "num_images": 1},
-            "shot_text": {"image_size": {"width": 2560, "height": 1440}, "num_images": 1},
+            # Pictures that go into the film are painted at 2K, a little larger than the 1440p frame,
+            # so they stay sharp under a camera move. Seedream: a custom size (from 2560x1440 up). Nano
+            # Banana 2 and Pro: "2K" (the default "1K" is 1376x768, which goes soft when enlarged).
+            "shot": {"image_size": {"width": 2752, "height": 1548}, "num_images": 1},
+            "shot_text": {"image_size": {"width": 2752, "height": 1548}, "num_images": 1},
             "shot_alt": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
+            "hero": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
+            "hero_text": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "thumbnail": {"aspect_ratio": "16:9", "num_images": 1},
             "voice": {"stability": 0.5},
             "vision": {"model": "google/gemini-2.5-flash"},
@@ -406,6 +344,7 @@ DEFAULTS: dict[str, Any] = {
         # Estimated USD per picture, per 1,000 characters of speech, or per second of audio.
         "prices": {
             "fal-ai/nano-banana-2": 0.08, "fal-ai/nano-banana-2/edit": 0.08,
+            "fal-ai/nano-banana-pro": 0.15, "fal-ai/nano-banana-pro/edit": 0.15,  # 1K and 2K; 4K is double
             "fal-ai/bytedance/seedream/v4.5/edit": 0.04, "fal-ai/bytedance/seedream/v4.5/text-to-image": 0.04,
             "fal-ai/elevenlabs/tts/eleven-v3": 0.10, "fal-ai/elevenlabs/sound-effects/v2": 0.002,
             # ElevenLabs music on fal: $0.80 a minute, billed in whole minutes (the score rounds up).
@@ -457,15 +396,6 @@ DEFAULTS: dict[str, Any] = {
         },
         # YouTube's "altered or synthetic content" flag: None follows the look (on for cinematic).
         "loudness_lufs": -14.0, "synthetic_media": None,
-    },
-    # Pipeline 2 on open models: a 40-60 s piece made on a rented Vast.ai GPU (mode video-vast).
-    "vast": {
-        "max_usd": 12.0,  # the GPU rental cap; the job stops before it would pass it
-        "max_hours": 3.4,  # and the GitHub job's own time limit
-        "picture_model": "Qwen/Qwen-Image-Edit-2509", "picture_steps": 40, "picture_tries": 3,
-        "clip_model": "Wan-AI/Wan2.2-I2V-A14B-Diffusers", "clip_steps": 25, "clip_size": [1280, 720],
-        "shot_min_seconds": 3.0, "shot_max_seconds": 6.0,
-        "title_seconds": 2.0, "end_seconds": 5.0, "burn_captions": True, "loudness_lufs": -14.0,
     },
     "dedup": {
         "title_similarity": 0.85,

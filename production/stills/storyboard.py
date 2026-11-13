@@ -24,6 +24,7 @@ from .board import Board
 log = logging.getLogger(__name__)
 
 HOST = "The Storyteller"
+ATMOSPHERES = ("rain", "fog", "flicker")
 VIEWS = ("film", "cctv", "phone", "polaroid")
 SYSTEM = ("You are the storyboard artist of Hollow Lines, a horror storytelling channel told in still "
           "pictures, like frames of a dark horror film, over a narrator's voice. You stage every beat for dread and clarity: one "
@@ -44,6 +45,7 @@ SCHEMA = {
             "scare": {"type": "boolean"},
             "importance": {"type": "integer"},
             "view": {"type": "string", "enum": list(VIEWS)},
+            "atmosphere": {"type": "array", "items": {"type": "string", "enum": list(ATMOSPHERES)}},
         }}}},
 }
 
@@ -82,6 +84,10 @@ def prompt(beats: list[Shot], scenes: list[dict[str, Any]], cast: list[dict[str,
             "- view: \"film\" for almost every beat; \"cctv\", \"phone\" or \"polaroid\" only when the words "
             "say we are looking at a security-camera feed, a phone photo or video, or an old photograph, and "
             "then the picture shows what that camera sees. Never for [HOST] beats\n"
+            "- atmosphere: what visibly moves in the air of this picture, for the edit to animate: \"rain\" only "
+            "when rain falls between the camera and the scene (outdoors, never over an interior or behind "
+            "glass), \"fog\" for mist or fog in the air, \"flicker\" when the picture's light is a failing lamp, "
+            "a guttering candle or a stuttering screen; [] for most beats. Keep it consistent within a scene\n"
             "No text, signs or captions to read in any picture.")
 
 
@@ -97,7 +103,6 @@ class StoryboardAgent:
         host_beats = self._host_beats(beats, timeline, d)
         for b in beats:
             shotlist.fallback(b, scenes[b.scene] if b.scene < len(scenes) else {}, beats)
-            b.camera = "still"
             if b.index in host_beats:
                 b.characters = [HOST]
                 b.picture = (f"{HOST} sits by his lantern's red flame in the dark, looking at us as he speaks: "
@@ -108,8 +113,6 @@ class StoryboardAgent:
         if left and directed:  # the model skipped some: ask again for just those
             directed += self._direct(board, left, scenes, names, host_beats)
         checked = check(board, beats, scenes, host_beats)
-        for b in beats:
-            b.tier = "still"
         d.update(beats=beats, host_beats=host_beats)
         return {"beats": len(beats), "directed_by_model": directed, "host_beats": len(host_beats),
                 "scares": sum(1 for b in beats if b.scare), "check": checked,
@@ -158,6 +161,9 @@ class StoryboardAgent:
                     pass
                 view = str(item.get("view") or "film")
                 beat.view = view if view in VIEWS and beat.index not in host_beats else "film"
+                air = item.get("atmosphere")
+                beat.atmosphere = ([str(a) for a in air if str(a) in ATMOSPHERES][:2] if isinstance(air, list)
+                                   else shotlist.atmosphere_in(beat.picture))
                 beat.directed = True
                 got += 1
         return got
@@ -235,6 +241,8 @@ def check(board: Board, beats: list[Shot], scenes: list[dict[str, Any]], host_be
         if beat is None or len(picture) < 20:
             continue
         beat.picture = picture[:700]
+        if "rain" in beat.atmosphere and any(w in picture.lower() for w in shotlist.INSIDE):
+            beat.atmosphere = [a for a in beat.atmosphere if a != "rain"]  # the new picture is indoors
         if isinstance(f.get("characters"), list):
             beat.characters = [shotlist._canonical(str(n), names + [HOST]) for n in f["characters"] if str(n).strip()][:3]
         fixed.append({"beat": beat.index, "problem": str(f.get("problem", ""))[:200]})

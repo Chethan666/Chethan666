@@ -1,10 +1,8 @@
 """Pipeline 2: turns an approved story into a finished video.
 
-    claim an approved story -> narrator voice (Kokoro, open source, on the CPU) with the
-    story's pauses and pronunciations -> word timings -> art direction per scene (an open
-    model picks background, figures, poses, props, camera) -> chalk stickman frames drawn
-    in code -> ambience and sound cues -> FFmpeg assembly with burned-in captions
-    -> video, thumbnail, captions and upload metadata
-
-Everything runs on a GitHub Actions runner. Uploading to YouTube comes later.
+The video is made by the agent team in `production/stills` (see its description): voices,
+a storyboard, designed people and places, a picture per beat, a grade, a camera move per
+shot, a sound design from the channel's library, the edit, packaging and QA. This package
+holds what the team shares: timing and captions, voices, the beats, the edit's running
+order, the sound library and score, paid calls with one spending cap, and YouTube.
 """

@@ -160,7 +160,7 @@
  },
  "comment_question": "Would you have kept driving?",
  "stills": {
-  "max_usd": 2.5,
+  "max_usd": 3.0,
   "cold_open": false,
   "title_seconds": 2.0,
   "end_screen_seconds": 4.0,

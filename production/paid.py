@@ -11,12 +11,11 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import re
 import threading
 from pathlib import Path
 from typing import Any
 
-from production.media import MediaError, data_uri, download, first_url
+from production.media import MediaError, download, first_url
 
 log = logging.getLogger(__name__)
 
@@ -146,48 +145,6 @@ def result_url(result: dict[str, Any], kind: str) -> str:
     if isinstance(result.get("video"), dict) and result["video"].get("url"):  # video-to-audio models
         return result["video"]["url"]
     raise MediaError(f"no {kind} in result: {str(result)[:300]}")
-
-
-VISION_SYSTEM = ("You are the picture checker of a chalk-animation horror channel. Every frame must look like "
-                 "white chalk drawn on a black chalkboard: simple stick figures, rough chalk strokes, black "
-                 "background, and no colour at all except a single blood-red accent. Answer with JSON only.")
-
-
-def vision_check(studio: Studio, image: Path, picture: str, task: str = "vision") -> tuple[bool, str]:
-    """A vision model looks at a picture: is it in the channel's style, and does it show the shot?
-    Returns (ok, reason). If the checker itself fails, the picture passes (the pixel check still ran)."""
-    if "vision" not in studio.models:
-        return True, "no vision model"
-    model = studio.models["vision"]
-    try:
-        usd = studio.budget.reserve(model)
-    except OverBudget:
-        return True, "no budget left for checks"
-    prompt = (f"The shot should show: {picture}\n\nLook at the image. Judge only the drawing style, not small "
-              "details of the content. Fail it ONLY if one of these is clearly true: it is a photograph, a 3D "
-              "render or a painted, fully coloured illustration instead of a chalk drawing on a dark board; large "
-              "areas use a colour other than white chalk and red (green, blue, yellow...); it contains readable "
-              "words or a watermark (a short number is fine); it is split into several panels; or it shows "
-              "something entirely unrelated to the shot. Small extra details, a second red detail, simple "
-              "facial expressions, slightly different poses or framing are all fine. Reply exactly as JSON: "
-              '{"ok": true or false, "reason": "short reason"}')
-    try:
-        result = studio.fal.run(model, dict(studio.args.get("vision", {}), prompt=prompt, system_prompt=VISION_SYSTEM,
-                                            image_urls=[data_uri(_small(image))]))
-    except MediaError as exc:
-        studio.budget.settle(usd, task, model, ok=False)
-        log.warning("Vision check unavailable: %s", str(exc)[:200])
-        return True, "checker failed"
-    studio.budget.settle(usd, task, model, ok=True)
-    text = str(result.get("output") or result.get("text") or result)
-    match = re.search(r"\{.*\}", text, re.S)
-    try:
-        verdict = json.loads(match.group(0)) if match else {}
-    except ValueError:
-        verdict = {}
-    if not isinstance(verdict, dict) or "ok" not in verdict:
-        return True, "unreadable verdict"
-    return bool(verdict.get("ok")), str(verdict.get("reason", ""))[:200]
 
 
 def _small(image: Path, width: int = 768) -> Path:

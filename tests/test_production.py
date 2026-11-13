@@ -1,15 +1,9 @@
-"""Pipeline 2: timing, direction, drawing, sound and a whole video with a placeholder voice."""
+"""Pipeline 2: narration timing and captions, and the synthesized sound behind every paid one."""
 
-import json
-import shutil
-import tempfile
 import unittest
-from pathlib import Path
 
 try:
     import numpy as np
-    import PIL  # noqa: F401
-    import soundfile  # noqa: F401
     HAVE_VIDEO_LIBS = True
 except ImportError:  # the story factory's own tests run without the video libraries
     HAVE_VIDEO_LIBS = False
@@ -73,71 +67,6 @@ class TimingTests(unittest.TestCase):
 
 
 @unittest.skipUnless(HAVE_VIDEO_LIBS, "video extras not installed")
-class DirectionAndDrawingTests(unittest.TestCase):
-    def test_keywords_direct_a_scene_when_no_model_answers(self):
-        from production import director
-
-        spec = director.guess(SCENES[2], ["Marisol"])
-        self.assertEqual(spec["background"], "vehicle")
-        self.assertIn("mirror", [p["kind"] for p in spec["props"]])
-        self.assertEqual(spec["camera"], "push_in")
-
-    def test_a_models_answer_is_cleaned_before_drawing(self):
-        from production import director
-
-        spec = director.clean({"background": "spaceship", "camera": "push_in", "figures": [
-            {"name": "Marisol", "pose": "moonwalk", "x": 7, "facing": "left", "ghost": False}],
-            "props": [{"kind": "laser", "x": 0.4}, {"kind": "door", "x": -3}], "red": "prop:door"}, SCENES[2], [])
-        self.assertEqual(spec["background"], "vehicle")
-        self.assertEqual(spec["figures"][0]["pose"], "stand")
-        self.assertEqual(spec["figures"][0]["x"], 0.92)
-        self.assertEqual([p["kind"] for p in spec["props"]], ["door"])
-
-    def test_direction_falls_back_per_batch_when_the_model_fails(self):
-        from production import director
-        from story_factory.llm import LLMError
-
-        class Broken:
-            def one(self, role):
-                return self
-
-            def generate_json(self, *a):
-                raise LLMError("down")
-
-        specs, fallbacks = director.direct(Broken(), SCENES, [{"name": "Marisol", "look": "x"}], "the bell")
-        self.assertEqual((len(specs), fallbacks), (4, 4))
-
-    def test_looks_read_whole_words(self):
-        from production import director
-
-        self.assertEqual(director.features("X", "Invented look that canon must override")["headwear"], "none")
-        look = director.features("Leo", "Tall, long grey coat, flat cap, glasses")
-        self.assertEqual((look["headwear"], look["outfit"], look["accessory"], look["height"]),
-                         ("cap", "coat", "glasses", 1.12))
-
-    def test_every_pose_prop_and_background_draws(self):
-        from production import director, draw
-
-        paper, grain = draw.make_paper(320, 180)
-        looks = {"A": director.features("A", "long hair, dress, lantern")}
-        for bg in director.BACKGROUNDS:
-            spec = {"background": bg, "light": "moonlight", "camera": "still", "red": "prop:door",
-                    "figures": [{"name": "A", "pose": pose, "x": 0.5, "facing": "left", "ghost": False}
-                                for pose in director.POSES[:2]] + [{"name": "Shadow", "pose": "stand", "x": 0.8,
-                                                                     "facing": "left", "ghost": True}],
-                    "props": [{"kind": "door", "x": 0.3}]}
-            frames = draw.scene_frames(spec, looks, (320, 180), paper, grain, seed=1, variants=2)
-            self.assertEqual(len(frames), 2)
-        c = draw.Canvas(320, 180, 1)
-        for kind in director.PROPS:
-            draw.prop(c, kind, 160, 140, 20)
-        for pose in director.POSES:
-            draw.figure(c, 160, 140, 70, pose, "right", looks["A"])
-        image = c.render(paper, grain)
-        self.assertGreater(np.asarray(image).max(), 150)  # chalk is visible on the paper
-
-
-@unittest.skipUnless(HAVE_VIDEO_LIBS, "video extras not installed")
 class SoundTests(unittest.TestCase):
     def test_cues_are_found_and_synthesized(self):
         from production import sound
@@ -160,120 +89,6 @@ class SoundTests(unittest.TestCase):
         quiet = np.abs(out[int(rate * 2.6):int(rate * 3.4)]).mean()
         self.assertGreater(speech, 4 * quiet)
 
-
-@unittest.skipUnless(HAVE_VIDEO_LIBS and shutil.which("ffmpeg"), "video extras or ffmpeg not installed")
-class WholeVideoTests(unittest.TestCase):
-    def test_a_story_becomes_a_video_with_captions_thumbnail_and_metadata(self):
-        from production import run, voice
-
-        story = {"id": 7, "title": "Night Bus", "narration": NARRATION, "scenes": json.dumps(SCENES),
-                 "cast": json.dumps([{"name": "Marisol", "look": "short, long hair, bus driver's cap"}]),
-                 "bible": json.dumps({"red_accent": "the stop bell"}),
-                 "pauses": json.dumps([{"after": "Tonight the bell rang", "ms": 1200}]),
-                 "pronunciations": json.dumps([{"word": "Marisol", "say_as": "MAH-ree-sol"}]),
-                 "packaging": json.dumps({"titles": ["The Extra Passenger"], "thumbnail_text": "WHO RANG",
-                                          "description": "A story.", "tags": ["horror"]}),
-                 "comment_question": "Would you have opened the door?",
-                 "description_credit": "This is an original work of fiction."}
-        out = Path(tempfile.mkdtemp())
-        try:
-            summary = run.produce(story, out, voice.SilentVoice(), None, "360")
-            self.assertEqual(summary["scenes"], 4)
-            for name in ("video.mp4", "thumbnail.png", "captions.srt", "metadata.json", "narration.wav"):
-                self.assertTrue((out / name).stat().st_size > 0, name)
-            meta = json.loads((out / "metadata.json").read_text())
-            self.assertEqual(meta["title"], "The Extra Passenger")
-            self.assertFalse(meta["made_for_kids"])
-            self.assertIn("Marisol", (out / "captions.srt").read_text())  # captions keep the real spelling
-            self.assertFalse((out / "work").exists())
-        finally:
-            shutil.rmtree(out, ignore_errors=True)
-
-
-    def test_a_video_with_a_moving_scene_and_a_characters_line(self):
-        from production import assemble, run, voice
-
-        narration = NARRATION.replace("Tonight the bell rang.", "Tonight the bell rang. \"Who's there?\" Marisol said.")
-        story = {"id": 8, "title": "Night Bus", "narration": narration, "scenes": json.dumps(SCENES),
-                 "cast": json.dumps([{"name": "Marisol", "look": "bus driver's cap"}])}
-        out = Path(tempfile.mkdtemp())
-
-        class FakeAnimator:
-            spent = 0.18
-
-            def run(self, work, scenes, direction):
-                assemble._run(["-f", "lavfi", "-i", "testsrc=size=640x360:rate=24:duration=2", "-pix_fmt",
-                               "yuv420p", "gen.mp4"], work)
-                return {2: work / "gen.mp4"}
-
-        import os
-        here = os.getcwd()
-        try:
-            os.chdir(out)  # relative folders, as in the workflow
-            summary = run.produce(story, Path("made"), voice.SilentVoice(), None, "360", animator=FakeAnimator())
-            out = out / "made"
-            self.assertEqual(summary["moving_scenes"], [2])
-            self.assertEqual(summary["quoted_lines"], 1)
-            self.assertIn("Marisol", summary["character_voices"])
-            self.assertTrue((out / "video.mp4").stat().st_size > 0)
-        finally:
-            os.chdir(here)
-            shutil.rmtree(out.parent if out.name == "made" else out, ignore_errors=True)
-
-
-@unittest.skipUnless(HAVE_VIDEO_LIBS and shutil.which("ffmpeg"), "needs the video libraries and FFmpeg")
-class MotionTests(unittest.TestCase):
-    def test_key_moments_then_tense_scenes_are_animated_within_the_budget(self):
-        from production import animate
-
-        scenes = [{"mood": "calm"}, {"mood": "Mounting terror"}, {"mood": "eerie", "key_moment": True},
-                  {"mood": "tense dread"}, {"mood": "calm"}]
-        self.assertEqual(animate.choose(scenes, 3), [1, 2, 3])
-        self.assertEqual(animate.choose(scenes, 0), [])
-        text = animate.prompt({"visual": "Marisol looks at the mirror"},
-                              {"figures": [{"name": "Marisol", "pose": "look_back"}], "camera": "push_in"})
-        self.assertIn("white chalk lines on black", text)
-        self.assertIn("Marisol (look_back)", text)
-
-        calls = []
-
-        class FakeFal:
-            def run(self, model, args):
-                calls.append(args)
-                return {"video": {"url": "https://example.invalid/clip.mp4"}}
-
-        made = Path(tempfile.mkdtemp())
-        try:
-            from unittest import mock
-            from PIL import Image
-
-            for i in range(len(scenes)):
-                Image.new("RGB", (64, 36)).save(made / f"scene_{i:03d}_0.png")
-            animator = animate.Animator(FakeFal(), "m", {"duration": "5"}, 0.036, 0.40, 5)
-            with mock.patch("production.media.download", side_effect=lambda url, path: path):
-                moving = animator.run(made, scenes, [{} for _ in scenes])
-            self.assertEqual(len(moving), 2)  # $0.18 a clip: the cap stops the third
-            self.assertTrue(calls[0]["image_url"].startswith("data:image/png;base64,"))
-        finally:
-            shutil.rmtree(made, ignore_errors=True)
-
-    def test_a_moving_scene_plays_its_clip_then_the_drawing_carries_on(self):
-        from production import assemble, draw
-
-        work = Path(tempfile.mkdtemp())
-        try:
-            size = (160, 90)
-            paper, grain = draw.make_paper(*size)
-            for v in range(3):
-                paper.save(work / f"scene_000_{v}.png")
-            assemble._run(["-f", "lavfi", "-i", "testsrc=size=160x90:rate=24:duration=2", "-pix_fmt", "yuv420p",
-                           "gen.mp4"], work)
-            name = assemble.moving_clip(work, 0, 4.0, "push_in", "flicker", size, work / "gen.mp4")
-            self.assertAlmostEqual(assemble._length(work / name), 4.0, delta=0.25)
-            short = assemble.moving_clip(work, 0, 1.5, "still", "dark", size, work / "gen.mp4")
-            self.assertAlmostEqual(assemble._length(work / short), 1.5, delta=0.2)
-        finally:
-            shutil.rmtree(work, ignore_errors=True)
 
 
 if __name__ == "__main__":

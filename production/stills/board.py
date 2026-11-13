@@ -12,6 +12,18 @@ from typing import Any, Protocol
 log = logging.getLogger(__name__)
 
 
+def _json(value: Any, default: Any) -> Any:
+    """A story field that may be stored as JSON text (the database) or as data (a script file)."""
+    if value is None or value == "":
+        return default
+    if isinstance(value, (list, dict)):
+        return value
+    try:
+        return json.loads(value)
+    except (TypeError, ValueError):
+        return default
+
+
 @dataclass
 class Board:
     """Everything one video's agents share: the story, the tools, and what each agent made."""

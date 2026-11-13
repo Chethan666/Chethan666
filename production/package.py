@@ -1,8 +1,6 @@
-"""Packaging: thumbnails to test, Shorts that send viewers to the story, and the review kit.
+"""Packaging: Shorts that send viewers to the story, and the review kit (the thumbnails are
+the stills packager's, in production/stills/post.py).
 
-- Three thumbnails (the story's thumbnail brief, framed three ways: the victim, the threat,
-  the place), drawn by the image model in the channel's chalk style with big chalk lettering,
-  for YouTube's Test & Compare. The code-drawn thumbnail is the fallback.
 - Two or three vertical Shorts cut from the finished video at the scariest stretches (never
   the ending), 25-55 s, with the story's title on top, big burned-in captions and a line
   pointing to the full story.
@@ -19,51 +17,11 @@ from typing import Any
 
 from PIL import Image, ImageDraw
 
-from production.media import MediaError, data_uri
-
 from . import draw, timing
 from .edit import FPS
-from .look import style
-from .paid import OverBudget, Studio
 from .shots import Shot
 
 log = logging.getLogger(__name__)
-
-ANGLES = (
-    "the main character in close-up, frozen in terror, eyes wide, the threat looming just behind them",
-    "the threat itself, closer than it should be: a dark shape with glowing red eyes filling half the frame",
-    "a single tiny figure in the key place at night, something wrong in the darkness around them",
-)
-
-
-def thumbnails(studio: Studio | None, out_dir: Path, packaging: dict[str, Any], red: str, refs: list[Path],
-               key_picture: Path, count: int = 3) -> list[Path]:
-    text = str(packaging.get("thumbnail_text", "")).strip()
-    brief = str(packaging.get("thumbnail_brief", "")).strip()
-    made: list[Path] = []
-    for k, angle in enumerate(ANGLES[:count]):
-        out = out_dir / f"thumbnail_{k + 1}.jpg"
-        raw = out_dir / f"thumbnail_{k + 1}_raw.png"
-        if studio is not None and "thumbnail" in studio.models:
-            prompt = (f"A YouTube thumbnail. {style(red)} Exception to the no-text rule: big, bold, hand-lettered chalk "
-                      f"words \"{text.upper()}\" in the left third, the last word in blood-red chalk, readable at "
-                      f"phone size. Picture: {angle}. Brief: {brief} Extreme contrast, one clear focal point, "
-                      "lots of black, nothing small or busy.")
-            try:
-                studio.call("thumbnail", {"prompt": prompt, "image_urls": [data_uri(p) for p in refs if p.exists()][:4]},
-                            "image", raw, "thumbnail", key=[prompt, k])
-                with Image.open(raw) as im:
-                    im.convert("RGB").resize((1280, 720), Image.LANCZOS).save(out, quality=90)
-                raw.unlink(missing_ok=True)
-                made.append(out)
-                continue
-            except (MediaError, OverBudget) as exc:
-                log.warning("Thumbnail %d not generated: %s", k + 1, str(exc)[:200])
-        with Image.open(key_picture) as im:
-            draw.thumbnail(im.convert("RGB"), text).convert("RGB").save(out, quality=90)
-        made.append(out)
-    return made
-
 
 def short_windows(shots: list[Shot], scenes: list[dict[str, Any]], offset: float, count: int = 3,
                   min_s: float = 25.0, max_s: float = 55.0) -> list[tuple[float, float]]:
@@ -152,7 +110,7 @@ def shorts(video: Path, windows: list[tuple[float, float]], cues: list[timing.Cu
     return made
 
 
-def contact_sheet(shots: list[Shot], pictures: dict[int, Path], clips: dict[int, Path], out: Path,
+def contact_sheet(shots: list[Shot], pictures: dict[int, Path], out: Path,
                   columns: int = 8, thumb: tuple[int, int] = (240, 135)) -> Path:
     rows = -(-len(shots) // columns) or 1
     sheet = Image.new("RGB", (columns * (thumb[0] + 8) + 8, rows * (thumb[1] + 34) + 8), (24, 24, 24))
@@ -164,9 +122,8 @@ def contact_sheet(shots: list[Shot], pictures: dict[int, Path], clips: dict[int,
         if path and path.exists():
             with Image.open(path) as im:
                 sheet.paste(im.convert("RGB").resize(thumb), (x, y))
-        moving = "CLIP " + s.tier.upper() if s.index in clips else "still"
-        d.text((x, y + thumb[1] + 4), f"#{s.index} {s.framing} {moving}{' SCARE' if s.scare else ''}", font=f,
-               fill=(220, 60, 60) if s.index in clips else (200, 200, 200))
+        d.text((x, y + thumb[1] + 4), f"#{s.index} {s.framing}{' SCARE' if s.scare else ''}", font=f,
+               fill=(220, 60, 60) if s.scare else (200, 200, 200))
     sheet.save(out, quality=85)
     return out
 

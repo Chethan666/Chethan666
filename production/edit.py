@@ -1,31 +1,28 @@
-"""The edit: a cold open, a title card, the story cut shot by shot, and an end screen.
+"""The edit's running order: a cold open, a title card, the story cut shot by shot, an end screen.
 
 Shots cut hard on the narration's own sentence breaks; the only fades are into the story
-after the title and out of it before the end screen. Each living still keeps a slow camera
-move and the chalk boil; each clip plays from its first frame (slowed up to 1.25x) and holds
-its last frame if the shot runs longer. Segment lengths are counted in whole frames from the
-programme's running time, so picture and sound never drift apart.
+after the title and out of it before the end screen. Segment lengths are counted in whole
+frames from the programme's running time, so picture and sound never drift apart. The
+stills edit (production/stills/post.py) renders each segment.
 """
 
 from __future__ import annotations
 
 import logging
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
-from . import assemble, draw
-from .look import W, H, boil
+from . import draw
+from .look import W, H
 from .shots import Shot
 
 log = logging.getLogger(__name__)
 
 FPS = 24
-STILL_MOVES = {"still": "push_in", "handheld": "shake"}
 
 
 def _ff(args: list[str], cwd: Path) -> None:
@@ -49,9 +46,9 @@ class Segment:
     name: str  # output file inside the work folder
     start: float  # programme time
     end: float
-    picture: Path | None = None  # a still (boiled, with a camera move)
-    clip: Path | None = None  # or a moving clip
-    camera: str = "push_in"
+    picture: Path | None = None
+    camera: str = "none"  # the camera move over it (production/stills/camera.py)
+    atmosphere: tuple[str, ...] = ()  # rain, fog, flicker
     fade_in: float = 0.0
     fade_out: float = 0.0
 
@@ -59,51 +56,25 @@ class Segment:
         return max(round(self.end * FPS) - round(self.start * FPS), 1)
 
 
-ENC = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p", "-r", str(FPS), "-an"]
-
-
-def render(seg: Segment, work: Path, index: int) -> str:
-    n = seg.frames()
-    seconds = n / FPS
-    fades = ""
-    if seg.fade_in:
-        fades += f",fade=t=in:st=0:d={seg.fade_in:.2f}"
-    if seg.fade_out:
-        fades += f",fade=t=out:st={max(seconds - seg.fade_out, 0):.2f}:d={seg.fade_out:.2f}"
-    if seg.clip is not None:
-        length = probe(seg.clip) or seconds
-        stretch = min(max(seconds / length, 1.0), 1.25)
-        vf = (f"setpts={stretch:.4f}*PTS,scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-              f"fps={FPS},tpad=stop_mode=clone:stop_duration={seconds + 1:.2f}{fades},format=yuv420p")
-        _ff(["-i", str(seg.clip), "-vf", vf, "-frames:v", str(n), *ENC, seg.name], work)
-        return seg.name
-    variants = boil(seg.picture, work / f"boil_{index:03d}", seed=index)
-    camera = STILL_MOVES.get(seg.camera, seg.camera)
-    vf = assemble.camera_filter(camera, seconds, (W, H), "dark", fades=False) + fades
-    pattern = variants[0].name.replace("_0.png", "_%d.png")
-    _ff(["-stream_loop", "-1", "-framerate", str(assemble.BOIL_FPS), "-i", pattern, "-vf", vf,
-         "-frames:v", str(n), *ENC, seg.name], work)
-    return seg.name
-
-
 def card(background: Path | None, lines: list[tuple[str, int, tuple[int, int, int]]], out: Path,
-         left: bool = False, dim: float = 0.35) -> Path:
-    """A title or end card: the style frame dimmed and blurred, with chalk-white text."""
+         left: bool = False, dim: float = 0.35, size: tuple[int, int] = (W, H)) -> Path:
+    """A title or end card: the style frame dimmed and blurred, with bone-white text."""
+    w, h = size
     if background and background.exists():
         with Image.open(background) as im:
-            base = im.convert("RGB").resize((W, H))
-        base = ImageEnhance.Brightness(base.filter(ImageFilter.GaussianBlur(3))).enhance(dim)
+            base = im.convert("RGB").resize((w, h), Image.LANCZOS)
+        base = ImageEnhance.Brightness(base.filter(ImageFilter.GaussianBlur(3 * h / 1080))).enhance(dim)
     else:
-        base = Image.new("RGB", (W, H), (8, 8, 8))
+        base = Image.new("RGB", (w, h), (8, 8, 8))
     d = ImageDraw.Draw(base)
-    total = sum(int(size * 1.25) for _, size, _ in lines)
-    y = (H - total) // 2
-    for text, size, colour in lines:
-        f = draw.font(size)
+    total = sum(int(points * 1.25) for _, points, _ in lines)
+    y = (h - total) // 2
+    for text, points, colour in lines:
+        f = draw.font(points)
         width = d.textlength(text, font=f)
-        x = int(W * 0.08) if left else int((W - width) / 2)
-        d.text((x, y), text, font=f, fill=colour, stroke_width=max(size // 18, 2), stroke_fill=(0, 0, 0))
-        y += int(size * 1.25)
+        x = int(w * 0.08) if left else int((w - width) / 2)
+        d.text((x, y), text, font=f, fill=colour, stroke_width=max(points // 18, 2), stroke_fill=(0, 0, 0))
+        y += int(points * 1.25)
     base.save(out)
     return out
 
@@ -121,22 +92,7 @@ def wrap(text: str, width: int = 26) -> list[str]:
     return lines[:3]
 
 
-def build(work: Path, segments: list[Segment], audio: Path, captions: Path | None, output: Path,
-          lufs: float = -14.0, workers: int = 3) -> Path:
-    """Render every segment, join them, and add the sound (loudness-normalised for YouTube)."""
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        names = list(pool.map(lambda job: render(job[1], work, job[0]), enumerate(segments)))
-    (work / "segments.txt").write_text("".join(f"file '{n}'\n" for n in names))
-    _ff(["-f", "concat", "-safe", "0", "-i", "segments.txt", "-c", "copy", "picture.mp4"], work)
-    vf = ["-vf", f"subtitles={captions.name}"] if captions is not None else []
-    video_codec = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p"] if vf else ["-c:v", "copy"]
-    _ff(["-i", "picture.mp4", "-i", str(audio), *vf, *video_codec,
-         "-af", f"loudnorm=I={lufs}:TP=-1.5:LRA=11", "-ar", "48000", "-c:a", "aac", "-b:a", "192k",
-         "-shortest", "-movflags", "+faststart", str(output)], work)
-    return output
-
-
-def programme(shots: list[Shot], pictures: dict[int, Path], clips: dict[int, Path], cold: list[int],
+def programme(shots: list[Shot], pictures: dict[int, Path], cold: list[int],
               cold_seconds: float, title_seconds: float, end_seconds: float, story_seconds: float,
               title_card: Path, end_card: Path) -> list[Segment]:
     """The running order. Programme time = cold open, then title, then the story, then the end screen."""
@@ -147,20 +103,19 @@ def programme(shots: list[Shot], pictures: dict[int, Path], clips: dict[int, Pat
         for k, i in enumerate(cold):
             s = shots[i]
             a, b = s.t0 - first, (shots[cold[k + 1]].t0 - first) if k + 1 < len(cold) else cold_seconds
-            segs.append(Segment(f"seg_cold_{k}.mp4", a, b, pictures.get(i), clips.get(i), s.camera,
+            segs.append(Segment(f"seg_cold_{k}.mp4", a, b, pictures.get(i),
                                 fade_in=0.2 if k == 0 else 0.0))
         t = cold_seconds
     if title_seconds:
-        segs.append(Segment("seg_title.mp4", t, t + title_seconds, title_card, None, "push_in"))
+        segs.append(Segment("seg_title.mp4", t, t + title_seconds, title_card))
         t += title_seconds
     offset = t
     for k, s in enumerate(shots):
-        segs.append(Segment(f"seg_{s.index:03d}.mp4", s.t0 + offset, s.t1 + offset, pictures.get(s.index),
-                            clips.get(s.index), s.camera, fade_in=0.4 if k == 0 else 0.0,
+        segs.append(Segment(f"seg_{s.index:03d}.mp4", s.t0 + offset, s.t1 + offset, pictures.get(s.index), fade_in=0.4 if k == 0 else 0.0,
                             fade_out=1.0 if k == len(shots) - 1 else 0.0))
     t = offset + story_seconds
     if end_seconds:
-        segs.append(Segment("seg_end.mp4", t, t + end_seconds, end_card, None, "push_in", fade_in=0.5,
+        segs.append(Segment("seg_end.mp4", t, t + end_seconds, end_card, fade_in=0.5,
                             fade_out=1.5))
     return segs
 

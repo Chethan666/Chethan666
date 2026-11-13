@@ -359,6 +359,9 @@ class IllustratorAgent:
 
         host_beats = set(d.get("host_beats") or ())
         place_of = {n: place for place in d.get("sets") or [] for n in place["scenes"]}
+        scares = sorted((b for b in beats if b.scare), key=lambda b: (-b.importance, b.index))
+        strongest = {b.index for b in scares[: int(cfg.get("scare_shots", 4))]}
+        chains = cfg["chains"]
 
         def one(beat: Shot, fix: str = "") -> tuple[int, Path | None]:
             names = [n for n in beat.characters if n in sheets][:3]
@@ -371,7 +374,8 @@ class IllustratorAgent:
                 text = f"Correct this from the previous attempt: {fix[:300].rstrip('. ')}. {text}"
             tag = f"_fix{abs(hash(fix)) % 10_000}" if fix else ""
             path, source = painter.paint(text, refs, folder / f"beat_{beat.index:03d}{tag}.png",
-                                         ["beat", beat.index, text], cfg["chains"]["beat"],
+                                         ["beat", beat.index, text],
+                                         chains.get("scare", chains["beat"]) if beat.index in strongest else chains["beat"],
                                          check=self.check_text(beat, cast))
             sources[beat.index] = source
             return beat.index, path  # clean: the colorist grades it, the edit adds grain and vignette
@@ -398,5 +402,5 @@ class IllustratorAgent:
         d["pictures"] = pictures
         return {"look": look.get("name"), "cameras": {b.index: b.view for b in beats if b.view != "film"},
                 "pictures": len(beats) - borrowed - placeholders, "borrowed_neighbour": borrowed,
-                "placeholders": placeholders, "by_painter": dict(painter.counts),
+                "placeholders": placeholders, "scare_shots": sorted(strongest), "by_painter": dict(painter.counts),
                 "painter_sizes": dict(painter.sizes), "rejected": painter.rejections[:30]}

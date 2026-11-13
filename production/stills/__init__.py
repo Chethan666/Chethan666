@@ -1,21 +1,24 @@
-"""Pipeline 2, stills mode: a horror story told in still illustrations, voices and music.
+"""Pipeline 2: a horror story told in still pictures, each a shot, over voices and music.
 
-No moving clips and no stick figures. A team of agents, each with one job, works on a
-shared board, and the showrunner runs them in order:
+No generated video clips and no stick figures. A team of agents, each with one job, works
+on a shared board, and the showrunner runs them in order (a check gate follows each step
+that can go wrong; see PRODUCTION.md):
 
+    script_check the script can be produced: scenes and pauses are in the narration
     casting      who speaks: the Storyteller host (intro and outro, third person), the teller
                  (the story body; a first-person story gets its own voice, matched to the
                  teller) and every character with a quoted line (their own voice each)
-    voice        reads it all, chunk by chunk, so every line's time is exact
-    storyboard   cuts the timeline into beats of 5-11 s and stages each one as a picture
-    art          one house look for the channel: a style frame and a character sheet per
-                 character (the host included), so every picture matches
+    voice        reads it all with a performance director; a listener checks every take
+    storyboard   cuts the timeline into beats and stages each one as a picture
+    art          one house look; a design and a reference sheet for every person and place
+                 the story returns to, each checked against its design
     illustrator  one picture per beat from those references; the critic checks each one
-                 (in code, then by a vision model) and a failed picture is redrawn by the
-                 next painter in the chain (paid models first, then free ones)
+                 and a refused picture is redrawn, told what was wrong
+    art_review   all the pictures side by side; the worst few are redrawn
+    colorist     brings the frames that would jump at a cut back into the film's range
     edit_plan    cold open, title card, the story, end screen; captions
-    sound        score cues that follow the tension, room tone, effects, a stinger per scare
-    edit         renders the stills (static, or a slow drift) with dips to black between scenes
+    sound        score, room tone, effects and stingers from the sound library; the mix check
+    edit         every still a shot: a camera move, atmosphere, grain, vignette, HD colours
     packager     thumbnails, Shorts, chapters, metadata, contact sheet, 60 s preview
     qa           checks the finished files before a person reviews them
 

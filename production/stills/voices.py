@@ -20,10 +20,9 @@ from typing import Any
 from story_factory.llm import LLMError
 
 from .. import dialogue, listen, timing, voice
-from ..run import _json
 from ..speech import ElevenVoice
 from . import performance
-from .board import Board
+from .board import Board, _json
 
 log = logging.getLogger(__name__)
 

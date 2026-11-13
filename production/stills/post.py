@@ -103,7 +103,7 @@ class SoundAgent:
         score.generate_missing = can_make
         stings = [d["cold_seconds"]] if d["cold"] and d["title_seconds"] else []
         try:
-            mixed = score.mix(d["track"], d["speech"], d["beats"], d["offset"], d["scenes"], {}, stings=stings,
+            mixed = score.mix(d["track"], d["speech"], d["beats"], d["offset"], d["scenes"], stings=stings,
                               music_until=d["total"], max_effects=int(board.cfg.get("max_effects", 30)))
         except Exception:
             board.data["mix"] = board.work / "mix.wav"
@@ -150,25 +150,34 @@ def voice_over_bed(mixed: np.ndarray, voice: np.ndarray, speech: list[tuple[floa
                    "after_db": round(ratio(gain), 1), "bed_lowered_db": round(-20 * np.log10(gain), 1) if gain < 1 else 0}
 
 
-def render(seg: Segment, work: Path, finish: dict[str, float], seed: int = 0) -> str:
-    """One still for exactly its frames: laid out for its move, grained, moved, vignetted, faded."""
+def render(seg: Segment, work: Path, finish: dict[str, float], seed: int = 0, size: tuple[int, int] = (W, H),
+           textures: dict[str, Path] | None = None) -> str:
+    """One still for exactly its frames: laid out for its move, grained, moved, given its
+    atmosphere, vignetted, faded."""
     n = seg.frames()
     seconds = n / FPS
-    fades = ""
-    if seg.fade_in:
-        fades += f",fade=t=in:st=0:d={seg.fade_in:.2f}"
-    if seg.fade_out:
-        fades += f",fade=t=out:st={max(seconds - seg.fade_out, 0):.2f}:d={seg.fade_out:.2f}"
     move = seg.camera if seg.camera in camera.MOVES else "none"
     route = camera.path(move, seconds)
     plate = work / f"{Path(seg.name).stem}_canvas.png"
-    size = camera.canvas(seg.picture, plate, max(route[0], route[1]), float(finish.get("grain", 0)), seed)
-    vf = camera.film_filter(route, n, size, float(finish.get("vignette", 0)))
-    tune = ["-tune", "stillimage"] if move == "none" else []
+    canvas = camera.canvas(seg.picture, plate, max(route[0], route[1]), float(finish.get("grain", 0)), seed, size)
+    inputs, steps = camera.atmosphere(seg.atmosphere, textures or {}, 1, size)
+    tail = [camera.vignette_filter(float(finish.get("vignette", 0)))]
+    if seg.fade_in:
+        tail.append(f"fade=t=in:st=0:d={seg.fade_in:.2f}")
+    if seg.fade_out:
+        tail.append(f"fade=t=out:st={max(seconds - seg.fade_out, 0):.2f}:d={seg.fade_out:.2f}")
+    tail = [t for t in tail if t]
+    graph = ";".join([f"[0:v]{camera.move_filter(route, n, canvas, size)}[shot]", *steps,
+                      f"[shot]{','.join(tail) or 'null'}[out]"])
+    still = move == "none" and not seg.atmosphere
+    tune = ["-tune", "stillimage"] if still else []
     # aq-mode 3 spends more of the bitrate on dark areas, where a horror film lives and where
     # an encoder otherwise leaves blocks and bands.
-    _ff(["-loop", "1", "-framerate", str(FPS), "-i", plate.name, "-vf", f"{vf}{fades}",
+    _ff(["-loop", "1", "-framerate", str(FPS), "-i", plate.name, *inputs, "-filter_complex", graph, "-map", "[out]",
          "-frames:v", str(n), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-x264-params", "aq-mode=3",
+         # rain and flicker change every pixel every frame: a ceiling keeps the file sane (YouTube
+         # asks for 16-24 Mbit/s at 1440p)
+         "-maxrate", "24M", "-bufsize", "24M",
          *tune, "-pix_fmt", "yuv420p", *camera.COLOUR_TAGS, "-r", str(FPS), "-an", seg.name], work)
     plate.unlink(missing_ok=True)
     return seg.name
@@ -185,28 +194,39 @@ class EditAgent:
         beats: list[Shot] = d["beats"]
         titles = d["packaging"].get("titles") or [board.story.get("title", "")]
         frame = d.get("style_frame")
-        title_card = edit.card(frame, [(CHANNEL, 40, draw.RED)] +
-                               [(line, 92, draw.CHALK) for line in edit.wrap(str(titles[0]), 24)],
-                               board.work / "title_card.png")
+        size = tuple(int(v) for v in cfg.get("video_size") or (W, H))
+        k = size[1] / 1080  # lettering scales with the frame
+        title_card = edit.card(frame, [(CHANNEL, round(40 * k), draw.RED)] +
+                               [(line, round(92 * k), draw.CHALK) for line in edit.wrap(str(titles[0]), 24)],
+                               board.work / "title_card.png", size=size)
         end_line = str(d["packaging"].get("end_screen_line", "")) or "Another story is waiting."
-        end_card = edit.card(frame, [(line, 60, draw.CHALK) for line in edit.wrap(end_line, 30)] +
-                             [("", 30, draw.CHALK), ("NEXT STORY  >", 54, draw.RED)], board.work / "end_card.png",
-                             left=True, dim=0.25)
-        segs = edit.programme(beats, d["pictures"], {}, d["cold"], d["cold_seconds"], d["title_seconds"],
+        end_card = edit.card(frame, [(line, round(60 * k), draw.CHALK) for line in edit.wrap(end_line, 30)] +
+                             [("", round(30 * k), draw.CHALK), ("NEXT STORY  >", round(54 * k), draw.RED)],
+                             board.work / "end_card.png", left=True, dim=0.25, size=size)
+        segs = edit.programme(beats, d["pictures"], d["cold"], d["cold_seconds"], d["title_seconds"],
                               d["end_seconds"], d["story_seconds"], title_card, end_card)
         first = len(d["cold"]) + (1 if d["title_seconds"] else 0)
         story = segs[first:first + len(beats)]
         motion = str(cfg.get("motion", "drift"))
         for seg in segs:  # the end card holds still (YouTube's end-screen elements sit on it)
             seg.camera = "none"
+        cold = segs[:len(d["cold"])]
         if motion == "drift":  # every story picture gets the move that suits it
-            for k, (seg, beat) in enumerate(zip(story, beats)):
-                seg.camera = camera.move_for(beat, k)
-            cold = segs[:len(d["cold"])]
-            for k, seg in enumerate(cold):
-                seg.camera = "push_in_fast" if k == len(cold) - 1 else "push_in"
+            for n, (seg, beat) in enumerate(zip(story, beats)):
+                seg.camera = camera.move_for(beat, n)
+            for n, seg in enumerate(cold):
+                seg.camera = "push_in_fast" if n == len(cold) - 1 else "push_in"
             if d["title_seconds"]:
                 segs[len(cold)].camera = "push_in"
+        textures: dict[str, Path] = {}
+        if cfg.get("atmosphere", True):  # rain, fog or a failing light, where the storyboard saw them
+            for seg, beat in list(zip(story, beats)) + [(seg, beats[i]) for seg, i in zip(cold, d["cold"])]:
+                seg.atmosphere = tuple(a for a in beat.atmosphere if a in camera.ATMOSPHERES)
+            needed = {a for seg in segs for a in seg.atmosphere}
+            if "rain" in needed:
+                textures["rain"] = camera.rain_texture(board.work / "atmosphere_rain.png", size)
+            if "fog" in needed:
+                textures["fog"] = camera.fog_texture(board.work / "atmosphere_fog.png", size)
         dip = float(cfg.get("scene_dip_seconds", 0.35))
         for k in range(len(story) - 1):  # a breath of black where the scene changes
             if beats[k].scene != beats[k + 1].scene and dip:
@@ -216,13 +236,13 @@ class EditAgent:
         finish = {"grain": float(look.get("grain", 0)), "vignette": float(look.get("vignette", 0))}
         work = board.work
         with ThreadPoolExecutor(max_workers=int(cfg.get("render_workers", 3))) as pool:
-            names = list(pool.map(lambda job: render(job[1], work, finish, job[0]), enumerate(segs)))
+            names = list(pool.map(lambda job: render(job[1], work, finish, job[0], size, textures), enumerate(segs)))
         (work / "segments.txt").write_text("".join(f"file '{n}'\n" for n in names))
         _ff(["-f", "concat", "-safe", "0", "-i", "segments.txt", "-c", "copy", "picture.mp4"], work)
         burn = None
         if cfg.get("burn_captions"):
             burn = work / "captions.ass"
-            burn.write_text(timing.ass(d["cues"], W, H))
+            burn.write_text(timing.ass(d["cues"], *size))
         vf = ["-vf", f"subtitles={burn.name}"] if burn else []
         codec = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-x264-params", "aq-mode=3", "-pix_fmt",
                  "yuv420p", *camera.COLOUR_TAGS] if vf else ["-c:v", "copy"]
@@ -232,9 +252,13 @@ class EditAgent:
              "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", str(video)], work)
         d.update(video=video, end_line=end_line, titles=titles)
         moves: dict[str, int] = {}
+        air: dict[str, int] = {}
         for seg in segs:
             moves[seg.camera] = moves.get(seg.camera, 0) + 1
-        return {"segments": len(segs), "motion": motion, "moves": moves, "seconds": round(probe(video), 1)}
+            for a in seg.atmosphere:
+                air[a] = air.get(a, 0) + 1
+        return {"segments": len(segs), "size": f"{size[0]}x{size[1]}", "motion": motion, "moves": moves,
+                "atmosphere": air, "seconds": round(probe(video), 1)}
 
 
 THUMB_ANGLES = (
@@ -301,7 +325,7 @@ class PackagerAgent:
         windows = package.short_windows(beats, d["scenes"], d["offset"], int(cfg.get("shorts", 2)), 25.0,
                                         float(cfg.get("short_max_seconds", 55.0)))
         shorts = package.shorts(d["video"], windows, d["cues"], str(d["titles"][0]), board.out, board.work)
-        package.contact_sheet(beats, d["pictures"], {}, board.out / "contact_sheet.jpg")
+        package.contact_sheet(beats, d["pictures"], board.out / "contact_sheet.jpg")
         package.preview(d["video"], board.out / "preview_60s.mp4")
         chapters = shotlist.chapters(board.router, d["scenes"], beats, d["offset"])
         description = str(d["packaging"].get("description", ""))

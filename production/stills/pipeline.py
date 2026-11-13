@@ -10,9 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from ..paid import Budget, Studio
-from ..run import _json
 from .art import ArtDirectorAgent, IllustratorAgent
-from .board import Board, Showrunner
+from .board import Board, Showrunner, _json
 from .checks import ArtReviewAgent, ScriptCheckAgent
 from .grade import ColoristAgent
 from .post import EditAgent, EditPlanAgent, PackagerAgent, QAAgent, SoundAgent
