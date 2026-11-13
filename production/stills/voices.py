@@ -19,7 +19,7 @@ from typing import Any
 
 from story_factory.llm import LLMError
 
-from .. import dialogue, timing, voice
+from .. import dialogue, listen, timing, voice
 from ..run import _json
 from ..speech import ElevenVoice
 from . import performance
@@ -141,17 +141,20 @@ class VoiceAgent:
             lines += [dialogue.Line(a, b, d["narration"][a:b], "host") for a, b in d["frames"]]
         spans = timing.scene_spans(d["narration"], d["scenes"])
         pauses = _json(board.story.get("pauses"), [])
+        # The listener checks the paid voice by ear (Whisper on the CPU); Kokoro needs no check.
+        listener = listen.make({"listener": cfg.get("listener", "")}) if eleven is not None else None
         marks, directed = {}, {"directed": False}
         if eleven is not None and cfg.get("performance_director", True):
             marks, directed = performance.direct(board.router, board.story, d["narration"], pauses, lines,
                                                  d["scenes"], spans)
         audio, timeline = voice.narrate(teller, d["narration"], pauses,
                                         _json(board.story.get("pronunciations"), []), d["scenes"], spans, lines,
-                                        cast_voices, marks=marks, gap_scale=float(cfg.get("voice_gap_scale", 1.0)))
+                                        cast_voices, marks=marks, gap_scale=float(cfg.get("voice_gap_scale", 1.0)),
+                                        listener=listener)
         d.update(audio=audio, timeline=timeline, rate=teller.sample_rate, spans=spans)
         failed = eleven.shared["failed"] if eleven is not None else 0
         return {"seconds_of_speech": round(timeline.duration, 1), "chunks": len(timeline.chunks),
                 "speakers": sorted({c.speaker for c in timeline.chunks}), "lines_read_by_kokoro": failed,
                 "words_per_minute": round(len(d["narration"].split()) / max(timeline.duration, 1) * 60),
-                "performance": directed}
+                "performance": directed, "listener": listener.report if listener is not None else None}
 

@@ -13,6 +13,7 @@ from ..paid import Budget, Studio
 from ..run import _json
 from .art import ArtDirectorAgent, IllustratorAgent
 from .board import Board, Showrunner
+from .checks import ArtReviewAgent, ScriptCheckAgent
 from .post import EditAgent, EditPlanAgent, PackagerAgent, QAAgent, SoundAgent
 from .storyboard import StoryboardAgent
 from .voices import CastingAgent, VoiceAgent
@@ -22,8 +23,9 @@ log = logging.getLogger(__name__)
 
 def team() -> list[Any]:
     """The agents, in the order the showrunner runs them."""
-    return [CastingAgent(), VoiceAgent(), StoryboardAgent(), ArtDirectorAgent(), IllustratorAgent(),
-            EditPlanAgent(), SoundAgent(), EditAgent(), PackagerAgent(), QAAgent()]
+    return [ScriptCheckAgent(), CastingAgent(), VoiceAgent(), StoryboardAgent(), ArtDirectorAgent(),
+            IllustratorAgent(), ArtReviewAgent(), EditPlanAgent(), SoundAgent(), EditAgent(), PackagerAgent(),
+            QAAgent()]
 
 
 def produce(story: dict[str, Any], out_dir: Path, kokoro: Any, router: Any, cfg: dict[str, Any],

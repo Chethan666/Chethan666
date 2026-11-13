@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import logging
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -19,6 +20,7 @@ from ..library import Library
 from ..score import Score
 from ..shots import Shot
 from .board import Board
+from .checks import thumbnail_ok
 from .images import Painter
 from . import sounds
 
@@ -87,8 +89,9 @@ class SoundAgent:
         if library is not None and not library.sounds:
             library = None
         # The sound director decides each sound: from the library, newly made, or left out.
+        can_make = bool(lib_cfg.get("generate_missing", True)) and board.studio is not None
         decided = sounds.pick(board, library, score.cue_names, int(board.cfg.get("max_effects", 30)),
-                              float(lib_cfg.get("min_score", 0.55)))
+                              float(lib_cfg.get("min_score", 0.55)), can_make=can_make)
         library_report: dict[str, Any] = dict(decided.report, library=library is not None)
         score.prompts, score.skip = dict(decided.make), set(decided.skip)
         if library is not None:
@@ -97,7 +100,7 @@ class SoundAgent:
             d["sounds_used"] = used
             d["credits"] = library.credits(used)
             library_report.update(fetched=len(score.chosen), credits=len(d["credits"]))
-        score.generate_missing = bool(lib_cfg.get("generate_missing", True))
+        score.generate_missing = can_make
         stings = [d["cold_seconds"]] if d["cold"] and d["title_seconds"] else []
         try:
             mixed = score.mix(d["track"], d["speech"], d["beats"], d["offset"], d["scenes"], {}, stings=stings,
@@ -106,13 +109,45 @@ class SoundAgent:
             board.data["mix"] = board.work / "mix.wav"
             soundfile.write(board.data["mix"], d["track"], d["rate"])  # the voices alone, if all else fails
             raise
+        mixed, balance = voice_over_bed(mixed, d["track"], d["speech"], d["rate"],
+                                        float(board.cfg.get("voice_over_bed_db", 12.0)))
         board.data["mix"] = board.work / "mix.wav"
         soundfile.write(board.data["mix"], mixed, d["rate"])
         soundfile.write(board.out / "narration.wav", d["audio"], d["rate"])
         saved = sounds.save_generated(score.generated, board.out, board.story) \
             if lib_cfg.get("save_generated", True) else 0
         (board.out / "sounds_used.json").write_text(json.dumps(d.get("sounds_used", [])))
-        return dict(score.report, library=library_report, generated=len(score.generated), saved_for_library=saved)
+        return dict(score.report, library=library_report, generated=len(score.generated), saved_for_library=saved,
+                    mix=balance)
+
+
+def voice_over_bed(mixed: np.ndarray, voice: np.ndarray, speech: list[tuple[float, float]], rate: int,
+                   want_db: float = 12.0) -> tuple[np.ndarray, dict[str, Any]]:
+    """The mix check (`speech`: programme times): while someone speaks, the voice must stand `want_db` above the music, room tone
+    and effects under it. If it doesn't, the bed is lowered (the voice is never touched) and the
+    check is repeated. Returns the mix and what was measured."""
+    n = min(mixed.size, voice.size)
+    mask = np.zeros(n, dtype=bool)
+    for a, b in speech:
+        mask[int(max(a, 0) * rate): int(max(b, 0) * rate)] = True
+    if not mask.any():
+        return mixed, {"checked": False}
+    bed = mixed[:n] - voice[:n]
+
+    def ratio(gain: float) -> float:
+        v = float(np.sqrt(np.mean(voice[:n][mask] ** 2)) + 1e-9)
+        x = float(np.sqrt(np.mean((bed[mask] * gain) ** 2)) + 1e-9)
+        return 20 * np.log10(v / x)
+
+    before = ratio(1.0)
+    gain = 1.0
+    if before < want_db:
+        gain = float(10 ** ((before - want_db) / 20))
+        out = mixed.copy()
+        out[:n] = voice[:n] + bed * gain
+        mixed = out
+    return mixed, {"checked": True, "voice_over_bed_db": round(before, 1),
+                   "after_db": round(ratio(gain), 1), "bed_lowered_db": round(-20 * np.log10(gain), 1) if gain < 1 else 0}
 
 
 def render(seg: Segment, work: Path, motion: str) -> str:
@@ -216,6 +251,18 @@ class PackagerAgent:
                       "small or busy.")
             raw = board.work / f"thumb_{k + 1}.png"
             got, _ = painter.paint(prompt, refs, raw, ["thumbnail", k, prompt], cfg["chains"]["thumbnail"])
+            if got is not None:  # the words must read exactly right: one repaint if they don't
+                ok, why = thumbnail_ok(board.studio, got, text)
+                self.checks.append({"thumbnail": k + 1, "ok": ok, "why": why})
+                if not ok:
+                    again = prompt + f" Correct this: {why}. Spell the words exactly, one time each."
+                    raw2 = board.work / f"thumb_{k + 1}_fix.png"
+                    fixed, _ = painter.paint(again, refs, raw2, ["thumbnail", k, again], cfg["chains"]["thumbnail"])
+                    if fixed is not None:
+                        ok2, why2 = thumbnail_ok(board.studio, fixed, text)
+                        self.checks.append({"thumbnail": k + 1, "repainted": True, "ok": ok2, "why": why2})
+                        if ok2:  # both failing: the first stands, QA flags it
+                            got = fixed
             source = got or d["pictures"][key.index]
             from PIL import Image
             with Image.open(source) as im:
@@ -229,6 +276,7 @@ class PackagerAgent:
     def run(self, board: Board) -> dict[str, Any]:
         cfg, d = board.cfg, board.data
         beats: list[Shot] = d["beats"]
+        self.checks: list[dict[str, Any]] = []
         thumbs = self.thumbnails(board)
         windows = package.short_windows(beats, d["scenes"], d["offset"], int(cfg.get("shorts", 2)), 25.0,
                                         float(cfg.get("short_max_seconds", 55.0)))
@@ -259,7 +307,8 @@ class PackagerAgent:
         }
         (board.out / "metadata.json").write_text(json.dumps(metadata, indent=2, ensure_ascii=False))
         (board.out / "beats.json").write_text(shotlist.save(beats))
-        return {"thumbnails": len(thumbs), "shorts": len(shorts), "chapters": len(chapters)}
+        return {"thumbnails": len(thumbs), "shorts": len(shorts), "chapters": len(chapters),
+                "thumbnail_checks": self.checks}
 
 
 def streams(path: Path) -> list[str]:
@@ -295,10 +344,44 @@ class QAAgent:
         voice = board.reports.get("voice", {})
         if voice.get("lines_read_by_kokoro"):
             issues.append(f"{voice['lines_read_by_kokoro']} lines fell back to Kokoro")
+        heard = voice.get("listener") or {}
+        if heard.get("worst_match", 1.0) < 0.8:
+            issues.append(f"a take matched its script only {heard['worst_match']:.0%} (listen to it)")
+        issues += [f"script: {i}" for i in d.get("script_issues", [])]
+        review = board.reports.get("art_review", {})
+        if review.get("reviewed") and isinstance(review.get("score"), int) and review["score"] < 6:
+            issues.append(f"art review {review.get('score')}/10: "
+                          + "; ".join(f["problem"][:80] for f in review.get("flagged", [])[:3]))
+        final: dict[int, dict[str, Any]] = {}
+        for t in board.reports.get("packager", {}).get("thumbnail_checks", []):
+            final[t["thumbnail"]] = t  # the last check of each thumbnail is the one that stands
+        for k, t in sorted(final.items()):
+            if not t.get("ok"):
+                issues.append(f"thumbnail {k}: {t.get('why', '')}")
+        lufs, peak = loudness(video)
+        target = float(board.cfg.get("loudness_lufs", -14.0))
+        if lufs is not None and abs(lufs - target) > 2.0:
+            issues.append(f"loudness {lufs:.1f} LUFS (target {target:.0f})")
+        if peak is not None and peak > -0.5:
+            issues.append(f"true peak {peak:.1f} dBTP: may clip on some players")
         for name in ("metadata.json", "captions.srt", "thumbnail_1.jpg", "contact_sheet.jpg"):
             if not (out / name).exists():
                 issues.append(f"missing {name}")
         for name, report in board.reports.items():
             if isinstance(report, dict) and report.get("error"):
                 issues.append(f"{name} failed: {report['error'][:120]}")
-        return {"status": "pass" if not issues else "check", "issues": issues, "video_seconds": round(seconds, 1)}
+        return {"status": "pass" if not issues else "check", "issues": issues, "video_seconds": round(seconds, 1),
+                "loudness_lufs": lufs, "true_peak_dbtp": peak}
+
+
+def loudness(path: Path) -> tuple[float | None, float | None]:
+    """Integrated loudness (LUFS) and true peak (dBTP) of a file's sound, by FFmpeg's EBU R128 meter."""
+    result = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-map", "0:a:0",
+                             "-af", "ebur128=peak=true", "-f", "null", "-"], capture_output=True, text=True)
+    text = result.stderr[-3000:]
+    lufs = re.findall(r"I:\s+(-?[\d.]+) LUFS", text)
+    peak = re.findall(r"Peak:\s+(-?[\d.]+) dBFS", text)
+    try:
+        return (float(lufs[-1]) if lufs else None), (float(peak[-1]) if peak else None)
+    except ValueError:
+        return None, None

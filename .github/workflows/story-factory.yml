@@ -6,6 +6,7 @@
 #   mode=recheck: runs the legend recognition test on approved retellings that never had it
 # Pipeline 1 is the story factory and pipeline 2 turns its stories into videos.
 #   mode=video-test: pipeline 2 makes a ~35 s stills video from the script in production/samples/test_story.json
+#     (overrides "script=one_minute.json" picks another script in production/samples, e.g. the 60 s test)
 #               (no story database needed), capped at $1.50
 #   mode=video-bakeoff: pipeline 2 runs a few shots of a story (story_id, or the newest) through every
 #               candidate model side by side (capped at $10), saved as video-<run number>
@@ -169,12 +170,12 @@ jobs:
           for kv in $OVERRIDES; do SETS+=(--set "$kv"); done
           python -m story_factory --config "$CONFIG" "${SETS[@]}" generate "$SERIES"
 
-      - name: Cache the narrator voice model
+      - name: Cache the narrator voice and listener models
         if: env.MODE == 'video' || env.MODE == 'video-test' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast'
         uses: actions/cache@v4
         with:
           path: ~/.cache/huggingface
-          key: kokoro-82m-v1
+          key: kokoro-82m-whisper-base-v2  # a new key: the listener's Whisper model joins the cache
 
       - name: Install video tools
         if: env.MODE == 'video' || env.MODE == 'video-test' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast'
@@ -200,11 +201,17 @@ jobs:
           ARGS=()
           if [ -n "$STORY_ID" ]; then ARGS+=(--story "$STORY_ID"); fi
           SETS=()
-          for kv in $OVERRIDES; do SETS+=(--set "$kv"); done
+          SCRIPT=production/samples/test_story.json
+          for kv in $OVERRIDES; do
+            case "$kv" in
+              script=*) SCRIPT="production/samples/${kv#script=}" ;;  # video-test: another sample script
+              *) SETS+=(--set "$kv") ;;
+            esac
+          done
           COMMAND=produce
           if [ "$MODE" = video-bakeoff ]; then COMMAND=bakeoff; fi
           if [ "$MODE" = video-vast ]; then COMMAND=vast-video; fi
-          if [ "$MODE" = video-test ]; then ARGS=(--script production/samples/test_story.json); fi
+          if [ "$MODE" = video-test ]; then ARGS=(--script "$SCRIPT"); fi
           python -m production --config "$CONFIG" "${SETS[@]}" "$COMMAND" "${ARGS[@]}" 2>&1 | tee video-summary.txt
           status=${PIPESTATUS[0]}
           { echo '## Video'; echo '```'; tail -c 60000 video-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"

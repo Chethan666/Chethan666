@@ -400,6 +400,12 @@ DEFAULTS: dict[str, Any] = {
         # full stop; voice_pace speeds the reading up without changing pitch (1.0 = as recorded);
         # voice_gap_scale shortens the silences between paragraphs and at story pauses.
         "performance_director": True, "voice_takes": True, "voice_pace": 1.07, "voice_gap_scale": 0.8,
+        # The listener transcribes the paid narration (Whisper, free, on the CPU) and has any take
+        # that skipped or invented words read again; "" turns it off.
+        "listener": "base.en",
+        # Planned length of the story part of a video (the script check warns when the narration
+        # would run well over or under); 0 = no target.
+        "target_seconds": 0,
         "host_voice": {"elevenlabs": "Brian", "kokoro": "am_michael"},
         "teller_voices": {
             "elevenlabs": {"man": "Callum", "woman": "Charlotte", "old_man": "Bill", "old_woman": "Dorothy"},
@@ -425,7 +431,7 @@ DEFAULTS: dict[str, Any] = {
             "release_tag": "sound-library",
             "local_dir": "",  # a folder with library.json and the files, instead of the release
             "min_score": 0.55,  # how well an effect must match its description to be used
-            "generate_missing": True,  # False: never pay for sound (missing sounds are synthesized)
+            "generate_missing": False,  # True: the director may have missing sounds made on fal (ACE-Step, effects); False: library only, never pays for sound
             "save_generated": True,  # paid-for sounds go into the library after the run
         },
         # YouTube's "altered or synthetic content" flag: None follows the look (on for cinematic).

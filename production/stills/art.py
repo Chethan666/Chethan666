@@ -196,19 +196,24 @@ class IllustratorAgent:
         folder.mkdir(parents=True, exist_ok=True)
         sources: dict[int, str] = {}
 
-        def one(beat: Shot) -> tuple[int, Path | None]:
+        def one(beat: Shot, fix: str = "") -> tuple[int, Path | None]:
             names = [n for n in beat.characters if n in sheets][:3]
             refs = ([style_frame] if style_frame else []) + [sheets[n] for n in names]
             camera = str(cameras.get(beat.view, "")) if use_cameras else ""
             text = self.prompt(beat, d["house"], cast, names, bool(style_frame), look, camera)
-            path, source = painter.paint(text, refs, folder / f"beat_{beat.index:03d}.png",
+            if fix:  # the art review's note on the first version
+                text += f" Correct this from the previous attempt: {fix[:300]}"
+            tag = f"_fix{abs(hash(fix)) % 10_000}" if fix else ""
+            path, source = painter.paint(text, refs, folder / f"beat_{beat.index:03d}{tag}.png",
                                          ["beat", beat.index, text], cfg["chains"]["beat"],
                                          check=self.check_text(beat, cast))
             sources[beat.index] = source
             if path is not None and (look.get("grain") or look.get("vignette")):
-                path = finish(path, folder / f"beat_{beat.index:03d}_film.png", float(look.get("grain", 0)),
+                path = finish(path, folder / f"beat_{beat.index:03d}{tag}_film.png", float(look.get("grain", 0)),
                               float(look.get("vignette", 0)), beat.index)
             return beat.index, path
+
+        d["repaint"] = lambda beat, fix: one(beat, fix)[1]  # for the art review
 
         order = sorted(beats, key=lambda b: (-(b.importance + (2 if b.scare else 0)), b.index))
         with ThreadPoolExecutor(max_workers=int(cfg.get("parallel", 4))) as pool:

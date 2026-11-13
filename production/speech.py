@@ -63,16 +63,17 @@ class ElevenVoice:
         """The scene's reading speed, half as strong as Kokoro's (v3 already acts the delivery)."""
         return self.pace * (1.0 + (speed - 1.0) * 0.5)
 
-    def _path(self, text: str) -> Path:
-        return self.work / f"say_{digest(self.voice, text)}.mp3"
+    def _path(self, text: str, attempt: int = 0) -> Path:
+        return self.work / f"say_{digest(self.voice, text, attempt) if attempt else digest(self.voice, text)}.mp3"
 
-    def _make(self, text: str) -> Path | None:
-        path = self._path(text)
+    def _make(self, text: str, attempt: int = 0) -> Path | None:
+        path = self._path(text, attempt)
         if path.exists() and path.stat().st_size:
             return path
-        try:
-            return self.studio.call("voice", {"text": text, "voice": self.voice}, "audio", path, "voice",
-                                    units=max(len(text), 1) / 1000.0)
+        args = {"text": text, "voice": self.voice}
+        try:  # a retry is a new request, not the cached first reading
+            return self.studio.call("voice", args, "audio", path, "voice", units=max(len(text), 1) / 1000.0,
+                                    key={"args": args, "attempt": attempt} if attempt else None)
         except (MediaError, OverBudget) as exc:
             log.warning("ElevenLabs could not read %r (%s); Kokoro reads it", text[:60], str(exc)[:200])
             return None
@@ -82,10 +83,10 @@ class ElevenVoice:
         with ThreadPoolExecutor(max_workers=self.parallel) as pool:
             list(pool.map(self._make, todo))
 
-    def say(self, text: str, speed: float = 1.0) -> np.ndarray:
+    def say(self, text: str, speed: float = 1.0, attempt: int = 0) -> np.ndarray:
         with self.shared["lock"]:
             self.shared["lines"] += 1
-        path = self._make(text)
+        path = self._make(text, attempt)
         if path is not None:
             try:
                 return decode(path, self.sample_rate, self.tempo(speed))

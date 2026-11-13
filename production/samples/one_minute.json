@@ -1,0 +1,175 @@
+{
+ "id": 9002,
+ "title": "Route 14",
+ "kind": "long",
+ "intro": "A bus route with one stop too many. The lantern is lit.",
+ "body": "I drive the last bus on Route 14. Twelve stops, then the depot. Last Tuesday, someone rang the bell after stop twelve. There's nothing out there. Just fields, and one dead streetlight. I checked the mirror. One passenger. A woman in a wet yellow raincoat, hood up, on the back seat. I never saw her get on. I pulled over under the streetlight. It flickered on. The doors hissed open. She didn't move. I turned around. The back seat was empty. Just a puddle, and the smell of river water. I faced the road again, and the camera screen above my head showed her. Standing right behind my seat.",
+ "outro": "Route 14 still runs every night. If the bell rings after the last stop, keep driving.",
+ "narration": "A bus route with one stop too many. The lantern is lit.\n\nI drive the last bus on Route 14. Twelve stops, then the depot. Last Tuesday, someone rang the bell after stop twelve. There's nothing out there. Just fields, and one dead streetlight. I checked the mirror. One passenger. A woman in a wet yellow raincoat, hood up, on the back seat. I never saw her get on. I pulled over under the streetlight. It flickered on. The doors hissed open. She didn't move. I turned around. The back seat was empty. Just a puddle, and the smell of river water. I faced the road again, and the camera screen above my head showed her. Standing right behind my seat.\n\nRoute 14 still runs every night. If the bell rings after the last stop, keep driving.",
+ "cast": [
+  {
+   "name": "Tomas",
+   "look": "a man in his fifties, grey stubble, heavy tired eyes, a navy bus driver's jacket with a reflective stripe, wedding ring"
+  },
+  {
+   "name": "The Woman in Yellow",
+   "look": "a thin woman in a dripping yellow raincoat, hood always up, her face always hidden in shadow, pale hands"
+  }
+ ],
+ "bible": {
+  "red_accent": "the glowing red STOP bell light",
+  "hero": {
+   "name": "Tomas",
+   "who": "a night bus driver on a rural route"
+  }
+ },
+ "scenes": [
+  {
+   "text": "A bus route with one stop too many. The lantern is lit.",
+   "visual": "The Storyteller in the dark beside an empty rain-soaked country road, holding his red lantern",
+   "location": "the hollow",
+   "characters": [],
+   "mood": "eerie",
+   "delivery": "steady",
+   "sfx": [
+    "distant rain"
+   ],
+   "key_moment": false
+  },
+  {
+   "text": "I drive the last bus on Route 14. Twelve stops, then the depot.",
+   "visual": "Tomas behind the wheel of an empty night bus, dashboard glow on his face, rain on the windscreen",
+   "location": "inside a night bus on a country road",
+   "characters": [
+    "Tomas"
+   ],
+   "mood": "uneasy",
+   "delivery": "steady",
+   "sfx": [
+    "a diesel bus engine idling"
+   ],
+   "key_moment": false
+  },
+  {
+   "text": "Last Tuesday, someone rang the bell after stop twelve. There's nothing out there. Just fields, and one dead streetlight.",
+   "visual": "Close on the bus's red STOP bell light glowing, dark fields through the window behind it",
+   "location": "inside a night bus on a country road",
+   "characters": [],
+   "mood": "uneasy",
+   "delivery": "tense",
+   "sfx": [
+    "a bus stop bell ding"
+   ],
+   "key_moment": false
+  },
+  {
+   "text": "I checked the mirror. One passenger. A woman in a wet yellow raincoat, hood up, on the back seat. I never saw her get on.",
+   "visual": "The bus's interior mirror: far behind, a woman in a dripping yellow raincoat sits on the back seat, hood hiding her face",
+   "location": "inside a night bus on a country road",
+   "characters": [
+    "Tomas",
+    "The Woman in Yellow"
+   ],
+   "mood": "dread",
+   "delivery": "hushed",
+   "sfx": [
+    "rain drumming on a bus roof"
+   ],
+   "key_moment": false
+  },
+  {
+   "text": "I pulled over under the streetlight. It flickered on. The doors hissed open. She didn't move.",
+   "visual": "The bus stopped under a single flickering streetlight in empty fields, its doors open onto the dark",
+   "location": "a lonely roadside in empty fields at night",
+   "characters": [],
+   "mood": "dread",
+   "delivery": "slow",
+   "sfx": [
+    "bus doors hissing open",
+    "a streetlight buzzing"
+   ],
+   "key_moment": false
+  },
+  {
+   "text": "I turned around. The back seat was empty. Just a puddle, and the smell of river water.",
+   "visual": "The empty back seat of the bus, a puddle of dark water on the floor beneath it, the aisle lights dim",
+   "location": "inside a night bus on a country road",
+   "characters": [],
+   "mood": "dread",
+   "delivery": "hushed",
+   "sfx": [
+    "water dripping"
+   ],
+   "key_moment": true
+  },
+  {
+   "text": "I faced the road again, and the camera screen above my head showed her. Standing right behind my seat.",
+   "visual": "The bus's grainy security camera view of the driver's seat from above: Tomas at the wheel, and the hooded woman in the yellow raincoat standing right behind him",
+   "location": "inside a night bus on a country road",
+   "characters": [
+    "Tomas",
+    "The Woman in Yellow"
+   ],
+   "mood": "terror",
+   "delivery": "urgent",
+   "sfx": [
+    "a sudden burst of static"
+   ],
+   "key_moment": true
+  },
+  {
+   "text": "Route 14 still runs every night. If the bell rings after the last stop, keep driving.",
+   "visual": "The Storyteller lowers his red lantern as a lit bus disappears into the rain behind him",
+   "location": "the hollow",
+   "characters": [],
+   "mood": "eerie",
+   "delivery": "steady",
+   "sfx": [],
+   "key_moment": false
+  }
+ ],
+ "pauses": [
+  {
+   "after": "There's nothing out there.",
+   "ms": 600
+  },
+  {
+   "after": "She didn't move.",
+   "ms": 900
+  },
+  {
+   "after": "showed her.",
+   "ms": 700
+  }
+ ],
+ "packaging": {
+  "titles": [
+   "Route 14",
+   "The Bell After the Last Stop"
+  ],
+  "thumbnail_text": "LAST STOP",
+  "thumbnail_brief": "a hooded woman in a yellow raincoat reflected in a bus mirror at night",
+  "description": "A night bus driver hears the bell ring after the last stop. A Hollow Lines test story.",
+  "tags": [
+   "horror",
+   "scary story",
+   "night bus",
+   "creepy"
+  ],
+  "end_screen_line": "The bell is ringing again."
+ },
+ "comment_question": "Would you have kept driving?",
+ "stills": {
+  "max_usd": 2.0,
+  "cold_open": false,
+  "title_seconds": 2.0,
+  "end_screen_seconds": 4.0,
+  "thumbnails": 1,
+  "shorts": 1,
+  "max_effects": 8,
+  "parallel": 3,
+  "target_seconds": 52,
+  "beat_min_seconds": 3.5,
+  "beat_max_seconds": 7.0
+ }
+}

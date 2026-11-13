@@ -101,7 +101,7 @@ def delivery_for(offset: int, spans: list[tuple[int, int]], scenes: list[dict[st
 def narrate(voice: Voice, narration: str, pauses: list[dict[str, Any]], pronunciations: list[dict[str, Any]],
             scenes: list[dict[str, Any]], spans: list[tuple[int, int]], lines: list[Any] | None = None,
             cast_voices: dict[str, Voice] | None = None, marks: dict[int, str] | None = None,
-            gap_scale: float = 1.0) -> tuple[np.ndarray, Timeline]:
+            gap_scale: float = 1.0, listener: Any = None) -> tuple[np.ndarray, Timeline]:
     """Read the whole narration. Returns (mono audio, timeline with every chunk's times).
     With `lines` and `cast_voices`, each quoted line is read in its speaker's own voice.
 
@@ -110,7 +110,9 @@ def narrate(voice: Voice, narration: str, pauses: list[dict[str, Any]], pronunci
     reader's instead of restarting flat at every full stop; the take is cut back into its
     sentences at its own pauses. `marks` (chunk start -> a v3 audio tag such as [whispers])
     is the performance director's delivery for each sentence; otherwise the scene's delivery
-    is used. `gap_scale` shortens or lengthens every silence we add."""
+    is used. `gap_scale` shortens or lengthens every silence we add. A `listener` (listen.py)
+    checks every expressive take against its text: a good take is cut at its exact word times,
+    a bad one is read again (sentence by sentence, or once more for a single line)."""
     chunks: list[Chunk] = split_lines(narration, split_chunks(narration, pauses), lines or [])
     cast_voices = cast_voices or {}
     marks = marks or {}
@@ -130,16 +132,16 @@ def narrate(voice: Voice, narration: str, pauses: list[dict[str, Any]], pronunci
                 tag = marks.get(chunk.start, TAGS.get(delivery_for(chunk.start, spans, scenes), ""))
         plan.append((chunk, reader, tag, text, speed))
     # Group the narrator's sentences into takes: same paragraph, no story pause between, one speed.
-    units: list[tuple[list[Chunk], Any, str, float]] = []
+    units: list[tuple[list[Chunk], Any, list[str], float]] = []  # chunks, reader, what each says, speed
     group: list[tuple[Chunk, str, str]] = []
     group_speed = 1.0
     def close() -> None:
         if group:
-            text, last_tag = [], None
+            parts, last_tag = [], None
             for _, tag, t in group:
-                text.append(f"{tag} {t}".strip() if tag and tag != last_tag else t)
+                parts.append(f"{tag} {t}".strip() if tag and tag != last_tag else t)
                 last_tag = tag or last_tag
-            units.append(([c for c, _, _ in group], voice, " ".join(text), group_speed))
+            units.append(([c for c, _, _ in group], voice, parts, group_speed))
             group.clear()
     takes = expressive and getattr(voice, "takes", False)
     for chunk, reader, tag, text, speed in plan:
@@ -148,10 +150,10 @@ def narrate(voice: Voice, narration: str, pauses: list[dict[str, Any]], pronunci
             prev = units[-1] if units else None
             if (prev is not None and prev[1] is reader and getattr(reader, "takes", False)
                     and prev[0][-1].speaker == chunk.speaker and prev[0][-1].gap_ms <= TAKE_JOIN_MS
-                    and len(prev[2]) + len(text) <= TAKE_CHARS):  # the host's intro flows too
-                units[-1] = (prev[0] + [chunk], reader, f"{prev[2]} {text}", 1.0)
+                    and len(" ".join(prev[2])) + len(text) <= TAKE_CHARS):  # the host's intro flows too
+                units[-1] = (prev[0] + [chunk], reader, prev[2] + [text], 1.0)
             else:
-                units.append(([chunk], reader, text, 1.0))
+                units.append(([chunk], reader, [text], 1.0))
             continue
         joinable = (takes and group and speed == group_speed and group[-1][0].gap_ms <= TAKE_JOIN_MS
                     and sum(len(t) for _, _, t in group) + len(text) <= TAKE_CHARS)
@@ -163,8 +165,8 @@ def narrate(voice: Voice, narration: str, pauses: list[dict[str, Any]], pronunci
             close()
     close()
     readers: dict[int, tuple[Any, list[str]]] = {}
-    for _, reader, text, _ in units:
-        readers.setdefault(id(reader), (reader, []))[1].append(text)
+    for _, reader, parts, _ in units:
+        readers.setdefault(id(reader), (reader, []))[1].append(" ".join(parts))
     for reader, texts in readers.values():  # paid voices read every take at once, in parallel
         if hasattr(reader, "prepare"):
             reader.prepare(texts)
@@ -172,15 +174,41 @@ def narrate(voice: Voice, narration: str, pauses: list[dict[str, Any]], pronunci
     lead_in = np.zeros(int(0.6 * rate), dtype=np.float32)  # a breath before the first word
     pieces.append(lead_in)
     t = len(lead_in) / rate
-    for group_chunks, reader, text, speed in units:
-        if reader is not voice:
-            audio = _resample(reader.say(text, 1.0), reader.sample_rate, rate)
+    def read(reader: Any, text: str, speed: float, attempt: int = 0) -> np.ndarray:
+        if attempt:
+            got = reader.say(text, speed, attempt=attempt)
         else:
-            audio = voice.say(text, speed)
-        audio = _trim(audio, rate)
+            got = reader.say(text, speed)
+        return _trim(_resample(got, reader.sample_rate, rate), rate)
+
+    for group_chunks, reader, parts, speed in units:
+        speed = speed if reader is voice else 1.0
+        audio = read(reader, " ".join(parts), speed)
+        cuts: list[int] | None = None
+        if listener is not None and getattr(reader, "expressive", False):
+            score, cuts = listener.check(audio, rate, [c.text for c in group_chunks])
+            if score < MIN_MATCH and len(parts) > 1:  # read the take again, sentence by sentence
+                log.warning("Take %r matched its text %.0f%%: read again sentence by sentence",
+                            parts[0][:50], score * 100)
+                listener.report["reread"] += 1
+                gap = np.zeros(int(TAKE_JOIN_MS * gap_scale / 2000 * rate), dtype=np.float32)
+                pieces_, cuts = [], []
+                for k, part in enumerate(parts):
+                    if k:
+                        cuts.append(sum(x.size for x in pieces_) + gap.size // 2)
+                        pieces_.append(gap.copy())
+                    pieces_.append(read(reader, part, speed))
+                audio = np.concatenate(pieces_)
+            elif score < MIN_MATCH and hasattr(reader, "prepare"):  # one line: one more try, keep the better
+                listener.report["reread"] += 1
+                again = read(reader, parts[0], speed, attempt=1)
+                score2, cuts2 = listener.check(again, rate, [c.text for c in group_chunks])
+                if score2 > score:
+                    audio, cuts = again, cuts2
         if reader is not voice:  # the cast sit a little behind the narrator in the mix
             audio = _match_level(audio, 0.85)
-        cuts = split_take(audio, rate, [len(c.text) for c in group_chunks])
+        if cuts is None or len(cuts) != len(group_chunks) - 1:
+            cuts = split_take(audio, rate, [len(c.text) for c in group_chunks])
         for chunk, (a, b) in zip(group_chunks, zip([0] + cuts, cuts + [audio.size])):
             chunk.t0, chunk.t1 = t + a / rate, t + b / rate
         pieces.append(audio)
@@ -199,6 +227,7 @@ def narrate(voice: Voice, narration: str, pauses: list[dict[str, Any]], pronunci
 
 TAKE_CHARS = 600  # longest take: a few sentences, well inside the voice model's limit
 TAKE_JOIN_MS = 300  # sentences separated by no more than an ordinary sentence gap share a take
+MIN_MATCH = 0.8  # share of a take's words the listener must hear for the take to stand
 
 
 def split_take(audio: np.ndarray, rate: int, weights: list[int]) -> list[int]:

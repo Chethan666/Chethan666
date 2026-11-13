@@ -64,19 +64,56 @@ def needs(board_data: dict[str, Any], cue_names: list[str], max_effects: int) ->
 
 
 def shortlist(library: Library, need: dict[str, Any], k: int = 5) -> list[tuple[Sound, float]]:
+    k = 8 if need["kind"] == "music" else k  # the score matters most: a wider choice
     return library.search(need["kind"], need["text"], need.get("mood", ""), k, need.get("intensity"))
 
 
-def prompt(story_title: str, items: list[tuple[dict[str, Any], list[tuple[Sound, float]]]]) -> str:
+def overview(library: Library | None) -> str:
+    """What the whole library holds, so the director knows how much choice it has."""
+    if library is None or not library.sounds:
+        return "The channel's sound library is not available for this video."
+    kinds: dict[str, int] = {}
+    moods: dict[str, int] = {}
+    for s in library.sounds:
+        kinds[s.kind] = kinds.get(s.kind, 0) + 1
+        if s.kind == "music":
+            for m in s.moods:
+                moods[m] = moods.get(m, 0) + 1
+    return (f"The channel's sound library holds {len(library.sounds)} sounds: "
+            + ", ".join(f"{n} {k}" for k, n in sorted(kinds.items()))
+            + (" (music by mood: " + ", ".join(f"{m} {n}" for m, n in sorted(moods.items())) + ")" if moods else "")
+            + ". Under each NEED you see its best matches.")
+
+
+def _line(s: Sound) -> str:
+    facts = [s.title[:70], s.description[:110], f"{s.seconds:.0f} s"]
+    if s.kind == "music":
+        facts += [f"moods {'/'.join(s.moods) or '-'}", f"intensity {s.intensity}/5" if s.intensity else ""]
+    facts += ["loops" if s.loop else "", f"used {s.uses}x"]
+    return f"  - {s.id}: " + " | ".join(f for f in facts if f)
+
+
+def prompt(story_title: str, items: list[tuple[dict[str, Any], list[tuple[Sound, float]]]],
+           library: Library | None = None, can_make: bool = True) -> str:
     blocks = []
     for need, cands in items:
         head = f"NEED {need['need']} ({need['kind']}): {need['text'][:160]}"
         if need.get("moment"):
             head += f" | narrated: \"{need['moment']}\""
-        lines = [f"  - {s.id}: {s.title[:70]} | {s.description[:110]} | {s.seconds:.0f} s"
-                 f"{' | loops' if s.loop else ''} | used {s.uses}x" for s, _ in cands]
+        lines = [_line(s) for s, _ in cands]
         blocks.append(head + "\n" + ("\n".join(lines) if lines else "  (no candidates)"))
-    return (f"Video: {story_title}\n\n" + "\n\n".join(blocks) +
+    intro = f"Video: {story_title}\n{overview(library)}\n\n"
+    if not can_make:
+        return (intro + "\n\n".join(blocks) +
+                "\n\nThis video uses the library only: nothing new can be made. For each NEED decide:\n"
+                "1. Use a library sound: \"id\" = one of the ids listed under that NEED. A door creak is not a "
+                "footstep; a cheerful or melodic track is never right under a horror story. For music, prefer "
+                "tracks without a strong melody that sit quietly under a voice, an intensity that fits the mood, "
+                "and different tracks for different moods; prefer sounds used less often.\n"
+                "2. Leave it out: \"id\" = \"\" (an effect that does not fit is worse than silence; music, "
+                "room tone and the sting always take the closest listed sound).\n"
+                "Return every NEED once.")
+    return (intro + "\n\n".join(blocks) +
             "\n\nFor each NEED decide one of three things:\n"
             "1. Use a library sound: \"id\" = one of the ids listed under that NEED (free). A door creak is not "
             "a footstep; a cheerful or melodic track is never right under a horror story. For music, prefer "
@@ -100,7 +137,7 @@ class Decisions:
 
 
 def pick(board: Any, library: Library | None, cue_names: list[str], max_effects: int,
-         min_score: float = 0.55) -> Decisions:
+         min_score: float = 0.55, can_make: bool = True) -> Decisions:
     """For each need: a library sound, a new sound described by the director, or nothing."""
     all_needs = needs(board.data, cue_names, max_effects)
     items = [(n, shortlist(library, n) if library is not None else []) for n in all_needs]
@@ -110,14 +147,14 @@ def pick(board: Any, library: Library | None, cue_names: list[str], max_effects:
     if router is not None:
         try:
             result = router.one("planner").generate_json(
-                "sound_pick", SYSTEM, prompt(str(board.story.get("title", "")), items), SCHEMA)
+                "sound_pick", SYSTEM, prompt(str(board.story.get("title", "")), items, library, can_make), SCHEMA)
             allowed = {n["need"]: {s.id: s for s, _ in c} for n, c in items}
             kinds = {n["need"]: n["kind"] for n, _ in items}
             for p in result.get("picks", []) if isinstance(result, dict) else []:
                 if not isinstance(p, dict) or str(p.get("need", "")) not in kinds:
                     continue
                 need, sid = str(p["need"]), str(p.get("id", "")).strip()
-                text = str(p.get("generate") or "").strip()
+                text = str(p.get("generate") or "").strip() if can_make else ""
                 if sid in allowed[need]:
                     out.chosen[need] = allowed[need][sid]
                 elif sid:
@@ -135,7 +172,10 @@ def pick(board: Any, library: Library | None, cue_names: list[str], max_effects:
         if n["need"] in decided or not cands:
             continue  # undecided and nothing in the library: made from the default description
         best, score = cands[0]
-        if score >= {"music": 0.9, "sting": 0.0}.get(n["kind"], min_score):  # any sting will do
+        # Any sting will do; with nothing to be made, the closest music and room tone too.
+        floor = {"music": 0.0 if not can_make else 0.9, "sting": 0.0,
+                 "ambience": 0.0 if not can_make else min_score}.get(n["kind"], min_score)
+        if score >= floor:
             out.chosen[n["need"]] = best
     out.report = {
         "library_sounds": len(library.sounds) if library is not None else 0, "needs": len(all_needs),

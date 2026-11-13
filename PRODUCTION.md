@@ -12,18 +12,27 @@ showrunner runs them in order, times them, and keeps each one's report in `repor
 agent that is not critical (art references, sound, packaging, QA) falls back instead of
 stopping the video.
 
-| # | Agent | Job | Paid (with `FAL_KEY`) | Free fallback |
-|---|---|---|---|---|
-| 1 | Casting | Who speaks: the host, the teller, each character; picks the voices | the planner model (Bedrock) | words around each quote |
-| 2 | Voice | A performance director gives each sentence its delivery; the narrator reads each paragraph in one flowing take, cut back into timed sentences at its own pauses; a little quicker than recorded | ElevenLabs v3 on fal (+ the planner model) | Kokoro |
-| 3 | Storyboard | Cuts the timeline into beats of 5-11 s and stages each as one picture | the planner model | the scene plan |
-| 4 | Art director | One house look; a design per character; a style frame and character sheets | Nano Banana 2 | Cloudflare FLUX, Pollinations |
-| 5 | Illustrator + critic | One picture per beat from the references; each checked in code and by a vision model, a rejected one redrawn by the next painter | Seedream 4.5 edit, then Nano Banana 2 edit | Cloudflare FLUX, Pollinations, a neighbour's picture |
-| 6 | Edit plan | Cold open, title card, the story, end screen; captions | | |
-| 7 | Sound | Score cues that follow the tension, room tone, effects, a stinger per scare | ElevenLabs music and effects | synthesized drone and cues |
-| 8 | Edit | Every still for exactly its frames (held still, or `stills.motion=drift`), a dip to black between scenes, -14 LUFS | | |
-| 9 | Packager | Three thumbnails, Shorts, chapters, metadata, contact sheet, 60 s preview | Nano Banana 2 edit | the key picture with lettering |
-| 10 | QA | Checks length, streams, missing files, fallbacks; `pass` or `check` with the reasons | | |
+Every step that can go wrong has a **check gate** right after it, and a gate fixes what it
+can before the next agent builds on it (✓ = checks; ↻ = fixes itself):
+
+| # | Agent | Job | Gate after it | Paid (with `FAL_KEY`) | Free fallback |
+|---|---|---|---|---|---|
+| 0 | Script check | Every scene and pause is in the narration, quotes are closed, the length suits `target_seconds` | ✓ stops only a script that cannot be timed; the rest is reported | | |
+| 1 | Casting | Who speaks: the host, the teller, each character; picks the voices | ✓ a speaker name must look like a name | the planner model (Bedrock) | words around each quote |
+| 2 | Voice | The performance director gives each sentence its delivery; the narrator reads each paragraph in one flowing take, a little quicker than recorded | ✓↻ the **listener** (Whisper, free) transcribes every take: a take that skipped or invented words is read again; good takes are cut at exact word times | ElevenLabs v3 on fal (+ the planner model) | Kokoro |
+| 3 | Storyboard | Cuts the timeline into beats (`beat_min_seconds`-`beat_max_seconds`) and stages each as one picture | ✓ beat lengths held in code | the planner model | the scene plan |
+| 4 | Art director | One house look; a design per character; a style frame and character sheets | | Nano Banana 2 | Cloudflare FLUX, Pollinations |
+| 5 | Illustrator + critic | One picture per beat from the references | ✓↻ each picture checked in code and by a vision model; a rejected one is redrawn | Seedream 4.5 edit, then Nano Banana 2 edit | Cloudflare FLUX, Pollinations, a neighbour's picture |
+| 6 | Art review | All the pictures side by side with the narration: the same person looks the same, the order tells the story, the scare lands | ✓↻ the worst `art_review_fixes` (2) are redrawn with its note (the critic checks the redraw) | vision model, ~$0.002 | |
+| 7 | Edit plan | Cold open, title card, the story, end screen; captions | | | |
+| 8 | Sound | The sound director picks music, room tone, effects and stingers from the channel's sound library (or has them made, if `sound_library.generate_missing`) | ✓↻ the **mix check**: under speech the voice must stand `voice_over_bed_db` (12 dB) above everything else, or the bed is lowered | library (free) | synthesized drone and cues |
+| 9 | Edit | Every still for exactly its frames, a dip to black between scenes, -14 LUFS | | | |
+| 10 | Packager | Thumbnails, Shorts, chapters, metadata, contact sheet, 60 s preview | ✓↻ each thumbnail's words are read back by a vision model; misspelled or unreadable ones are repainted once | Nano Banana 2 edit | the key picture with lettering |
+| 11 | QA | Length, streams, files, fallbacks, loudness and true peak, and every gate's findings in one list | ✓ `pass`, or `check` with the reasons | | |
+
+By default only pictures and the narrator's voice are paid for: music and sounds come from the
+library (`sound_library.generate_missing` false). A 60-second test: workflow mode `video-test`
+with overrides `script=one_minute.json`.
 
 **Voices.** The Storyteller (host) reads the intro and outro in the third person, always in the
 same voice. A first-person story (decided from the text) is told by its teller in a voice of

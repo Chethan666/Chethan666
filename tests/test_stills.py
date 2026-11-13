@@ -82,6 +82,7 @@ def cfg(**over):
 
     c = copy.deepcopy(DEFAULTS["stills"])
     c["sound_library"] = dict(c["sound_library"], enabled=False)  # no release downloads in tests
+    c["listener"] = ""  # no Whisper download in tests (the listener has its own tests)
     c.update({"end_screen_seconds": 3.0, "title_seconds": 2.0, "max_usd": 5.0, "parallel": 2, "pollinations": False,
               "beat_min_seconds": 2.0, "beat_max_seconds": 5.0}, **over)
     return c
@@ -279,7 +280,9 @@ class TeamTests(unittest.TestCase):
         return summary, root / "out", made
 
     def test_a_story_becomes_a_packaged_stills_video(self):
-        summary, out, fal = self.make(FakeFal)
+        from story_factory.config import DEFAULTS
+        lib = dict(DEFAULTS["stills"]["sound_library"], enabled=False, generate_missing=True)
+        summary, out, fal = self.make(FakeFal, sound_library=lib)  # sounds may be made: the paid path
         for name in ("video.mp4", "captions.srt", "metadata.json", "beats.json", "report.json", "contact_sheet.jpg",
                      "preview_60s.mp4", "thumbnail_1.jpg", "thumbnail_3.jpg", "narration.wav"):
             self.assertTrue((out / name).exists(), name)
@@ -293,14 +296,18 @@ class TeamTests(unittest.TestCase):
         endpoints = [e for e, _ in fal.calls]
         self.assertIn("fal-ai/nano-banana-2", endpoints)  # the style frame
         self.assertIn("fal-ai/bytedance/seedream/v4.5/edit", endpoints)  # the beats, from references
-        self.assertIn("fal-ai/ace-step-1.5", endpoints)  # music the library lacked
+        self.assertIn("fal-ai/ace-step-1.5", endpoints)  # music the library lacked, when making is allowed
+        self.assertIn("art_review", summary["agents"])
+        self.assertIn("script_check", summary["agents"])
+        self.assertTrue(summary["agents"]["sound"]["mix"]["checked"])
         self.assertFalse(any("video" in e for e in endpoints))  # no moving clips at all
         self.assertGreater(summary["usd"], 0)
         self.assertLessEqual(summary["usd"], 5.0)
         self.assertFalse((out / "work").exists())
         self.assertEqual(json.loads((out / "metadata.json").read_text())["title"], "The Extra Passenger")
-        self.assertEqual(list(summary["agents"]), ["casting", "voice", "storyboard", "art", "illustrator",
-                                                   "edit_plan", "sound", "edit", "packager", "qa"])
+        self.assertEqual(list(summary["agents"]), ["script_check", "casting", "voice", "storyboard", "art",
+                                                   "illustrator", "art_review", "edit_plan", "sound", "edit",
+                                                   "packager", "qa"])
 
     def test_a_first_person_story_has_a_host_a_teller_and_a_character_voice(self):
         summary, out, fal = self.make(FakeFal, Router(), first_person=True)
@@ -322,6 +329,12 @@ class TeamTests(unittest.TestCase):
         self.assertTrue(all("identical face" in p for p in prompts if "character sheet of Dana" in p))
         self.assertEqual(summary["agents"]["illustrator"]["look"], "cinematic")
         self.assertTrue(json.loads((out / "metadata.json").read_text())["synthetic_media"])
+
+    def test_by_default_only_pictures_voice_and_checks_are_paid_for(self):
+        summary, _, fal = self.make(FakeFal)
+        endpoints = {e for e, _ in fal.calls}
+        self.assertFalse(any("ace-step" in e or "music" in e or "sound-effects" in e for e in endpoints), endpoints)
+        self.assertEqual(summary["agents"]["sound"]["generated"], 0)
 
     def test_without_any_key_the_video_is_still_made_and_qa_says_what_to_check(self):
         summary, out, _ = self.make()
