@@ -129,8 +129,9 @@ def places(router: Any, scenes: list[dict[str, Any]], beats: list[Shot], host_be
             "- scenes: the scene numbers set there\n"
             "- design: 45-80 words that fix what the script and the pictures leave open, so the place is "
             "identical in every picture: exactly what it is (type, age, condition), its main colours and "
-            "materials, three telling objects or fixtures and where they are, the light sources and their "
-            "colour, the weather and time. If pictures are both inside and outside it, describe both "
+            "materials, three telling objects or fixtures and where they are, its small light sources at night "
+            "and their colour (a horror story's places are dark: name what little light there is, never "
+            "daylight or an evenly lit room), the weather. If pictures are both inside and outside it, describe both "
             "(\"Outside: ... Inside: ...\"). Never contradict the script or the pictures. No people. Nothing "
             "'sometimes'.\n"
             "- views: the views for its reference sheet, one sentence each: one view, or two when pictures are "
@@ -238,9 +239,12 @@ class ArtDirectorAgent:
             else:
                 layout = f"One wide view: {views[0]}."
             text = (f"{house} {match}A location reference sheet of one place, {place['name']}: {place['design']} "
-                    f"{layout} Empty: no people. No text, no labels. {look['avoid']}").strip()
-            path, _ = painter.paint(text, refs, out, ["place", place["name"], place["design"], views],
-                                    cfg["chains"]["sheet"], check=checked("location", place["name"], place["design"]))
+                    f"{layout} At night, in its darkest light: lit only by its own small light sources, most of "
+                    f"it in deep shadow. Empty: no people. No text, no labels. {look['avoid']}").strip()
+            path, step = painter.paint(text, refs, out, ["place", place["name"], place["design"], views],
+                                       cfg["chains"]["sheet"], check=checked("location", place["name"], place["design"]))
+            if path is not None and out.stem in painter.doubted and not step.startswith("fal:"):
+                return place["name"], None
             return place["name"], path
 
         def sheet(c: dict[str, Any]) -> tuple[str, Path | None]:
@@ -256,8 +260,10 @@ class ArtDirectorAgent:
                     "side light: full body from the front, full body in three-quarter view, and a "
                     "head-and-shoulders close-up with a neutral, tired expression. Identical face, hair, "
                     f"clothes and accessories in all three. No text, no labels. {look['avoid']}").strip()
-            path, _ = painter.paint(text, refs, out, ["sheet", c["name"], c["design"]], cfg["chains"]["sheet"],
-                                    check=checked("character", c["name"], c["design"]))
+            path, step = painter.paint(text, refs, out, ["sheet", c["name"], c["design"]], cfg["chains"]["sheet"],
+                                       check=checked("character", c["name"], c["design"]))
+            if path is not None and out.stem in painter.doubted and not step.startswith("fal:"):
+                return c["name"], None  # a free painter's refused sheet (run 96: an empty room for Lily) misleads
             return c["name"], path
 
         with ThreadPoolExecutor(max_workers=int(cfg.get("parallel", 4))) as pool:
@@ -403,4 +409,5 @@ class IllustratorAgent:
         return {"look": look.get("name"), "cameras": {b.index: b.view for b in beats if b.view != "film"},
                 "pictures": len(beats) - borrowed - placeholders, "borrowed_neighbour": borrowed,
                 "placeholders": placeholders, "scare_shots": sorted(strongest), "by_painter": dict(painter.counts),
+                "doubted_beats": sorted(b.index for b in beats if f"beat_{b.index:03d}" in painter.doubted),
                 "painter_sizes": dict(painter.sizes), "rejected": painter.rejections[:30]}

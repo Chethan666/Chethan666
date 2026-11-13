@@ -254,6 +254,20 @@ class Colorist(unittest.TestCase):
         report = ColoristAgent().run(b)
         self.assertNotIn("colour", report["changes"].get(4, {}))
 
+    def test_a_film_lit_like_day_is_printed_down_as_a_whole(self):
+        from production.stills.grade import ColoristAgent, measure
+
+        pictures = [self.picture(f"p{k}.png", 55 + k) for k in range(5)]
+        b = self.board(pictures)
+        b.data["look"] = {"max_brightness": 40}
+        report = ColoristAgent().run(b)
+        self.assertEqual(report["graded"], 5)
+        self.assertGreater(report["printed_down"], 0.2)
+        for k in range(5):
+            self.assertLess(measure(b.data["pictures"][k])[0], 48)
+        b = self.board(pictures)  # without a ceiling a uniformly bright film is left as it is
+        self.assertEqual(ColoristAgent().run(b)["graded"], 0)
+
     def test_a_flat_picture_gains_contrast_and_a_harsh_one_is_left_alone(self):
         from production.stills.grade import grade
 
@@ -375,6 +389,7 @@ class PainterRules(unittest.TestCase):
                 retries.append(retry)
                 return painted(raw, seed=len(asked))
 
+
         retries = self.retries = []
         return P(None, {}, self.root, Critic()), asked
 
@@ -396,9 +411,23 @@ class PainterRules(unittest.TestCase):
         out, step = p.paint("She stands behind him.", [], self.root / "beat.png", "k",
                             ["fal:shot", "fal:shot_alt", "pollinations"], check="standing")
         self.assertEqual([s for s, _ in asked], ["fal:shot", "fal:shot_alt"])  # pollinations was not asked
-        self.assertEqual(step, "fal:shot_alt")  # the corrected try is the one kept
-        self.assertEqual(p.counts, {"fal:shot_alt (doubted)": 1})
+        self.assertEqual(step, "fal:shot")  # both faults were details: the strongest painter's picture stays
+        self.assertEqual(p.counts, {"fal:shot (doubted)": 1})
+        self.assertEqual(p.doubted, {"beat"})
         self.assertTrue(out.exists())
+
+    def test_a_correction_that_broke_something_worse_does_not_win(self):
+        # run 96: the reveal was refused for the way she looked; its correction came back as a split screen
+        p, asked = self.painter([(False, "she looks left, not right"), (False, "a split screen with two panels")],
+                                ("fal:hero", "fal:shot"))
+        out, step = p.paint("The reveal.", [], self.root / "beat.png", "k", ["fal:hero", "fal:shot"], check="x")
+        self.assertEqual(step, "fal:hero")
+        self.assertTrue(out.exists())
+        self.assertEqual(p.counts, {"fal:hero (doubted)": 1})
+        # with serious faults only, the last (corrected) one is kept as before
+        p, _ = self.painter([(False, "it shows written text"), (False, "a collage of panels")], ("fal:shot", "fal:shot_alt"))
+        self.assertEqual(p.paint("x", [], self.root / "b2.png", "k2", ["fal:shot", "fal:shot_alt"], check="x")[1],
+                         "fal:shot_alt")
 
     def test_free_painters_still_paint_when_no_paid_picture_could_be_made(self):
         p, asked = self.painter([(True, "fine")], ("pollinations",))

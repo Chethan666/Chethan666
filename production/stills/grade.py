@@ -75,8 +75,9 @@ def gamma_for(luma: np.ndarray, target: float) -> float:
 
 
 def grade(rgb: np.ndarray, want: tuple[float, float, float, float], strength: float,
-          colour: bool = True) -> tuple[np.ndarray, dict[str, float]]:
+          colour: bool = True, exposure: float = 1.0) -> tuple[np.ndarray, dict[str, float]]:
     """A 0-1 picture brought within the film's tolerances, and what was changed ({} = nothing).
+    `exposure` below 1 prints the whole film down first (every picture's brightness times it).
 
     Each step is decided on the picture as the step before left it: a gamma change moves the
     contrast and the colour cast too."""
@@ -84,7 +85,7 @@ def grade(rgb: np.ndarray, want: tuple[float, float, float, float], strength: fl
     small = rgb[::8, ::8]
     changed: dict[str, float] = {}
     m = stats(small)[0]
-    target = _toward(m, M - BRIGHTNESS_BAND, M + BRIGHTNESS_BAND, strength)
+    target = _toward(m * exposure, M - BRIGHTNESS_BAND, M + BRIGHTNESS_BAND, strength)
     target = min(max(target, m - MAX_BRIGHTNESS_MOVE), m + MAX_BRIGHTNESS_MOVE)
     if abs(target - m) >= 1.0:
         g = gamma_for(small @ LUMA, target / 255.0)
@@ -123,6 +124,11 @@ class ColoristAgent:
         measured = {b.index: measure(pictures[b.index]) for b in beats if pictures.get(b.index)}
         film = [measured[b.index] for b in beats if b.index in measured and b.view == "film"] or list(measured.values())
         want = tuple(float(np.median([m[k] for m in film])) for k in range(4))
+        # The house's darkness: a film whose pictures all came back lit like day (run 96: a child's
+        # bedroom at 3 a.m. in even grey light) is printed down as a whole, so night looks like night.
+        cap = float((d.get("look") or {}).get("max_brightness") or cfg.get("max_brightness") or 0)
+        exposure = min(1.0, cap / want[0]) if cap and want[0] > 0 else 1.0
+        want = (want[0] * exposure, want[1] * exposure, want[2], want[3])
         folder = board.work / "graded"
         folder.mkdir(parents=True, exist_ok=True)
         done: dict[Path, Path] = {}  # a picture shared by two beats is graded once
@@ -134,7 +140,7 @@ class ColoristAgent:
             if src not in done:
                 with Image.open(src) as im:
                     rgb = np.asarray(im.convert("RGB"), dtype=np.float32) / 255.0
-                out, changed = grade(rgb, want, strength, colour=b.view == "film")
+                out, changed = grade(rgb, want, strength, colour=b.view == "film", exposure=exposure)
                 done[src] = src
                 if changed:
                     done[src] = folder / f"beat_{b.index:03d}.png"
@@ -142,4 +148,5 @@ class ColoristAgent:
                     changes[b.index] = changed
             pictures[b.index] = done[src]
         return {"graded": len(changes), "pictures": len(measured), "film_brightness": round(want[0], 1),
+                "printed_down": round(1 - exposure, 2),
                 "film_contrast": round(want[1], 1), "changes": dict(list(changes.items())[:20])}

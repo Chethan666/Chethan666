@@ -114,7 +114,8 @@ class ArtReviewAgent:
         fixes_allowed = int(cfg.get("art_review_fixes", 2))
         sheet = board.work / "review_sheet.jpg"
         package.contact_sheet(beats, d["pictures"], sheet, columns=4, thumb=(480, 270))
-        lines = "\n".join(f"{k}. {str(b.text)[:140]}" for k, b in enumerate(beats, 1))
+        host = set(d.get("host_beats") or ())
+        lines = "\n".join(f"{k}. {'(HOST) ' if b.index in host else ''}{str(b.text)[:140]}" for k, b in enumerate(beats, 1))
         cast = "; ".join(f"{c.get('name')}: {str(c.get('design', ''))[:160]}" for c in d.get("cast", [])
                          if isinstance(c, dict) and c.get("design"))
         sets = "; ".join(f"{x.get('name')}: {str(x.get('design', ''))[:200]}" for x in d.get("sets") or []
@@ -123,6 +124,10 @@ class ArtReviewAgent:
                   f"Places: {sets or 'as the lines say'}\n"
                   "The sheet shows the video's pictures in order, numbered, left to right, top to bottom. Each is "
                   f"on screen while its line is narrated:\n{lines}\n\n"
+                  "Pictures marked (HOST) show the channel's host, The Storyteller, with his lantern in a misty "
+                  "place outside the story: that is intended. A threat the story never names may appear as a "
+                  "shadow or a shape; it is not the host. Judge each picture against its OWN line, not the lines "
+                  "after it.\n"
                   "Judge the pictures TOGETHER: does each named person look the same in every picture (face, hair, "
                   "age, clothes); does each place look the same in every picture set there (the same vehicle or "
                   "building, its colours and fixtures); do the pictures follow the story in order; does a picture "

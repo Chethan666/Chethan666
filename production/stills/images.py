@@ -85,6 +85,18 @@ def house_look(cfg: dict[str, Any]) -> dict[str, Any]:
     return look
 
 
+SERIOUS = ("panel", "split", "collage", "two different", "side by side", "text", "lettering", "written", "watermark",
+           "timestamp", "anatomy", "extra finger", "extra limb", "melted", "doubled", "warped", "cartoon",
+           "drawing", "painting", "3d render", "plastic", "too bright", "no person", "nobody", "not visible",
+           "unrelated", "does not show", "doesn't show")
+
+
+def serious(reason: str) -> bool:
+    """A refusal for a fault that ruins a picture, rather than a detail of the description."""
+    text = reason.lower()
+    return any(s in text for s in SERIOUS)
+
+
 class Critic:
     """Checks a picture in code, then by eye with a vision model when one is configured."""
 
@@ -116,8 +128,9 @@ class Critic:
                   "a melted or doubled face); a named person clearly contradicts their description (wrong hair "
                   "colour, glasses missing or added, different clothes, a different age); or it shows something "
                   "unrelated to the moment. Do NOT fail it for small differences: a slightly different shade of "
-                  "a colour, a person a little nearer or further than described, more or less shadow on them, a "
-                  "missing small prop or background detail. When you fail it, say in one sentence what is wrong "
+                  "a colour, a person a little nearer or further than described, more or less shadow on them, the "
+                  "direction someone looks or faces, a slightly different pose, a missing small prop or background "
+                  "detail. When you fail it, say in one sentence what is wrong "
                   "and what the picture should show instead. Reply exactly as JSON: "
                   '{"ok": true or false, "reason": "short reason"}')
         try:
@@ -151,6 +164,7 @@ class Painter:
         self.pollinations_last = 0.0
         self.counts: dict[str, int] = {}
         self.sizes: dict[str, str] = {}  # the size each painter's pictures really come back at
+        self.doubted: set[str] = set()  # pictures used although no check passed them
         self.rejections: list[str] = []
         self.lock = threading.Lock()
         self._refs: dict[tuple[str, int, int], str] = {}
@@ -193,8 +207,12 @@ class Painter:
         (picture -> passed, reason); None takes the first picture made.
 
         Each painter after a refusal is told what was wrong; a chain may name the same painter
-        twice for that. If none passes, the last picture made is used and counted as doubted."""
+        twice for that. If none passes, the picture kept (and counted as doubted) is the first one
+        whose fault was not serious, so the strongest painter's picture wins over a correction that
+        broke something worse (run 96: a reveal refused for the way she looked lost to a split
+        screen); with only serious faults, the last one."""
         doubted: tuple[Path, str] | None = None
+        mild: tuple[Path, str] | None = None
         why = ""
         paid_picture = False
         for k, step in enumerate(s for s in chain if self.available(s)):
@@ -241,13 +259,19 @@ class Painter:
                 self._count(step + " (corrected)" if why else step)
                 return out, step
             why = reason
+            if mild is None and doubted is not None and doubted[0] == candidate and not serious(reason):
+                kept = candidate.with_name(f"kept_{candidate.name}")
+                candidate.replace(kept)
+                mild = doubted = (kept, step)
             with self.lock:
                 self.rejections.append(f"{out.stem} ({step}): {reason}")
             log.info("%s from %s rejected (%s); next painter", out.stem, step, reason)
-        if doubted is not None:
-            doubted[0].replace(out)
-            self._count(doubted[1] + " (doubted)")
-            return out, doubted[1]
+        keep = mild or doubted
+        if keep is not None:
+            keep[0].replace(out)
+            self._count(keep[1] + " (doubted)")
+            self.doubted.add(out.stem)
+            return out, keep[1]
         return None, "none"
 
     def _one(self, step: str, prompt: str, refs: list[Path], raw: Path, key: Any, retry: int = 0) -> Path | None:

@@ -394,11 +394,14 @@ class TeamTests(unittest.TestCase):
         self.assertFalse(any("security camera" in p for p in prompts))  # cameras belong to the film look
         self.assertFalse(json.loads((out / "metadata.json").read_text())["synthetic_media"])
 
-    def test_a_sheet_that_keeps_failing_its_check_is_painted_twice_and_reported(self):
+    def test_a_sheet_that_keeps_failing_its_check_is_painted_again_and_reported(self):
         summary, out, fal = self.make(lambda root: FakeFal(root, reject_sheets=True), Router(), first_person=True)
-        sheets = [a["prompt"] for e, a in fal.calls if "A character reference sheet of one person, Dana" in a.get("prompt", "")]
-        self.assertEqual(len(sheets), 2)
-        self.assertIn("Correct this from the previous attempt: three different people", sheets[1])
+        sheets = [(e, a["prompt"]) for e, a in fal.calls
+                  if "A character reference sheet of one person, Dana" in a.get("prompt", "")]
+        # Nano Banana twice, then Seedream: each told what was wrong
+        self.assertEqual([e for e, _ in sheets], ["fal-ai/nano-banana-2/edit", "fal-ai/nano-banana-2/edit",
+                                                  "fal-ai/bytedance/seedream/v4.5/edit"])
+        self.assertIn("Correct this from the previous attempt: three different people", sheets[1][1])
         self.assertIn("reference: character sheet of Dana: three different people", summary["qa"]["issues"])
         self.assertEqual(summary["qa"]["status"], "check")
         self.assertTrue((out / "video.mp4").exists())  # reported, not stopped

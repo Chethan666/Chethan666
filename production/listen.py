@@ -63,12 +63,25 @@ class Listener:
         return score, cuts
 
 
+def _close(a: str, b: str) -> bool:
+    """One letter added, dropped or changed, in words of four letters or more ("mummy's", "mommy's")."""
+    if min(len(a), len(b)) < 4 or abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) <= 1
+    short, long = (a, b) if len(a) < len(b) else (b, a)
+    return any(long[:k] + long[k + 1:] == short for k in range(len(long)))
+
+
 def align(sentences: list[str], heard: list[tuple[str, float, float]], rate: int,
           size: int) -> tuple[float, list[int] | None]:
     expected: list[tuple[str, int]] = [(t, i) for i, s in enumerate(sentences) for t in tokens(s)]
+    vocabulary = {t for t, _ in expected}
     said: list[tuple[str, float, float]] = []
     for word, a, b in heard:
         for t in tokens(word):
+            if t not in vocabulary:  # a spelling the script doesn't use: the script's word if it is that close
+                t = next((v for v in vocabulary if _close(t, v)), t)
             said.append((t, a, b))
     if not expected:
         return 1.0, None

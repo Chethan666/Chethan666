@@ -79,7 +79,9 @@ What has to stay the same from picture to picture is designed once and painted f
   a wrong film. A vision model holds the style frame and each sheet against its design (the
   same person in every view, a face that must stay hidden is hidden, the right kind of vehicle
   or room, no text); a failed one is painted once more with the reason in front. One still
-  refused is used, and QA lists it (`reference: ...`).
+  refused is used, and QA lists it (`reference: ...`), except a free painter's: that is worse
+  than none (run 96: an empty room as a child's sheet). Sheets have a second paid painter,
+  Seedream, after Nano Banana. Places are painted at night, in their darkest light.
 
 **Painters.** Tried in order (`stills.chains`) until the critic passes a picture: Seedream 4.5
 edit (about $0.04), then Nano Banana 2 edit as the redraw (about $0.12 at 2K). The scare shots
@@ -90,8 +92,10 @@ rejects a picture where a named person clearly contradicts their design, a carto
 plastic-skinned picture, broken hands or faces, written text, or a different action than the
 narrated words; it is told not to fail a picture for small differences. The second painter is
 told what the critic refused in the first (the fault leads its prompt), so the redraw is a
-correction. If both are refused, the corrected one is used and counted as doubted in the
-report. The free painters
+correction. If every try is refused, the first picture whose fault was only a detail (a gaze,
+a pose) is kept, so the strongest painter's picture is not lost to a correction that broke
+something worse (run 96: a split screen); it is counted as doubted, and QA flags a doubted
+scare. The free painters
 take no references, so they paint only when no paid picture could be made (no key, or over
 the cap): Cloudflare Workers AI's FLUX.1 schnell (secrets `CF_ACCOUNT_ID` and `CF_API_TOKEN`;
 10,000 free neurons a day, roughly 170 pictures; square output, cropped to 16:9) and
@@ -108,7 +112,9 @@ report's `illustrator.painter_sizes` shows the size each painter really sent bac
 
 **The colorist.** Each picture comes from a model that sees only its own prompt, so one can
 come back twice as bright as its neighbours or with another colour cast. The colorist measures
-every picture against the film's median and corrects only the ones outside a tolerance
+every picture against the film's median and corrects only the ones outside a tolerance. A film
+whose pictures all came back lit like day is first printed down as a whole, to the look's
+`max_brightness` (40 of 255 for the cinematic look), so night looks like night
 (`grade_strength`, 0.75 of the way back to it): brightness with a gamma curve, so black stays
 black; contrast only raised, for a flat grey frame; colour cast only for film frames (a
 security-camera view keeps its own colour). The report lists each change.

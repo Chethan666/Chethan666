@@ -32,6 +32,14 @@ class Align(unittest.TestCase):
         score, _ = listen.align(["I drive the last bus.", "Twelve stops, then the depot."], heard, 1000, 3000)
         self.assertLess(score, 0.5)
 
+    def test_an_american_spelling_of_the_same_word_is_heard_right(self):
+        heard = [(" Mommy's", 0.0, 0.4), (" awake", 0.4, 0.8), (" now.", 0.8, 1.1)]
+        score, _ = listen.align(["Mummy's awake now."], heard, 1000, 1200)
+        self.assertEqual(score, 1.0)
+        self.assertFalse(listen._close("now", "not"))  # short words must match exactly
+        self.assertLess(listen.align(["Mummy's awake now."], [(" Daddy's", 0, 0.4), (" awake", 0.4, 0.8),
+                                                                 (" now", 0.8, 1.1)], 1000, 1200)[0], 1.0)
+
     def test_tags_and_punctuation_are_not_words(self):
         self.assertEqual(listen.tokens("[whispers] Don't — look!"), ["don't", "look"])
 

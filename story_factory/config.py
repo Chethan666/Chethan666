@@ -237,6 +237,9 @@ DEFAULTS: dict[str, Any] = {
                 # into each picture at the size it is shown, and a vignette fixed to the frame.
                 "grain": 0.018,
                 "vignette": 0.22,
+                # The film's brightness ceiling (mean luma, 0-255): above it the colorist prints every
+                # picture down together. Night horror sits around 30-40.
+                "max_brightness": 40,
                 "synthetic_media": True,  # realistic made-up people and events: YouTube's AI label
             },
             "illustrated": {
@@ -295,7 +298,8 @@ DEFAULTS: dict[str, Any] = {
         "chains": {
             # A style frame or a sheet that fails its check is painted once more, told what was wrong.
             "reference": ["fal:reference", "fal:reference", "cloudflare", "pollinations"],
-            "sheet": ["fal:sheet", "fal:sheet", "cloudflare", "pollinations"],
+            # Seedream as the sheets' second painter: Nano Banana declined to paint a child's sheet (run 96).
+            "sheet": ["fal:sheet", "fal:sheet", "fal:shot", "cloudflare", "pollinations"],
             "beat": ["fal:shot", "fal:shot_alt", "cloudflare", "pollinations"],
             # The scares (at most `scare_shots`, most important first) are the frames a viewer
             # remembers and the ones a thumbnail is made from: the strongest painter first.

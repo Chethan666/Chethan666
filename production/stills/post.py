@@ -385,6 +385,10 @@ class QAAgent:
             issues.append(f"only {painted} of {len(d['beats'])} beats have their own picture")
         if art.get("placeholders"):
             issues.append(f"{art['placeholders']} placeholder pictures")
+        scares = {b.index for b in d["beats"] if b.scare}
+        for i in art.get("doubted_beats", []):
+            if i in scares:
+                issues.append(f"the scare picture (beat {i}) passed no check: look at it")
         voice = board.reports.get("voice", {})
         if voice.get("lines_read_by_kokoro"):
             issues.append(f"{voice['lines_read_by_kokoro']} lines fell back to Kokoro")
