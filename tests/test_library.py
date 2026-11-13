@@ -164,6 +164,37 @@ class BuilderTests(unittest.TestCase):
         self.assertTrue((self.root / "sync" / new.file).exists())
 
 
+class MadeMusicTests(unittest.TestCase):
+    @unittest.skipUnless(HAVE, "audio libraries or ffmpeg not installed")
+    def test_music_the_director_asks_for_is_made_by_ace_step_with_its_words(self):
+        from production.paid import Budget, Studio
+        from production.score import Score
+
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        audio = tone(root / "a.wav")
+        calls = []
+
+        class Fal:
+            def run(self, endpoint, args):
+                calls.append((endpoint, args))
+                return {"audio": {"url": audio.as_uri()}}
+
+        studio = Studio(Fal(), Budget(5.0, {"fal-ai/ace-step-1.5": 0.0003}), root / "cache",
+                        {"models": {"music": "fal-ai/ace-step-1.5"}})
+        score = Score(studio, root / "w", 22050)
+        score.cue_names = ["dread"]
+        score.prompts = {"music_dread": "slow cello drone, instrumental"}
+        score.music(90)
+        endpoint, args = calls[0]
+        self.assertEqual(endpoint, "fal-ai/ace-step-1.5")
+        self.assertEqual(args["prompt"], "slow cello drone, instrumental")
+        self.assertEqual(args["lyrics"], "[Instrumental]")
+        self.assertEqual(args["duration"], 90.0)
+        self.assertAlmostEqual(studio.budget.spent, 0.027, places=3)  # 90 s at $0.0003
+        self.assertEqual(score.generated[0]["name"], "music_dread")
+
+
 class PickTests(unittest.TestCase):
     def test_the_planner_picks_from_the_shortlist_and_invented_ids_are_ignored(self):
         from types import SimpleNamespace
@@ -177,15 +208,20 @@ class PickTests(unittest.TestCase):
         class Planner:
             def generate_json(self, task, system, prompt, schema):
                 assert task == "sound_pick" and "door2" in prompt
-                return {"picks": [{"need": "fx_001", "id": "door2"}, {"need": "music_dread", "id": "made-up"}]}
+                return {"picks": [{"need": "fx_001", "id": "door2"}, {"need": "music_dread", "id": "made-up"},
+                                  {"need": "music_terror", "id": "", "generate": "frantic horror strings, instrumental"},
+                                  {"need": "fx_002", "id": "", "generate": ""}]}
 
         board = SimpleNamespace(router=SimpleNamespace(one=lambda role: Planner()), story={"title": "T"}, data={
             "scenes": [{"mood": "dread", "location": ""}],
-            "beats": [Shot(index=1, scene=0, t0=0, t1=5, text="It opened.", sound="a door creaks open")]})
-        chosen, report = director.pick(board, lib, ["dread"], 10)
-        self.assertEqual(chosen["fx_001"].id, "door2")  # the model's choice, not the top text match
-        self.assertIn(chosen["music_dread"].id, ("m", "m2"))  # invented id ignored: best match instead
-        self.assertEqual(report["picked_by_model"], 1)
+            "beats": [Shot(index=1, scene=0, t0=0, t1=5, text="It opened.", sound="a door creaks open"),
+                      Shot(index=2, scene=0, t0=5, t1=9, text="Quiet.", sound="a clock ticks")]})
+        d = director.pick(board, lib, ["dread", "terror"], 10)
+        self.assertEqual(d.chosen["fx_001"].id, "door2")  # the director's choice, not the top text match
+        self.assertIn(d.chosen["music_dread"].id, ("m", "m2"))  # invented id ignored: best match instead
+        self.assertEqual(d.make["music_terror"], "frantic horror strings, instrumental")  # made by ACE-Step
+        self.assertIn("fx_002", d.skip)  # left out on purpose
+        self.assertEqual(d.report["decided_by_model"], 3)
 
 
 @unittest.skipUnless(HAVE, "audio libraries or ffmpeg not installed")
@@ -215,11 +251,11 @@ class DirectorTests(unittest.TestCase):
         made = FakeFal(root)
         summary = pipeline.produce(story(False), root / "out", voice.SilentVoice(), None, c, made)
         endpoints = [e for e, _ in made.calls]
-        self.assertNotIn("fal-ai/elevenlabs/music", endpoints)  # every mood came from the library
+        self.assertNotIn("fal-ai/ace-step-1.5", endpoints)  # every mood came from the library
         report = summary["agents"]["sound"]["library"]
-        self.assertTrue(report["used"])
-        self.assertEqual(report["picked_by_kind"]["music"], 3)
-        self.assertEqual(report["picked_by_kind"]["sting"], 1)
+        self.assertTrue(report["library"])
+        self.assertEqual(report["from_library_by_kind"]["music"], 3)
+        self.assertEqual(report["from_library_by_kind"]["sting"], 1)
         meta = json.loads((root / "out" / "metadata.json").read_text())
         self.assertIn("Kevin MacLeod (incompetech.com)", meta["description"])
         self.assertIn("m0", json.loads((root / "out" / "sounds_used.json").read_text()))

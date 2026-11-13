@@ -108,7 +108,7 @@ class FakeFal:
                 self.reject_vision -= 1
                 return {"output": '{"ok": false, "reason": "a watermark"}'}
             return {"output": '{"ok": true, "reason": "fine"}'}
-        if "elevenlabs" in endpoint:
+        if "elevenlabs" in endpoint or "ace-step" in endpoint:
             return {"audio": {"url": self.audio.as_uri()}}
         if "seedream" in endpoint and self.bright_shots > 0:
             self.bright_shots -= 1
@@ -293,7 +293,7 @@ class TeamTests(unittest.TestCase):
         endpoints = [e for e, _ in fal.calls]
         self.assertIn("fal-ai/nano-banana-2", endpoints)  # the style frame
         self.assertIn("fal-ai/bytedance/seedream/v4.5/edit", endpoints)  # the beats, from references
-        self.assertIn("fal-ai/elevenlabs/music", endpoints)
+        self.assertIn("fal-ai/ace-step-1.5", endpoints)  # music the library lacked
         self.assertFalse(any("video" in e for e in endpoints))  # no moving clips at all
         self.assertGreater(summary["usd"], 0)
         self.assertLessEqual(summary["usd"], 5.0)

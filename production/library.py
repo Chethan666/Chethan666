@@ -21,6 +21,7 @@ import math
 import os
 import re
 import shutil
+import urllib.parse
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable
@@ -213,11 +214,48 @@ def release_base(cfg: dict[str, Any]) -> str:
     return f"https://github.com/{repo}/releases/download/{tag}" if repo else ""
 
 
+_ASSETS: dict[str, dict[str, str]] = {}
+
+
 def _download(url: str, out: Path) -> Path:
-    from production.media import download
+    """A release file. A private repository's release needs the workflow's token (GH_TOKEN or
+    GITHUB_TOKEN): the file is then fetched through the GitHub API; otherwise by its public URL."""
     out.parent.mkdir(parents=True, exist_ok=True)
-    download(url, out)
+    out.write_bytes(fetch_release_file(url))
     return out
+
+
+def fetch_release_file(url: str) -> bytes:
+    import urllib.request
+
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or ""
+    m = re.match(r"https://github\.com/([^/]+/[^/]+)/releases/download/([^/]+)/(.+)$", url)
+    if token and m:
+        repo, tag, name = m.groups()
+        key = f"{repo}@{tag}"
+        if key not in _ASSETS:
+            def get(path: str) -> Any:
+                req = urllib.request.Request(f"https://api.github.com/repos/{repo}/{path}", headers={
+                    "Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"})
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    return json.loads(r.read())
+            release_id = get(f"releases/tags/{tag}")["id"]
+            assets: dict[str, str] = {}
+            for page in range(1, 20):  # 100 a page; a release holds about 1,000
+                batch = get(f"releases/{release_id}/assets?per_page=100&page={page}")
+                assets.update({a["name"]: a["url"] for a in batch})
+                if len(batch) < 100:
+                    break
+            _ASSETS[key] = assets
+        api = _ASSETS[key].get(urllib.parse.unquote(name))
+        if api is None:
+            raise FileNotFoundError(f"{name} is not in release {tag}")
+        req = urllib.request.Request(api, headers={"Authorization": f"Bearer {token}",
+                                                   "Accept": "application/octet-stream"})
+        with urllib.request.urlopen(req, timeout=600) as r:
+            return r.read()
+    from production.media import _request
+    return _request(url, timeout=600, raw=True)
 
 
 # --- the catalogue file ---------------------------------------------------------------

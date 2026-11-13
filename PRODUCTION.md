@@ -57,8 +57,10 @@ library (`production/library.py`), published as the GitHub release `sound-librar
 (`library.json`, one entry per sound with its kind, moods, intensity, tags, length, license,
 source page and credit line) and one Ogg file per sound. The sound director lists every need
 (a cue per mood, a room tone per place, an effect per beat, the sting), searches the catalogue
-for a short list per need, and the planner model picks one or none from each list. Picks cost
-nothing; only what the library lacks is generated, and those sounds are added to the library
+for a short list per need, and the planner model, as sound director, decides each one: use a
+library sound (free), have a new one made in its own words when nothing fits (music by ACE-Step
+1.5 on fal.ai, about $0.05 a cue; other sounds by the sound-effects model, about $0.01), or leave
+an effect out. Sounds made are added to the library
 after the run (the workflow's "Save this video's new sounds" step), so each sound is paid for
 once. The least-used tracks are preferred, so videos don't all sound alike. CC BY credit lines
 (Kevin MacLeod's) go into the video description automatically.
@@ -75,7 +77,8 @@ Build or extend it with the workflow's `sound-library` mode (free; about 20-40 m
 | Sonniss GDC bundle part (optional) | professional effects and ambiences | royalty-free, no credit; paste a part's zip URL and enable it |
 | ACE-Step on fal.ai (optional) | score cues for each mood | generated, ours |
 
-Non-commercial, no-derivatives and share-alike files are never added. `python -m production
+Non-commercial, no-derivatives and share-alike files are never added. Keep the repository
+private: the release is then private too, and runs read it with the workflow's own token. `python -m production
 library show` lists what the library holds. Settings: `stills.sound_library` (turn it off,
 use a local folder, never generate, how close an effect must match).
 

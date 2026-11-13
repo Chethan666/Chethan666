@@ -57,6 +57,10 @@ class Score:
         # fx_007, sting): used instead of generating. `generate_missing` False never pays for sound.
         self.chosen: dict[str, Path] = {}
         self.generate_missing = True
+        # The sound director's own descriptions for sounds it chose to have made (by name), and
+        # the effects it chose to leave out.
+        self.prompts: dict[str, str] = {}
+        self.skip: set[str] = set()
         self.generated: list[dict[str, Any]] = []  # what was paid for, to be saved into the library
         self.report: dict[str, Any] = {"music": [], "ambience": 0, "effects": 0, "foley": 0, "synthesized": []}
         work.mkdir(parents=True, exist_ok=True)
@@ -83,11 +87,18 @@ class Score:
 
     def music(self, seconds: float) -> dict[str, np.ndarray]:
         length = int(min(max(seconds, self.min_music), 150))
+        model = self.studio.models.get("music", "") if self.studio is not None else ""
+
         def one(item: tuple[str, str]) -> tuple[str, np.ndarray | None]:
             key, prompt = item
-            return key, self._gen("music", {"prompt": prompt, "music_length_ms": length * 1000,
-                                            "force_instrumental": True}, f"music_{key}",
-                             units=math.ceil(length / 60) * 60)  # billed in whole minutes
+            prompt = self.prompts.get(f"music_{key}", prompt)
+            if "ace-step" in model:  # ACE-Step (open source): billed by the second
+                args = {"prompt": prompt[:500], "lyrics": "[Instrumental]", "duration": float(length)}
+                units = float(length)
+            else:  # ElevenLabs: billed in whole minutes
+                args = {"prompt": prompt, "music_length_ms": length * 1000, "force_instrumental": True}
+                units = math.ceil(length / 60) * 60
+            return key, self._gen("music", args, f"music_{key}", units=units)
         with ThreadPoolExecutor(max_workers=3) as pool:
             got = {k: v for k, v in pool.map(one, [(k, CUES[k]) for k in self.cue_names if k in CUES])
                    if v is not None and v.size}
@@ -95,7 +106,9 @@ class Score:
         return got
 
     def effect(self, text: str, name: str, seconds: float | None = None, loop: bool = False) -> np.ndarray | None:
-        args: dict[str, Any] = {"text": text}
+        if name in self.skip:
+            return None
+        args: dict[str, Any] = {"text": self.prompts.get(name, text)}
         if seconds:
             args["duration_seconds"] = round(min(max(seconds, 0.5), 22.0), 1)
         if loop:
@@ -199,7 +212,7 @@ class Score:
             _place(out, sting * 0.55, int(t * rate))
 
         # One effect per shot that asks for one.
-        wanted = [s for s in shots if s.sound][:max_effects]
+        wanted = [s for s in shots if s.sound and f"fx_{s.index:03d}" not in self.skip][:max_effects]
         def fx(s: Shot) -> tuple[Shot, np.ndarray | None]:
             return s, self.effect(s.sound, f"fx_{s.index:03d}", None)
         with ThreadPoolExecutor(max_workers=self.parallel) as pool:

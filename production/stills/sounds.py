@@ -2,11 +2,12 @@
 
 For every sound the video needs (a score cue per mood, a room tone per place, an effect per
 beat that asks for one, the scare sting), the library is searched for a short list of
-candidates. The planner model sees the needs with their candidates (title, description,
-length, how often used) and picks one or none for each; without a model, the best candidate
-is taken when it matches well enough. Picks cost nothing. Needs left open are generated as
-before, and every generated sound is copied to `library_new/` so `library sync` can add it
-to the library after the run.
+candidates. The planner model is the sound director: for each need it either picks a
+candidate (free), or, when none satisfies it, asks for a new one in its own words (music is
+made by ACE-Step 1.5 on fal.ai, other sounds by the sound-effects model), or leaves an effect
+out. Without a model, the best candidate is taken when it matches well enough, and the rest is
+made from the default descriptions. Every sound made is copied to `library_new/` so `library
+sync` adds it to the library after the run: each is paid for once.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import shutil
+from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -26,12 +28,12 @@ from ..score import CUES, tension
 
 log = logging.getLogger(__name__)
 
-SYSTEM = ("You are the sound director of Hollow Lines, a horror storytelling channel. You choose music and "
-          "sounds from the channel's library for one video. Pick what truly fits the moment; an honest \"none\" "
-          "is better than a wrong sound. Answer with JSON only.")
+SYSTEM = ("You are the sound director of Hollow Lines, a horror storytelling channel. You decide the music "
+          "and sounds of one video: take them from the channel's library when they truly fit, have new ones "
+          "made when they don't, and leave an effect out when silence is scarier. Answer with JSON only.")
 SCHEMA = {"type": "object", "required": ["picks"], "properties": {"picks": {"type": "array", "items": {
     "type": "object", "required": ["need", "id"],
-    "properties": {"need": {"type": "string"}, "id": {"type": "string"}}}}}}
+    "properties": {"need": {"type": "string"}, "id": {"type": "string"}, "generate": {"type": "string"}}}}}}
 MOOD_TEXT = {"unease": "quiet unease: sparse, eerie, patient", "dread": "building dread: tense, pulsing, creeping",
              "terror": "terror: intense, frantic, the climax"}
 
@@ -75,48 +77,74 @@ def prompt(story_title: str, items: list[tuple[dict[str, Any], list[tuple[Sound,
                  f"{' | loops' if s.loop else ''} | used {s.uses}x" for s, _ in cands]
         blocks.append(head + "\n" + ("\n".join(lines) if lines else "  (no candidates)"))
     return (f"Video: {story_title}\n\n" + "\n\n".join(blocks) +
-            "\n\nFor each NEED, pick the id of the candidate that fits best, or \"\" if none truly fits (a door "
-            "creak is not a footstep; a cheerful track is never right). For music, prefer tracks without a "
-            "strong melody, that sit quietly under a voice, and different tracks for different moods. Use only "
-            "ids listed under that NEED. Return every NEED once.")
+            "\n\nFor each NEED decide one of three things:\n"
+            "1. Use a library sound: \"id\" = one of the ids listed under that NEED (free). A door creak is not "
+            "a footstep; a cheerful or melodic track is never right under a horror story. For music, prefer "
+            "tracks without a strong melody that sit quietly under a voice, and different tracks for different "
+            "moods.\n"
+            "2. Have a new one made: \"id\" = \"\" and \"generate\" = a description of it. Music is made by "
+            "ACE-Step 1.5 (about $0.05 a cue): describe genre, instruments, tempo and mood, always "
+            "instrumental, e.g. \"dark ambient horror score, low cello drone, distant detuned piano, slow, "
+            "sparse, instrumental\". Other sounds cost about $0.01: describe exactly what is heard.\n"
+            "3. Leave it out (effects only): \"id\" = \"\" and \"generate\" = \"\".\n"
+            "Prefer the library when a candidate truly fits; make a new one when it doesn't. Return every NEED "
+            "once.")
 
 
-def pick(board: Any, library: Library, cue_names: list[str], max_effects: int,
-         min_score: float = 0.55) -> tuple[dict[str, Sound], dict[str, Any]]:
-    """The library sound chosen for each need (by Score name), and a report."""
+@dataclass
+class Decisions:
+    chosen: dict[str, Sound] = field(default_factory=dict)  # need -> library sound (free)
+    make: dict[str, str] = field(default_factory=dict)  # need -> the director's description of a new sound
+    skip: set[str] = field(default_factory=set)  # effects the director left out
+    report: dict[str, Any] = field(default_factory=dict)
+
+
+def pick(board: Any, library: Library | None, cue_names: list[str], max_effects: int,
+         min_score: float = 0.55) -> Decisions:
+    """For each need: a library sound, a new sound described by the director, or nothing."""
     all_needs = needs(board.data, cue_names, max_effects)
-    items = [(n, shortlist(library, n)) for n in all_needs]
-    chosen: dict[str, Sound] = {}
-    by_model = 0
+    items = [(n, shortlist(library, n) if library is not None else []) for n in all_needs]
+    out = Decisions()
+    decided: set[str] = set()
     router = board.router
-    if router is not None and any(c for _, c in items):
+    if router is not None:
         try:
             result = router.one("planner").generate_json(
                 "sound_pick", SYSTEM, prompt(str(board.story.get("title", "")), items), SCHEMA)
             allowed = {n["need"]: {s.id: s for s, _ in c} for n, c in items}
+            kinds = {n["need"]: n["kind"] for n, _ in items}
             for p in result.get("picks", []) if isinstance(result, dict) else []:
-                if not isinstance(p, dict):
+                if not isinstance(p, dict) or str(p.get("need", "")) not in kinds:
                     continue
-                need, sid = str(p.get("need", "")), str(p.get("id", "")).strip()
-                if sid and sid in allowed.get(need, {}):
-                    chosen[need] = allowed[need][sid]
-                    by_model += 1
+                need, sid = str(p["need"]), str(p.get("id", "")).strip()
+                text = str(p.get("generate") or "").strip()
+                if sid in allowed[need]:
+                    out.chosen[need] = allowed[need][sid]
+                elif sid:
+                    continue  # an id not on its list: decided below as if unanswered
+                elif text:
+                    out.make[need] = text[:500]
+                elif kinds[need] == "sfx":
+                    out.skip.add(need)
+                else:
+                    continue  # music, room tone and the sting are never left out
+                decided.add(need)
         except (LLMError, ValueError, TypeError) as exc:
             log.warning("Sound picks by score alone: %s", exc)
-    asked_model = by_model > 0
     for n, cands in items:
-        if n["need"] in chosen or not cands or asked_model and n["kind"] not in ("music", "sting"):
-            continue  # the model's "none" stands for effects; music and the sting always get the best match
+        if n["need"] in decided or not cands:
+            continue  # undecided and nothing in the library: made from the default description
         best, score = cands[0]
-        good = score >= {"music": 0.9, "sting": 0.0}.get(n["kind"], min_score)  # any sting will do
-        if good:
-            chosen[n["need"]] = best
-    report = {"library_sounds": len(library.sounds), "needs": len(all_needs), "picked": len(chosen),
-              "picked_by_model": by_model,
-              "picked_by_kind": {k: sum(1 for n, s in chosen.items() if s.kind == k)
+        if score >= {"music": 0.9, "sting": 0.0}.get(n["kind"], min_score):  # any sting will do
+            out.chosen[n["need"]] = best
+    out.report = {
+        "library_sounds": len(library.sounds) if library is not None else 0, "needs": len(all_needs),
+        "decided_by_model": len(decided), "from_library": len(out.chosen), "made_new": len(out.make),
+        "left_out": len(out.skip),
+        "from_library_by_kind": {k: sum(1 for s in out.chosen.values() if s.kind == k)
                                  for k in ("music", "ambience", "sfx", "sting")},
-              "picks": {n: s.id for n, s in chosen.items()}}
-    return chosen, report
+        "picks": {n: s.id for n, s in out.chosen.items()}, "made": out.make}
+    return out
 
 
 def fetch_all(library: Library, chosen: dict[str, Sound], parallel: int = 4) -> dict[str, Path]:

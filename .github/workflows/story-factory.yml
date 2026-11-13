@@ -30,8 +30,8 @@
 #               chalk studio mode
 # The story database carries over between runs (saved as an artifact, restored at the
 # start of the next run), so stories never repeat and the shared world keeps growing.
-# This repository is public: run logs and the summary are public, and so are artifacts to
-# signed-in GitHub users. Secrets themselves are never shown.
+# Keep this repository private: run logs, artifacts, review images and the sound library release are
+# then visible only to you. Secrets themselves are never shown.
 name: Story factory
 
 on:
@@ -194,6 +194,8 @@ jobs:
 
       - name: Make the video
         if: env.MODE == 'video' || env.MODE == 'video-test' || env.MODE == 'video-bakeoff' || env.MODE == 'video-vast'
+        env:
+          GH_TOKEN: ${{ github.token }}  # reads the sound library release (private when the repository is)
         run: |
           ARGS=()
           if [ -n "$STORY_ID" ]; then ARGS+=(--story "$STORY_ID"); fi

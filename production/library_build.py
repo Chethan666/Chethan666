@@ -339,8 +339,8 @@ class Builder:
             log.info("ACE-Step skipped: no fal key, or generate_music is off")
             return
         from production.media import download
-        model = str(src.get("model", "fal-ai/ace-step/prompt-to-audio"))
-        per_second = float(src.get("usd_per_second", 0.0002))
+        model = str(src.get("model", "fal-ai/ace-step-1.5"))
+        per_second = float(src.get("usd_per_second", 0.0003))
         for k, t in enumerate(src.get("tracks", [])):
             seconds = float(t.get("seconds", 120))
             cost = seconds * per_second

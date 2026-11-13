@@ -365,7 +365,9 @@ DEFAULTS: dict[str, Any] = {
             "thumbnail": "fal-ai/nano-banana-2/edit",
             "voice": "fal-ai/elevenlabs/tts/eleven-v3",
             "sfx": "fal-ai/elevenlabs/sound-effects/v2",
-            "music": "fal-ai/elevenlabs/music",
+            # Music the sound library lacks: ACE-Step 1.5 (open source, ~$0.0003 a second). For
+            # ElevenLabs instead: "fal-ai/elevenlabs/music" ($0.80 a minute, whole minutes).
+            "music": "fal-ai/ace-step-1.5",
             "vision": "fal-ai/any-llm/vision",                   # the critic's eye
         },
         # An edit model asked without references uses its text-to-image twin.
@@ -386,7 +388,7 @@ DEFAULTS: dict[str, Any] = {
             "fal-ai/bytedance/seedream/v4.5/edit": 0.04, "fal-ai/bytedance/seedream/v4.5/text-to-image": 0.04,
             "fal-ai/elevenlabs/tts/eleven-v3": 0.10, "fal-ai/elevenlabs/sound-effects/v2": 0.002,
             # ElevenLabs music on fal: $0.80 a minute, billed in whole minutes (the score rounds up).
-            "fal-ai/elevenlabs/music": 0.80 / 60, "fal-ai/any-llm/vision": 0.002,
+            "fal-ai/elevenlabs/music": 0.80 / 60, "fal-ai/ace-step-1.5": 0.0003, "fal-ai/any-llm/vision": 0.002,
         },
         # Voices. The host reads the intro and outro; a first-person story's teller gets a voice
         # matched to them; characters get distinct voices by kind. Kokoro names are the free fallback.

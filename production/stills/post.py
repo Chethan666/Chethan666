@@ -83,19 +83,20 @@ class SoundAgent:
         score.cue_names = list(board.cfg.get("music_cues") or score.cue_names)
         score.min_music = float(board.cfg.get("music_min_seconds", 60.0))
         lib_cfg = dict(board.cfg.get("sound_library") or {})
-        library_report: dict[str, Any] = {"used": False}
-        library = None
-        if lib_cfg.get("enabled", True):
-            library = Library.load(lib_cfg, board.work / "library")
-        if library is not None and library.sounds:
-            chosen, library_report = sounds.pick(board, library, score.cue_names,
-                                                 int(board.cfg.get("max_effects", 30)),
-                                                 float(lib_cfg.get("min_score", 0.55)))
-            score.chosen = sounds.fetch_all(library, chosen, int(board.cfg.get("parallel", 4)))
-            used = [chosen[n].id for n in score.chosen]
+        library = Library.load(lib_cfg, board.work / "library") if lib_cfg.get("enabled", True) else None
+        if library is not None and not library.sounds:
+            library = None
+        # The sound director decides each sound: from the library, newly made, or left out.
+        decided = sounds.pick(board, library, score.cue_names, int(board.cfg.get("max_effects", 30)),
+                              float(lib_cfg.get("min_score", 0.55)))
+        library_report: dict[str, Any] = dict(decided.report, library=library is not None)
+        score.prompts, score.skip = dict(decided.make), set(decided.skip)
+        if library is not None:
+            score.chosen = sounds.fetch_all(library, decided.chosen, int(board.cfg.get("parallel", 4)))
+            used = [decided.chosen[n].id for n in score.chosen]
             d["sounds_used"] = used
             d["credits"] = library.credits(used)
-            library_report.update(used=True, fetched=len(score.chosen), credits=len(d["credits"]))
+            library_report.update(fetched=len(score.chosen), credits=len(d["credits"]))
         score.generate_missing = bool(lib_cfg.get("generate_missing", True))
         stings = [d["cold_seconds"]] if d["cold"] and d["title_seconds"] else []
         try:

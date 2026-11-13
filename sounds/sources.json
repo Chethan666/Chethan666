@@ -129,7 +129,10 @@
       "name": "OpenGameArt horror sound effects and ambiences",
       "kind": "sfx",
       "pages": [
-        "https://opengameart.org/content/dark-ambiences"
+        "https://opengameart.org/content/dark-ambiences",
+        "https://opengameart.org/content/horror-sfx",
+        "https://opengameart.org/content/horror-hit-soundpack-1",
+        "https://opengameart.org/content/horror-sound-effects-library"
       ],
       "searches": [
         "https://opengameart.org/art-search-advanced?keys=horror&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
@@ -177,11 +180,11 @@
     },
     {
       "type": "acestep",
-      "name": "ACE-Step on fal.ai: newly made score cues (only when the workflow is started with generate_music)",
-      "model": "fal-ai/ace-step/prompt-to-audio",
-      "usd_per_second": 0.0002,
+      "name": "ACE-Step 1.5 on fal.ai: newly made score cues (only when the workflow is started in mode sound-library-music)",
+      "model": "fal-ai/ace-step-1.5",
+      "usd_per_second": 0.0003,
       "args": {
-        "instrumental": true
+        "lyrics": "[Instrumental]"
       },
       "tracks": [
         {

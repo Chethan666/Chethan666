@@ -338,7 +338,7 @@ ALTERNATES = [
 def library(args: argparse.Namespace, cfg: dict) -> int:
     """Build, sync or show the sound library (production/library.py)."""
     from . import library_build
-    from .library import Library, read_catalogue, release_base
+    from .library import Library, fetch_release_file, read_catalogue, release_base
 
     lib_cfg = dict(cfg.get("stills", {}).get("sound_library") or {})
     out = Path(args.out)
@@ -350,7 +350,7 @@ def library(args: argparse.Namespace, cfg: dict) -> int:
         try:
             if not base:
                 raise ValueError("no repository known (set GITHUB_REPOSITORY or stills.sound_library.repo)")
-            got.write_bytes(library_build.fetch(f"{base}/library.json"))
+            got.write_bytes(fetch_release_file(f"{base}/library.json"))
             existing = got
         except Exception as exc:  # noqa: BLE001 - the first build starts an empty library
             print(f"No current library ({str(exc)[:120]}); starting a new one")
