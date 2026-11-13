@@ -13,7 +13,7 @@ from typing import Any
 import numpy as np
 import soundfile
 
-from .. import assemble, draw, edit, package, shots as shotlist, timing
+from .. import draw, edit, package, shots as shotlist, timing
 from ..edit import FPS, Segment, _ff, probe
 from ..look import W, H
 from ..library import Library
@@ -21,13 +21,13 @@ from ..score import Score
 from ..shots import Shot
 from .board import Board
 from .checks import thumbnail_ok
+from . import camera
 from .images import Painter
 from . import sounds
 
 log = logging.getLogger(__name__)
 
 CHANNEL = "HOLLOW LINES"
-DRIFT = {"still": "push_in", "handheld": "push_in"}
 
 
 class EditPlanAgent:
@@ -150,8 +150,8 @@ def voice_over_bed(mixed: np.ndarray, voice: np.ndarray, speech: list[tuple[floa
                    "after_db": round(ratio(gain), 1), "bed_lowered_db": round(-20 * np.log10(gain), 1) if gain < 1 else 0}
 
 
-def render(seg: Segment, work: Path, motion: str) -> str:
-    """One still for its frames: static, or with a slow drift; fades where the segment asks."""
+def render(seg: Segment, work: Path, finish: dict[str, float], seed: int = 0) -> str:
+    """One still for exactly its frames: laid out for its move, grained, moved, vignetted, faded."""
     n = seg.frames()
     seconds = n / FPS
     fades = ""
@@ -159,14 +159,18 @@ def render(seg: Segment, work: Path, motion: str) -> str:
         fades += f",fade=t=in:st=0:d={seg.fade_in:.2f}"
     if seg.fade_out:
         fades += f",fade=t=out:st={max(seconds - seg.fade_out, 0):.2f}:d={seg.fade_out:.2f}"
-    if motion == "drift":
-        camera = DRIFT.get(seg.camera, seg.camera)
-        vf = assemble.camera_filter(camera, seconds, (W, H), "dark", fades=False).replace(",format=yuv420p", "")
-    else:
-        vf = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps={FPS}"
-    _ff(["-loop", "1", "-framerate", str(FPS), "-i", str(seg.picture), "-vf", f"{vf}{fades},format=yuv420p",
-         "-frames:v", str(n), "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-tune", "stillimage",
-         "-pix_fmt", "yuv420p", "-r", str(FPS), "-an", seg.name], work)
+    move = seg.camera if seg.camera in camera.MOVES else "none"
+    route = camera.path(move, seconds)
+    plate = work / f"{Path(seg.name).stem}_canvas.png"
+    size = camera.canvas(seg.picture, plate, max(route[0], route[1]), float(finish.get("grain", 0)), seed)
+    vf = camera.film_filter(route, n, size, float(finish.get("vignette", 0)))
+    tune = ["-tune", "stillimage"] if move == "none" else []
+    # aq-mode 3 spends more of the bitrate on dark areas, where a horror film lives and where
+    # an encoder otherwise leaves blocks and bands.
+    _ff(["-loop", "1", "-framerate", str(FPS), "-i", plate.name, "-vf", f"{vf}{fades}",
+         "-frames:v", str(n), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-x264-params", "aq-mode=3",
+         *tune, "-pix_fmt", "yuv420p", *camera.COLOUR_TAGS, "-r", str(FPS), "-an", seg.name], work)
+    plate.unlink(missing_ok=True)
     return seg.name
 
 
@@ -192,15 +196,27 @@ class EditAgent:
                               d["end_seconds"], d["story_seconds"], title_card, end_card)
         first = len(d["cold"]) + (1 if d["title_seconds"] else 0)
         story = segs[first:first + len(beats)]
+        motion = str(cfg.get("motion", "drift"))
+        for seg in segs:  # the end card holds still (YouTube's end-screen elements sit on it)
+            seg.camera = "none"
+        if motion == "drift":  # every story picture gets the move that suits it
+            for k, (seg, beat) in enumerate(zip(story, beats)):
+                seg.camera = camera.move_for(beat, k)
+            cold = segs[:len(d["cold"])]
+            for k, seg in enumerate(cold):
+                seg.camera = "push_in_fast" if k == len(cold) - 1 else "push_in"
+            if d["title_seconds"]:
+                segs[len(cold)].camera = "push_in"
         dip = float(cfg.get("scene_dip_seconds", 0.35))
         for k in range(len(story) - 1):  # a breath of black where the scene changes
             if beats[k].scene != beats[k + 1].scene and dip:
                 story[k].fade_out = max(story[k].fade_out, dip)
                 story[k + 1].fade_in = max(story[k + 1].fade_in, dip)
-        motion = str(cfg.get("motion", "none"))
+        look = d.get("look") or {}
+        finish = {"grain": float(look.get("grain", 0)), "vignette": float(look.get("vignette", 0))}
         work = board.work
         with ThreadPoolExecutor(max_workers=int(cfg.get("render_workers", 3))) as pool:
-            names = list(pool.map(lambda s: render(s, work, motion), segs))
+            names = list(pool.map(lambda job: render(job[1], work, finish, job[0]), enumerate(segs)))
         (work / "segments.txt").write_text("".join(f"file '{n}'\n" for n in names))
         _ff(["-f", "concat", "-safe", "0", "-i", "segments.txt", "-c", "copy", "picture.mp4"], work)
         burn = None
@@ -208,13 +224,17 @@ class EditAgent:
             burn = work / "captions.ass"
             burn.write_text(timing.ass(d["cues"], W, H))
         vf = ["-vf", f"subtitles={burn.name}"] if burn else []
-        codec = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "19", "-pix_fmt", "yuv420p"] if vf else ["-c:v", "copy"]
+        codec = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-x264-params", "aq-mode=3", "-pix_fmt",
+                 "yuv420p", *camera.COLOUR_TAGS] if vf else ["-c:v", "copy"]
         video = board.out / "video.mp4"
         _ff(["-i", "picture.mp4", "-i", str(d["mix"]), *vf, *codec,
              "-af", loudnorm(Path(d["mix"]), float(cfg.get("loudness_lufs", -14.0))), "-ar", "48000",
              "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", str(video)], work)
         d.update(video=video, end_line=end_line, titles=titles)
-        return {"segments": len(segs), "motion": motion, "seconds": round(probe(video), 1)}
+        moves: dict[str, int] = {}
+        for seg in segs:
+            moves[seg.camera] = moves.get(seg.camera, 0) + 1
+        return {"segments": len(segs), "motion": motion, "moves": moves, "seconds": round(probe(video), 1)}
 
 
 THUMB_ANGLES = (
@@ -348,6 +368,7 @@ class QAAgent:
         if heard.get("worst_match", 1.0) < 0.8:
             issues.append(f"a take matched its script only {heard['worst_match']:.0%} (listen to it)")
         issues += [f"script: {i}" for i in d.get("script_issues", [])]
+        issues += [f"reference: {i}" for i in d.get("reference_issues", [])]
         review = board.reports.get("art_review", {})
         if review.get("reviewed") and isinstance(review.get("score"), int) and review["score"] < 6:
             issues.append(f"art review {review.get('score')}/10: "
@@ -358,6 +379,7 @@ class QAAgent:
         for k, t in sorted(final.items()):
             if not t.get("ok"):
                 issues.append(f"thumbnail {k}: {t.get('why', '')}")
+        issues += picture_check(video, seconds)
         lufs, peak = loudness(video)
         target = float(board.cfg.get("loudness_lufs", -14.0))
         if lufs is not None and abs(lufs - target) > 2.0:
@@ -372,6 +394,23 @@ class QAAgent:
                 issues.append(f"{name} failed: {report['error'][:120]}")
         return {"status": "pass" if not issues else "check", "issues": issues, "video_seconds": round(seconds, 1),
                 "loudness_lufs": lufs, "true_peak_dbtp": peak}
+
+
+def picture_check(video: Path, seconds: float) -> list[str]:
+    """The finished picture, watched by FFmpeg: no stretch of black (a missing or failed picture
+    shows as one; scene dips and fades are well under the limit), and the right colour labels."""
+    issues = []
+    result = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(video), "-map", "0:v:0", "-vf",
+                             "scale=480:-2,blackdetect=d=1.5:pic_th=0.98:pix_th=0.06", "-an", "-f", "null", "-"],
+                            capture_output=True, text=True)
+    for start, length in re.findall(r"black_start:([\d.]+).*?black_duration:([\d.]+)", result.stderr):
+        if float(start) + float(length) < seconds - 0.5:  # the fade to black at the very end is meant
+            issues.append(f"{float(length):.1f} s of black picture at {shotlist.stamp(float(start))}")
+    tags = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                           "stream=color_space", "-of", "csv=p=0", str(video)], capture_output=True, text=True)
+    if tags.stdout.strip() != "bt709":
+        issues.append(f"colours labelled {tags.stdout.strip() or 'nothing'} (HD video should be bt709)")
+    return issues[:5]
 
 
 def loudnorm(path: Path, target: float) -> str:

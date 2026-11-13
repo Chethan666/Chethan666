@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pushes small review images of a run (comparison sheets, contact sheet, thumbnails, frames from the
-# video every 20 s, clip frames) and its reports to the review-media branch, under run-<number>/,
+# video every 20 s, four full-size frames, clip frames) and its reports to the review-media branch, under run-<number>/,
 # so they can be looked at without downloading the whole artifact. No audio, no full video.
 set -euo pipefail
 src=out
@@ -16,6 +16,12 @@ done
 find "$src" -type f -name 'video.mp4' | while read -r v; do
   dir=$(dirname "${v#$src/}" | tr '/' '_')
   ffmpeg -nostdin -hide_banner -loglevel error -y -i "$v" -vf "fps=1/20,scale=640:-2,tile=4x3" -q:v 5 "$dest/${dir}_filmstrip_%02d.jpg" || true
+  # Four frames at full size, so sharpness, grain and colour can be judged as the viewer sees them.
+  length=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$v" | cut -d. -f1)
+  for part in 15 40 65 90; do
+    ffmpeg -nostdin -hide_banner -loglevel error -y -ss "$(( ${length:-0} * part / 100 ))" -i "$v" -frames:v 1 -q:v 2 \
+      "$dest/${dir}_frame_${part}.jpg" || true
+  done
 done
 find "$src" -type f -name 'short_*.mp4' | while read -r v; do
   name=$(echo "${v#$src/}" | tr '/' '_')

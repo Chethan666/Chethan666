@@ -8,6 +8,8 @@
   the narration and flags what only shows side by side (a person who changes, a picture that
   breaks the story). The worst few are redrawn with its note. About $0.002 plus any redraw.
 - thumbnail_ok (used by the packager): the thumbnail's words are spelled right and readable.
+- sheet_ok (used by the art director): a character or location sheet shows what its design
+  says, before every picture is painted from it. One wrong sheet is a wrong film.
 """
 
 from __future__ import annotations
@@ -116,14 +118,18 @@ class ArtReviewAgent:
         lines = "\n".join(f"{k}. {str(b.text)[:140]}" for k, b in enumerate(beats, 1))
         cast = "; ".join(f"{c.get('name')}: {str(c.get('design', ''))[:160]}" for c in d.get("cast", [])
                          if isinstance(c, dict) and c.get("design"))
+        sets = "; ".join(f"{x.get('name')}: {str(x.get('design', ''))[:200]}" for x in d.get("sets") or []
+                         if isinstance(x, dict) and x.get("design"))
         prompt = (f"Story: {board.story.get('title', '')}\nPeople: {cast or 'none named'}\n"
+                  f"Places: {sets or 'as the lines say'}\n"
                   "The sheet shows the video's pictures in order, numbered, left to right, top to bottom. Each is "
                   f"on screen while its line is narrated:\n{lines}\n\n"
                   "Judge the pictures TOGETHER: does each named person look the same in every picture (face, hair, "
-                  "age, clothes); do the pictures follow the story in order; does a picture show something its line "
-                  "does not say, or contradict an earlier one; is anything broken (warped faces or hands, text, "
-                  "panels); is the scare picture strong; do they all look like one dark horror film? List only "
-                  "clear problems worth a redraw, worst first. Reply exactly as JSON: "
+                  "age, clothes); does each place look the same in every picture set there (the same vehicle or "
+                  "building, its colours and fixtures); do the pictures follow the story in order; does a picture "
+                  "show something its line does not say, or contradict an earlier one; is anything broken (warped "
+                  "faces or hands, text, panels); is the scare picture strong; do they all look like one dark "
+                  "horror film? List only clear problems worth a redraw, worst first. Reply exactly as JSON: "
                   '{"score": 1-10, "fix": [{"picture": N, "problem": "what is wrong and what it should show"}], '
                   '"strongest": N}')
         verdict = ask_vision(board.studio, prompt, sheet, "art_review", SYSTEM)
@@ -169,6 +175,30 @@ def thumbnail_ok(studio: Any, image: Path, words: str) -> tuple[bool, str]:
                                  "in the scene is fine); or a face or hand is clearly warped. Reply exactly as JSON: "
                                  '{"ok": true or false, "reason": "short reason"}', image, "thumbnail_check",
                          THUMB_SYSTEM, width=1024)
+    if verdict is None or "ok" not in verdict:
+        return True, "not checked"
+    return bool(verdict.get("ok")), str(verdict.get("reason", ""))[:200]
+
+
+SHEET_SYSTEM = ("You check reference sheets for a horror film told in still pictures. Every picture of the film "
+                "is painted from these sheets, so a wrong sheet makes every picture wrong. Answer with JSON only.")
+
+
+def sheet_ok(studio: Any, image: Path, kind: str, name: str, design: str) -> tuple[bool, str]:
+    """Does a reference sheet show what its design says? `kind`: "character" or "location"."""
+    if kind == "character":
+        rules = ("the views do not show one and the same person; the person clearly contradicts the design (a "
+                 "different age or sex, hair, or clothes; a face that the design keeps hidden is shown); other "
+                 "people are in it")
+    else:
+        rules = ("it clearly contradicts the design (a different kind of vehicle, building or room, or other main "
+                 "colours); its views show two different places; people are in it")
+    verdict = ask_vision(studio, f"This should be a {kind} reference sheet of {name}: {design[:500]}\n"
+                                 f"Fail it ONLY if one of these is clearly true: {rules}; it contains written "
+                                 "words or labels; it is bright and cheerful; anything is clearly broken or "
+                                 "melted. Small differences are fine. When you fail it, say in one sentence what "
+                                 'is wrong and what it should show. Reply exactly as JSON: {"ok": true or false, '
+                                 '"reason": "short reason"}', image, "reference_check", SHEET_SYSTEM, width=1280)
     if verdict is None or "ok" not in verdict:
         return True, "not checked"
     return bool(verdict.get("ok")), str(verdict.get("reason", ""))[:200]

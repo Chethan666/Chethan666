@@ -217,34 +217,3 @@ class StoryboardMatch(unittest.TestCase):
         self.assertEqual(beats[2].picture, "She stands right behind the driver's seat, hood up, face hidden.")
         self.assertEqual(beats[2].characters, ["The Woman in Yellow"])
         self.assertEqual(report["fixed"][0]["beat"], 2)
-
-
-class CorrectedPicture(unittest.TestCase):
-    def test_when_every_painter_is_refused_one_try_is_told_what_was_wrong(self):
-        import sys
-        sys.path.insert(0, str(Path(__file__).parent))
-        from test_stills import painted
-        from production.stills.images import Painter
-
-        with tempfile.TemporaryDirectory() as tmp:
-            prompts, looks = [], []
-
-            class Critic:
-                def look(self, image, picture):
-                    looks.append(picture)
-                    return (len(looks) == 3, "she is leaning, the line says standing")
-
-            class P(Painter):
-                def available(self, step):
-                    return True
-
-                def _one(self, step, prompt, refs, raw, key):
-                    prompts.append(prompt)
-                    return painted(raw, seed=len(prompts)) or raw
-
-            p = P(None, {}, Path(tmp), Critic())
-            out, step = p.paint("She stands behind him.", [], Path(tmp) / "beat.png", "k",
-                                ["fal:shot", "fal:shot_alt"], check="standing")
-            self.assertEqual(step, "fal:shot (corrected)")
-            self.assertIn("Correct this: she is leaning", prompts[-1])
-            self.assertEqual(len(prompts), 3)

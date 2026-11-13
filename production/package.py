@@ -22,6 +22,7 @@ from PIL import Image, ImageDraw
 from production.media import MediaError, data_uri
 
 from . import draw, timing
+from .edit import FPS
 from .look import style
 from .paid import OverBudget, Studio
 from .shots import Shot
@@ -131,13 +132,18 @@ def shorts(video: Path, windows: list[tuple[float, float]], cues: list[timing.Cu
         caps = work / f"short_{k}.ass"
         caps.write_text(timing.ass(local, 1080, 1920, size_ratio=0.036, margin_ratio=0.25))
         out = out_dir / f"short_{k}.mp4"
-        graph = ("[1:v]scale=1080:-2,setsar=1[v];[0:v][v]overlay=0:(H-h)/2-60,"
+        # The frame is converted with the HD colour matrix like the film, and the Short keeps the
+        # film's frame rate: 24 turned into 30 repeats every fourth frame, and a camera move stutters.
+        graph = ("[0:v]scale=out_color_matrix=bt709:out_range=limited,format=yuv420p[bg];"
+                 "[1:v]scale=1080:-2,setsar=1[v];[bg][v]overlay=0:(H-h)/2-60,"
                  f"subtitles={caps.name},format=yuv420p[out]")
         result = subprocess.run(
-            ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-loop", "1", "-i", str(frame),
-             "-ss", f"{a:.2f}", "-t", f"{b - a:.2f}", "-i", str(video), "-filter_complex", graph, "-map", "[out]",
-             "-map", "1:a", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-c:a", "aac", "-b:a", "160k",
-             "-t", f"{b - a:.2f}", "-r", "30", "-movflags", "+faststart", str(out.resolve())],
+            ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-loop", "1", "-framerate", str(FPS),
+             "-i", str(frame), "-ss", f"{a:.2f}", "-t", f"{b - a:.2f}", "-i", str(video), "-filter_complex", graph,
+             "-map", "[out]", "-map", "1:a", "-c:v", "libx264", "-preset", "veryfast", "-crf", "19",
+             "-x264-params", "aq-mode=3", "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709",
+             "-color_range", "tv", "-c:a", "aac", "-b:a", "160k",
+             "-t", f"{b - a:.2f}", "-r", str(FPS), "-movflags", "+faststart", str(out.resolve())],
             cwd=work, capture_output=True, text=True)
         if result.returncode != 0:
             log.warning("Short %d failed: %s", k, result.stderr[-400:])

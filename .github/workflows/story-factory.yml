@@ -27,7 +27,7 @@
 #   mode=video: pipeline 2 turns the next approved story (or story_id) into a stills video (painted
 #               pictures, host + teller + character voices, music; made by the agent team in
 #               production/stills), saved as an artifact named video-<run number> for 14 days.
-#               overrides: stills.max_usd=10, stills.motion=drift, or stills.enabled=false for the old
+#               overrides: stills.max_usd=10, stills.motion=none (pictures held still), or stills.enabled=false for the old
 #               chalk studio mode
 # The story database carries over between runs (saved as an artifact, restored at the
 # start of the next run), so stories never repeat and the shared world keeps growing.

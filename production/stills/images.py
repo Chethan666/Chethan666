@@ -2,8 +2,9 @@
 
 A picture is asked of each painter in the chain until one passes the critic:
 
-    fal:<role>   a paid model on fal.ai, with the style frame and character sheets as
-                 references (Seedream 4.5 edit for shots, Nano Banana 2 as the redraw)
+    fal:<role>   a paid model on fal.ai, with the place's sheet (or the style frame) and the
+                 character sheets as references (Seedream 4.5 edit for shots, Nano Banana 2
+                 as the redraw)
     cloudflare   FLUX.1 schnell on Cloudflare Workers AI: free allowance of 10,000
                  neurons a day (CF_ACCOUNT_ID, CF_API_TOKEN). Text only, square output
                  (cropped to 16:9), so composition is asked to stay central
@@ -12,11 +13,17 @@ A picture is asked of each painter in the chain until one passes the critic:
 The critic checks every picture in code (not too bright for the channel, not blank, not
 almost black) and then, when a vision model is configured, by eye: the house style, the
 right moment, no text or watermark, no panels, no broken anatomy.
+
+When the critic refuses a picture, the next painter is told what was wrong with it, so the
+second try is a correction and not a second guess. A refused paid picture is never replaced
+by a free painter's: free painters take no references, so the people and the place would
+change (run 94 tried exactly that and got an unrelated room).
 """
 
 from __future__ import annotations
 
 import base64
+import io
 import json
 import logging
 import os
@@ -25,14 +32,14 @@ import threading
 import time
 import urllib.parse
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 from PIL import Image
 
 from production.media import MediaError, _request, data_uri
 
-from ..look import fit
+from ..look import H, W, fit
 from ..paid import OverBudget, Studio, _small, digest
 
 log = logging.getLogger(__name__)
@@ -78,32 +85,6 @@ def house_look(cfg: dict[str, Any]) -> dict[str, Any]:
     return look
 
 
-def finish(src: Path, dst: Path, grain: float, vignette: float, seed: int) -> Path:
-    """The same film grain and vignette on every picture, whichever painter made it.
-
-    Pictures from different painters (Seedream, Nano Banana, FLUX) differ in sharpness and
-    noise; one shared finish makes them read as frames of the same film.
-    """
-    if grain <= 0 and vignette <= 0:
-        if src != dst:
-            dst.write_bytes(src.read_bytes())
-        return dst
-    with Image.open(src) as im:
-        rgb = np.asarray(im.convert("RGB"), dtype=np.float32) / 255.0
-    h, w = rgb.shape[:2]
-    if vignette > 0:
-        y, x = np.ogrid[0:h, 0:w]
-        r = np.hypot((x - w / 2) / (w / 2), (y - h / 2) / (h / 2)) / np.sqrt(2)
-        rgb = rgb * (1.0 - vignette * np.clip(r, 0, 1) ** 2)[..., None]
-    if grain > 0:
-        rng = np.random.default_rng(seed)
-        noise = rng.normal(0.0, grain, (h // 2 + 1, w // 2 + 1)).astype(np.float32)
-        noise = np.repeat(np.repeat(noise, 2, 0), 2, 1)[:h, :w]  # grain a little coarser than a pixel
-        rgb = rgb + noise[..., None] * (0.5 + 0.5 * (1.0 - rgb))  # stronger in the shadows, like film
-    Image.fromarray((np.clip(rgb, 0, 1) * 255).astype("uint8")).save(dst)
-    return dst
-
-
 class Critic:
     """Checks a picture in code, then by eye with a vision model when one is configured."""
 
@@ -134,7 +115,10 @@ class Critic:
                   "a collage or a character sheet; a person has clearly broken anatomy (extra limbs or fingers, "
                   "a melted or doubled face); a named person clearly contradicts their description (wrong hair "
                   "colour, glasses missing or added, different clothes, a different age); or it shows something "
-                  "unrelated to the moment. Small differences in detail are fine. Reply exactly as JSON: "
+                  "unrelated to the moment. Do NOT fail it for small differences: a slightly different shade of "
+                  "a colour, a person a little nearer or further than described, more or less shadow on them, a "
+                  "missing small prop or background detail. When you fail it, say in one sentence what is wrong "
+                  "and what the picture should show instead. Reply exactly as JSON: "
                   '{"ok": true or false, "reason": "short reason"}')
         try:
             result = studio.fal.run(model, dict(studio.args.get("vision", {}), prompt=prompt,
@@ -166,8 +150,10 @@ class Painter:
         self.pollinations_lock = threading.Lock()
         self.pollinations_last = 0.0
         self.counts: dict[str, int] = {}
+        self.sizes: dict[str, str] = {}  # the size each painter's pictures really come back at
         self.rejections: list[str] = []
         self.lock = threading.Lock()
+        self._refs: dict[tuple[str, int, int], str] = {}
 
     def _count(self, key: str) -> None:
         with self.lock:
@@ -182,15 +168,44 @@ class Painter:
             return bool(self.cfg.get("pollinations", True))
         return False
 
+    def reference(self, path: Path) -> str:
+        """A reference picture as the models are sent it: a JPEG at most 2048 px wide. The
+        full-size PNG is ten times the upload (four of them: 30 MB a request) for no gain."""
+        stat = path.stat()
+        key = (str(path), stat.st_mtime_ns, stat.st_size)
+        with self.lock:
+            if key in self._refs:
+                return self._refs[key]
+        with Image.open(path) as im:
+            im = im.convert("RGB")
+            im.thumbnail((2048, 2048), Image.LANCZOS)
+            data = io.BytesIO()
+            im.save(data, "JPEG", quality=92)
+        uri = "data:image/jpeg;base64," + base64.b64encode(data.getvalue()).decode()
+        with self.lock:
+            self._refs[key] = uri
+        return uri
+
     def paint(self, prompt: str, refs: list[Path], out: Path, key: Any, chain: list[str],
-              check: str | None = None, correct: bool = True) -> tuple[Path | None, str]:
-        """The first picture in the chain that the critic passes (or, failing that, the first one that
-        passed the code check). `check` is what the picture should show; None skips the critic."""
+              check: str | Callable[[Path], tuple[bool, str]] | None = None) -> tuple[Path | None, str]:
+        """The first picture in the chain that passes its check. `check` is what the picture
+        should show (the critic looks at it), or a check of its own for a reference sheet
+        (picture -> passed, reason); None takes the first picture made.
+
+        Each painter after a refusal is told what was wrong; a chain may name the same painter
+        twice for that. If none passes, the last picture made is used and counted as doubted."""
         doubted: tuple[Path, str] | None = None
+        why = ""
+        paid_picture = False
         for k, step in enumerate(s for s in chain if self.available(s)):
+            paid = step.startswith("fal:")
+            if paid_picture and not paid:
+                continue  # a refused paid picture still has the right people and place; a free one would not
+            # the correction leads the prompt: at the end of 400 words it would be the least-read part
+            text = f"Correct this from the previous attempt: {why[:300].rstrip('. ')}. {prompt}" if why else prompt
             raw = self.work / f"raw_{out.stem}_{k}.png"
             try:
-                made = self._one(step, prompt, refs, raw, key)
+                made = self._one(step, text, refs, raw, key, retry=k if why else 0)
             except OverBudget:
                 continue
             except (MediaError, OSError, ValueError) as exc:
@@ -200,57 +215,56 @@ class Painter:
                 continue
             candidate = self.work / f"fit_{out.stem}_{k}.png"
             try:
-                fit(made, candidate)
+                with Image.open(made) as im:
+                    size = f"{im.width}x{im.height}"
+                fit(made, candidate, tuple(self.cfg.get("picture_size") or (W, H)))
             except OSError as exc:
                 log.warning("%s: %s gave an unreadable picture: %s", out.stem, step, exc)
                 continue
+            paid_picture = paid_picture or paid
+            with self.lock:
+                self.sizes.setdefault(step, size)
             if check is None:
                 candidate.replace(out)
                 self._count(step)
                 return out, step
-            ok, why = still_check(candidate)
-            if ok:
-                doubted = doubted or (candidate, step)
-                ok, why = self.critic.look(candidate, check)
+            if callable(check):
+                doubted = (candidate, step)
+                ok, reason = check(candidate)
+            else:
+                ok, reason = still_check(candidate)
+                if ok:
+                    doubted = (candidate, step)
+                    ok, reason = self.critic.look(candidate, check)
             if ok:
                 candidate.replace(out)
-                self._count(step)
+                self._count(step + " (corrected)" if why else step)
                 return out, step
+            why = reason
             with self.lock:
-                self.rejections.append(f"{out.stem} ({step}): {why}")
-            log.info("%s from %s rejected (%s); next painter", out.stem, step, why)
-        mine = f"{out.stem} ("
-        last_why = next((r.split("): ", 1)[1] for r in reversed(self.rejections) if r.startswith(mine)), "") \
-            if check is not None and correct else ""
-        first = next((s for s in chain if self.available(s) and s.startswith("fal:")), None)
-        if last_why and first is not None:
-            # Every painter was rejected: one more try that tells the first painter what was wrong,
-            # rather than putting a picture the critic refused into the video.
-            trial = out.with_name(f"{out.stem}_corrected{out.suffix}")
-            before = sum(1 for r in self.rejections if r.startswith(f"{trial.stem} ("))
-            fixed, step = self.paint(f"{prompt} Correct this: {last_why[:300]}", refs, trial,
-                                     [key, "correct", last_why[:120]], [first], check, correct=False)
-            passed = sum(1 for r in self.rejections if r.startswith(f"{trial.stem} (")) == before
-            if fixed is not None and passed:
-                fixed.replace(out)
-                return out, step + " (corrected)"
+                self.rejections.append(f"{out.stem} ({step}): {reason}")
+            log.info("%s from %s rejected (%s); next painter", out.stem, step, reason)
         if doubted is not None:
             doubted[0].replace(out)
             self._count(doubted[1] + " (doubted)")
             return out, doubted[1]
         return None, "none"
 
-    def _one(self, step: str, prompt: str, refs: list[Path], raw: Path, key: Any) -> Path | None:
+    def _one(self, step: str, prompt: str, refs: list[Path], raw: Path, key: Any, retry: int = 0) -> Path | None:
+        """One picture from one painter. `retry`: the corrected try's place in the chain, so the
+        same painter asked twice is paid twice rather than handed its first picture again."""
         if step.startswith("fal:"):
             role = step[4:]
             if refs:
-                args = {"prompt": prompt, "image_urls": [data_uri(p) for p in refs if p.exists()]}
+                args = {"prompt": prompt, "image_urls": [self.reference(p) for p in refs if p.exists()]}
             else:  # an edit model needs a reference: use the role's text-to-image twin
                 role = self.cfg.get("text_roles", {}).get(role, role)
                 if role not in self.studio.models:
                     return None
                 args = {"prompt": prompt}
-            return self.studio.call(role, args, "image", raw, f"picture_{role}", key=[key, role, len(refs)])
+            units = float((self.cfg.get("model_units") or {}).get(role, 1.0))  # e.g. a 2K picture at 1.5x the price
+            return self.studio.call(role, args, "image", raw, f"picture_{role}", units=units,
+                                    key=[key, role, len(refs)] + (["retry", retry] if retry else []))
         cached = self.cache / f"{step}-{digest(prompt)}.png"
         if cached.exists() and cached.stat().st_size:
             return cached

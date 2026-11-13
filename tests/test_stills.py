@@ -91,8 +91,9 @@ def cfg(**over):
 class FakeFal:
     """Answers every stills model with local files, as if fal.ai had made them."""
 
-    def __init__(self, folder, bright_shots=0, reject_vision=0):
+    def __init__(self, folder, bright_shots=0, reject_vision=0, reject_sheets=False):
         self.calls = []
+        self.reject_sheets = reject_sheets
         self.good = painted(folder / "good.png")
         self.bright = painted(folder / "bright.png", bright=True)
         self.bright_shots = bright_shots
@@ -105,6 +106,8 @@ class FakeFal:
         self.calls.append((endpoint, {k: v for k, v in args.items() if not str(v).startswith("data:")
                                       and k != "image_urls"}))
         if "any-llm" in endpoint:
+            if self.reject_sheets and "character reference sheet" in args.get("prompt", ""):
+                return {"output": '{"ok": false, "reason": "three different people"}'}
             if self.reject_vision > 0:
                 self.reject_vision -= 1
                 return {"output": '{"ok": false, "reason": "a watermark"}'}
@@ -138,6 +141,11 @@ class Planner:
                               for i in re.findall(r"beat (\d+) \(", prompt)]}
         if task == "character_design":
             return {"characters": [{"name": "Dana", "design": "a woman of forty in a navy driver's jacket"}]}
+        if task == "set_design":
+            return {"places": [{"name": "the night bus", "scenes": [1, 2, 3], "design": "Outside: a cream "
+                                "single-decker city bus with a dark green band. Inside: brown vinyl seats, yellow "
+                                "grab rails and two flickering strip lights.",
+                                "views": ["outside: the whole bus on the wet road", "inside: down the aisle"]}]}
         from story_factory.llm import LLMError
         raise LLMError("not needed")
 
@@ -178,20 +186,6 @@ class LookTests(unittest.TestCase):
         self.assertTrue(look["synthetic_media"])
         self.assertIn("photograph", house_look(cfg(look="illustrated"))["wrong"])
         self.assertEqual(house_look(cfg(style="My own look."))["style"], "My own look.")
-
-    @unittest.skipUnless(HAVE, "video libraries or ffmpeg not installed")
-    def test_film_finish_adds_grain_and_darkens_the_corners(self):
-        from production.stills.images import finish
-
-        root = Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
-        Image.new("RGB", (320, 180), (90, 90, 90)).save(root / "flat.png")
-        finish(root / "flat.png", root / "film.png", 0.04, 0.3, 1)
-        v = np.asarray(Image.open(root / "film.png").convert("L"), dtype=np.float32)
-        self.assertGreater(v[80:100, 150:170].std(), 2.0)  # grain
-        self.assertLess(v[:20, :20].mean(), v[80:100, 150:170].mean() - 10)  # vignette
-        finish(root / "flat.png", root / "same.png", 0.0, 0.0, 1)
-        self.assertEqual((root / "same.png").read_bytes(), (root / "flat.png").read_bytes())
 
     def test_a_beat_prompt_locks_each_person_to_their_sheet(self):
         from production.shots import Shot
@@ -236,7 +230,12 @@ class PainterTests(unittest.TestCase):
         self.assertTrue(out.exists())
         self.assertIn("too bright", painter.rejections[0])
         with Image.open(out) as im:
-            self.assertEqual(im.size, (1920, 1080))
+            self.assertEqual(im.size, (2560, 1440))  # kept larger than the frame until the edit
+        prompts = [a["prompt"] for e, a in fal.calls if "any-llm" not in e]
+        self.assertEqual(prompts[0], "a bus")
+        self.assertIn("Correct this from the previous attempt: too bright", prompts[1])
+        self.assertEqual(painter.sizes["fal:shot"], "640x360")  # what the painter really sent back
+        self.assertAlmostEqual(studio.budget.spent, 0.04 + 0.08 * 1.5 + 0.002, places=3)  # the redraw is a 2K picture
 
     def test_free_painters_without_any_paid_key(self):
         import os
@@ -306,8 +305,21 @@ class TeamTests(unittest.TestCase):
         self.assertFalse((out / "work").exists())
         self.assertEqual(json.loads((out / "metadata.json").read_text())["title"], "The Extra Passenger")
         self.assertEqual(list(summary["agents"]), ["script_check", "casting", "voice", "storyboard", "art",
-                                                   "illustrator", "art_review", "edit_plan", "sound", "edit",
-                                                   "packager", "qa"])
+                                                   "illustrator", "art_review", "colorist", "edit_plan", "sound",
+                                                   "edit", "packager", "qa"])
+        edit = summary["agents"]["edit"]
+        self.assertEqual(edit["motion"], "drift")  # every story picture is a moving shot
+        self.assertGreater(sum(n for move, n in edit["moves"].items() if move != "none"), 3)
+        tags = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                               "stream=color_space,r_frame_rate", "-of", "csv=p=0", str(out / "video.mp4")],
+                              capture_output=True, text=True).stdout.strip()
+        self.assertEqual(tags, "bt709,24/1")
+        self.assertEqual(summary["agents"]["illustrator"]["painter_sizes"]["fal:shot"], "640x360")
+        for short in out.glob("short_*.mp4"):  # Shorts keep the film's frame rate, so its moves stay smooth
+            rate = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                                   "stream=r_frame_rate", "-of", "csv=p=0", str(short)],
+                                  capture_output=True, text=True).stdout.strip()
+            self.assertEqual(rate, "24/1")
 
     def test_a_first_person_story_has_a_host_a_teller_and_a_character_voice(self):
         summary, out, fal = self.make(FakeFal, Router(), first_person=True)
@@ -327,6 +339,24 @@ class TeamTests(unittest.TestCase):
         self.assertFalse(any("stick figure" in p for p in prompts))
         self.assertTrue(any("security camera" in p for p in prompts))  # beat 3 is seen on a camera
         self.assertTrue(all("identical face" in p for p in prompts if "character sheet of Dana" in p))
+        # the bus is designed once and every picture set in it is painted from its sheet
+        places = summary["agents"]["art"]["places"]
+        self.assertEqual([(x["name"], x["scenes"], x["sheet"]) for x in places], [("the night bus", [1, 2, 3], True)])
+        sheet = [a["prompt"] for e, a in fal.calls
+                 if "nano-banana" in e and "location reference sheet" in a.get("prompt", "")]
+        self.assertEqual(len(sheet), 1)
+        self.assertIn("Two views of the same place side by side", sheet[0])
+        in_bus = [p for p in prompts if "Place: the night bus: Outside: a cream" in p]
+        self.assertTrue(in_bus and all("Reference image 1 is the location sheet of the night bus" in p for p in in_bus))
+        host = [p for p in prompts if "character sheet of The Storyteller" in p]
+        self.assertTrue(host and not any("Place:" in p for p in host))  # the host stands in his own place
+        # the style frame is the story's main place, and every sheet passed its check before use
+        frame = [a["prompt"] for e, a in fal.calls if e == "fal-ai/nano-banana-2"]
+        self.assertIn("A wide establishing view of the night bus: Outside: a cream", frame[0])
+        checked = summary["agents"]["art"]["reference_checks"]
+        self.assertEqual(sorted(c["sheet"] for c in checked), ["Dana", "The Storyteller", "the night bus"])
+        self.assertTrue(all(c["ok"] for c in checked))
+        self.assertFalse(any(i.startswith("reference:") for i in summary["qa"]["issues"]))
         self.assertEqual(summary["agents"]["illustrator"]["look"], "cinematic")
         self.assertTrue(json.loads((out / "metadata.json").read_text())["synthetic_media"])
 
@@ -351,11 +381,21 @@ class TeamTests(unittest.TestCase):
         self.assertFalse(any("security camera" in p for p in prompts))  # cameras belong to the film look
         self.assertFalse(json.loads((out / "metadata.json").read_text())["synthetic_media"])
 
-    def test_drift_motion_and_the_cap(self):
-        summary, out, _ = self.make(FakeFal, motion="drift", max_usd=0.3)
+    def test_a_sheet_that_keeps_failing_its_check_is_painted_twice_and_reported(self):
+        summary, out, fal = self.make(lambda root: FakeFal(root, reject_sheets=True), Router(), first_person=True)
+        sheets = [a["prompt"] for e, a in fal.calls if "A character reference sheet of one person, Dana" in a.get("prompt", "")]
+        self.assertEqual(len(sheets), 2)
+        self.assertIn("Correct this from the previous attempt: three different people", sheets[1])
+        self.assertIn("reference: character sheet of Dana: three different people", summary["qa"]["issues"])
+        self.assertEqual(summary["qa"]["status"], "check")
+        self.assertTrue((out / "video.mp4").exists())  # reported, not stopped
+
+    def test_pictures_held_still_and_the_cap(self):
+        summary, out, _ = self.make(FakeFal, motion="none", max_usd=0.3)
         self.assertLessEqual(summary["usd"], 0.3)
         self.assertTrue((out / "video.mp4").exists())
-        self.assertEqual(summary["agents"]["edit"]["motion"], "drift")
+        self.assertEqual(summary["agents"]["edit"]["motion"], "none")
+        self.assertEqual(set(summary["agents"]["edit"]["moves"]), {"none"})
 
 
 if __name__ == "__main__":

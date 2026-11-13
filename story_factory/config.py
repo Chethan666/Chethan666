@@ -312,7 +312,9 @@ DEFAULTS: dict[str, Any] = {
                 "wrong": ("it looks like a cartoon, drawing, painting or 3D render instead of a real film frame; "
                           "skin is glossy, plastic or airbrushed like a stock photo"),
                 "lettering": "bold, clean, condensed sans-serif capitals with a slight distressed edge",
-                "grain": 0.035,  # film grain added in code, so every painter's pictures match
+                # The film finish, added in the edit so every painter's pictures match: fine grain laid
+                # into each picture at the size it is shown, and a vignette fixed to the frame.
+                "grain": 0.018,
                 "vignette": 0.22,
                 "synthetic_media": True,  # realistic made-up people and events: YouTube's AI label
             },
@@ -342,24 +344,37 @@ DEFAULTS: dict[str, Any] = {
             "polaroid": ("An old instant photograph: faded warm colours, soft focus, light leaks at one edge, "
                          "shown full frame with no border"),
         },
-        # "none": every picture is held perfectly still; "drift": a slow push or pan across it.
-        "motion": "none",
+        # "drift": every story picture gets a slow, steady camera move suited to its framing (wide shots
+        # pan, close ones push in, a scare lunges and settles, a security camera holds still);
+        # "none": every picture is held perfectly still.
+        "motion": "drift",
+        # Pictures are painted and kept at this size until the edit, so a push-in ends on real detail.
+        "picture_size": [2560, 1440],
+        # The colorist: a picture whose brightness, contrast or colour cast lies outside the film's
+        # tolerance is brought this far back to it; pictures inside are not touched (0 = off).
+        "grade_strength": 0.75,
+        # The set designer gives each place the story returns to a fixed design (free), and the
+        # most-used places a location sheet the pictures set there are painted from (one picture each).
+        "set_design": True, "location_sheets": 3,
         "beat_min_seconds": 5.0, "beat_max_seconds": 11.0,
         "scene_dip_seconds": 0.35,
-        # Painters tried in order until the critic passes a picture. fal:<role> needs FAL_KEY;
-        # cloudflare needs CF_ACCOUNT_ID and CF_API_TOKEN (free daily allowance); pollinations is keyless.
+        # Painters tried in order until the critic passes a picture; each is told what the critic
+        # refused in the one before. fal:<role> needs FAL_KEY; cloudflare needs CF_ACCOUNT_ID and
+        # CF_API_TOKEN (free daily allowance); pollinations is keyless. The free painters take no
+        # references, so they only paint when no paid picture could be made (no key, over the cap).
         "chains": {
-            "reference": ["fal:reference", "cloudflare", "pollinations"],
-            "sheet": ["fal:sheet", "cloudflare", "pollinations"],
+            # A style frame or a sheet that fails its check is painted once more, told what was wrong.
+            "reference": ["fal:reference", "fal:reference", "cloudflare", "pollinations"],
+            "sheet": ["fal:sheet", "fal:sheet", "cloudflare", "pollinations"],
             "beat": ["fal:shot", "fal:shot_alt", "cloudflare", "pollinations"],
             "thumbnail": ["fal:thumbnail"],
         },
-        "references": True,  # a style frame and character sheets keep the look and the people the same
+        "references": True,  # a style frame, character sheets and location sheets keep look, people and places the same
         "pollinations": True, "pollinations_gap_seconds": 16,
         "cloudflare_model": "@cf/black-forest-labs/flux-1-schnell", "cloudflare_steps": 4,  # 4 keeps ~170 pictures a day free
         "models": {
             "reference": "fal-ai/nano-banana-2",                  # style frame (text only)
-            "sheet": "fal-ai/nano-banana-2/edit",                 # character sheets from the style frame
+            "sheet": "fal-ai/nano-banana-2/edit",                 # character and location sheets from the style frame
             "shot": "fal-ai/bytedance/seedream/v4.5/edit",        # every beat, from the references
             "shot_text": "fal-ai/bytedance/seedream/v4.5/text-to-image",
             "shot_alt": "fal-ai/nano-banana-2/edit",              # the redraw when the critic rejects one
@@ -376,14 +391,18 @@ DEFAULTS: dict[str, Any] = {
         "model_args": {
             "reference": {"aspect_ratio": "16:9", "num_images": 1},
             "sheet": {"aspect_ratio": "16:9", "num_images": 1},
-            # 2560x1440: the "landscape_16_9" preset is a small picture that went soft at 1080p (run 94).
+            # Pictures that go into the film are painted at 2K, larger than the 1080p frame, so they
+            # stay sharp under a camera move. Seedream: 2560x1440 is its smallest custom size. Nano
+            # Banana 2: "2K" (its default "1K" is 1376x768, which goes soft when enlarged).
             "shot": {"image_size": {"width": 2560, "height": 1440}, "num_images": 1},
             "shot_text": {"image_size": {"width": 2560, "height": 1440}, "num_images": 1},
-            "shot_alt": {"aspect_ratio": "16:9", "num_images": 1},
+            "shot_alt": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "thumbnail": {"aspect_ratio": "16:9", "num_images": 1},
             "voice": {"stability": 0.5},
             "vision": {"model": "google/gemini-2.5-flash"},
         },
+        # A role whose settings cost more than the model's base price (Nano Banana 2 at 2K: 1.5x).
+        "model_units": {"shot_alt": 1.5},
         # Estimated USD per picture, per 1,000 characters of speech, or per second of audio.
         "prices": {
             "fal-ai/nano-banana-2": 0.08, "fal-ai/nano-banana-2/edit": 0.08,

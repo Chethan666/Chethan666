@@ -1,9 +1,9 @@
 # Production (pipeline 2)
 
 Pipeline 2 turns an approved story into a finished video. The default is **stills mode**: the
-story told in still pictures that look like frames of a dark horror film, over voices and
-music, with no moving clips and no stick figures. The older chalk modes are kept below (`--studio`, `--drawn`, or
-`stills.enabled=false`).
+story told in still pictures that look like frames of a dark horror film, each one a shot
+under a slow camera move, over voices and music. No generated video clips and no stick
+figures. The older chalk modes are kept below (`--studio`, `--drawn`, or `stills.enabled=false`).
 
 ## Stills mode: the agent team
 
@@ -21,14 +21,15 @@ can before the next agent builds on it (✓ = checks; ↻ = fixes itself):
 | 1 | Casting | Who speaks: the host, the teller, each character; picks the voices | ✓ a speaker name must look like a name | the planner model (Bedrock) | words around each quote |
 | 2 | Voice | The performance director gives each sentence its delivery; the narrator reads each paragraph in one flowing take, a little quicker than recorded | ✓↻ the **listener** (Whisper, free) transcribes every take: a take that skipped or invented words is read again; good takes are cut at exact word times | ElevenLabs v3 on fal (+ the planner model) | Kokoro |
 | 3 | Storyboard | Cuts the timeline into beats (`beat_min_seconds`-`beat_max_seconds`) and stages each as one picture | ✓↻ each staged picture is matched to the line it quotes (never by its number alone); skipped beats are asked for again; then the **storyboard check** holds every picture description against its own line and the cast's fixed looks and rewrites the ones that don't match, before any picture is paid for | the planner model | the scene plan |
-| 4 | Art director | One house look; a design per character; a style frame and character sheets | | Nano Banana 2 | Cloudflare FLUX, Pollinations |
-| 5 | Illustrator + critic | One picture per beat from the references | ✓↻ each picture checked in code and by a vision model against its description and the narrated words; a rejected one goes to the next painter, and if all are refused, one more try is told what was wrong | Seedream 4.5 edit, then Nano Banana 2 edit | Cloudflare FLUX, Pollinations, a neighbour's picture |
-| 6 | Art review | All the pictures side by side with the narration: the same person looks the same, the order tells the story, the scare lands | ✓↻ the worst `art_review_fixes` (2) are redrawn with its note (the critic checks the redraw) | vision model, ~$0.002 | |
-| 7 | Edit plan | Cold open, title card, the story, end screen; captions | | | |
-| 8 | Sound | The sound director picks music, room tone, effects and stingers from the channel's sound library (or has them made, if `sound_library.generate_missing`) | ✓↻ the **mix check**: under speech the voice must stand `voice_over_bed_db` (12 dB) above everything else, or the bed is lowered | library (free) | synthesized drone and cues |
-| 9 | Edit | Every still for exactly its frames, a dip to black between scenes, -14 LUFS | | | |
-| 10 | Packager | Thumbnails, Shorts, chapters, metadata, contact sheet, 60 s preview | ✓↻ each thumbnail's words are read back by a vision model; misspelled or unreadable ones are repainted once | Nano Banana 2 edit | the key picture with lettering |
-| 11 | QA | Length, streams, files, fallbacks, loudness and true peak, and every gate's findings in one list | ✓ `pass`, or `check` with the reasons | | |
+| 4 | Art director | One house look; a design per character and per place the story returns to; a style frame (the main place), character sheets and location sheets | ✓↻ the **reference check**: the style frame and every sheet are held against their design by a vision model before any picture is painted from them; one that fails is painted once more, told what was wrong | Nano Banana 2 (+ the planner model) | Cloudflare FLUX, Pollinations |
+| 5 | Illustrator + critic | One picture per beat, painted at 2560x1440 from its place's sheet and its people's sheets | ✓↻ each picture checked in code and by a vision model against its description and the narrated words; a refused picture goes to the next painter, which is told what was wrong; a refused paid picture is never replaced by a free painter's | Seedream 4.5 edit, then Nano Banana 2 edit | Cloudflare FLUX, Pollinations, a neighbour's picture |
+| 6 | Art review | All the pictures side by side with the narration: the same person and the same place look the same, the order tells the story, the scare lands | ✓↻ the worst `art_review_fixes` (2) are redrawn with its note (the critic checks the redraw) | vision model, ~$0.002 | |
+| 7 | Colorist | Measures every picture against the film's median brightness, contrast and colour cast | ✓↻ a picture outside the tolerance (one that would jump at the cut) is brought most of the way back; the rest are not touched | | |
+| 8 | Edit plan | Cold open, title card, the story, end screen; captions | | | |
+| 9 | Sound | The sound director picks music, room tone, effects and stingers from the channel's sound library (or has them made, if `sound_library.generate_missing`) | ✓↻ the **mix check**: under speech the voice must stand `voice_over_bed_db` (12 dB) above everything else, or the bed is lowered | library (free) | synthesized drone and cues |
+| 10 | Edit | Every still becomes a shot: a slow, steady camera move suited to its framing, fine film grain, a vignette, HD colours; exactly its frames, a dip to black between scenes, -14 LUFS | | | |
+| 11 | Packager | Thumbnails, Shorts, chapters, metadata, contact sheet, 60 s preview | ✓↻ each thumbnail's words are read back by a vision model; misspelled or unreadable ones are repainted once | Nano Banana 2 edit | the key picture with lettering |
+| 12 | QA | Length, streams, files, fallbacks, a stretch of black picture, the colour label, loudness and true peak, and every gate's findings in one list | ✓ `pass`, or `check` with the reasons | | |
 
 By default only pictures and the narrator's voice are paid for: music and sounds come from the
 library (`sound_library.generate_missing` false). A 60-second test: workflow mode `video-test`
@@ -43,25 +44,85 @@ is read by its speaker in a distinct voice. A third-person story is told by the 
 
 **Pictures.** One house look for the channel, `stills.look`:
 - `cinematic` (the default): frames of a slow-burn horror film shot on 35mm. Real-looking
-  people and places, low light from one source, a muted cold grade, one blood-red accent. Every
-  picture then gets the same film grain and vignette in code, so pictures from different
-  painters match. YouTube's "altered or synthetic content" box is ticked in `metadata.json`.
+  people and places, low light from one source, a muted cold grade, one blood-red accent.
+  YouTube's "altered or synthetic content" box is ticked in `metadata.json`.
 - `illustrated`: the dark painted graphic-novel look used before November 2026.
 
 `stills.style` replaces the look's text when set. The storyboard can show a beat through a
 security camera, a phone flash photo or an old instant photo (`stills.cameras`) when the story
 itself looks through one.
 
-Character designs fix every feature for the whole story (accessories are "always" or "never",
-so glasses don't come and go). Each beat's prompt asks for the same face, hair, clothes and
-accessories as the character sheet, and the critic rejects a picture where a named person
-clearly contradicts their design, a cartoon or plastic-skinned picture, broken hands or faces,
-or any written text. Older stories' stick-figure cast notes are turned into real designs. Painters are tried in order (`stills.chains`) until
-the critic passes a picture: Seedream 4.5 edit with the style frame and character sheets
-(about $0.04), Nano Banana 2 edit as the redraw (about $0.08), then the free ones. The free
-painters need no fal key: Cloudflare Workers AI's FLUX.1 schnell (secrets `CF_ACCOUNT_ID` and
-`CF_API_TOKEN`; 10,000 free neurons a day, roughly 170 pictures; square output, cropped to
-16:9; text only, so characters vary more) and Pollinations (keyless, slow, no guarantee).
+Each beat's prompt leads with the shot itself (framing, who does what, where), then what is
+fixed (the place, the people), what each reference picture is for, the look, and what to avoid.
+A model follows best what it reads first; with the look in front, run 94's first tries ignored
+their description more than a third of the time.
+
+What has to stay the same from picture to picture is designed once and painted from references:
+- **People.** Character designs fix every feature for the whole story (accessories are "always"
+  or "never", so glasses don't come and go). The script's own notes are kept word for word;
+  the designer only adds what they leave out. Each character gets a sheet, and each beat's
+  prompt asks for the same face, hair, clothes and accessories as the sheet. Older stories'
+  stick-figure cast notes are turned into real designs. With the cinematic look, a sheet is
+  asked for an unknown, ordinary face that resembles no actor or public figure (a photoreal
+  face can drift toward a famous one).
+- **Places.** The set designer (the planner model, free) groups the scenes into the places
+  the story returns to and fixes what the script leaves open: what the place is, its colours
+  and materials, its fixtures, its lights. The most-used places (`location_sheets`, 3) get a
+  location sheet, with an outside and an inside view when pictures are set in both. Every
+  picture set there is painted from that sheet and carries the design in its prompt. Without
+  this, each picture invents the place again: run 94 showed a city bus in one shot and a
+  yellow school bus in the next. `set_design: false` turns it off.
+- **The look.** The style frame is a wide view of the story's main place (the one with the
+  most pictures); it sets the look and is the title card's background.
+- **The reference check.** Every picture is painted from these references, so a wrong sheet is
+  a wrong film. A vision model holds the style frame and each sheet against its design (the
+  same person in every view, a face that must stay hidden is hidden, the right kind of vehicle
+  or room, no text); a failed one is painted once more with the reason in front. One still
+  refused is used, and QA lists it (`reference: ...`).
+
+**Painters.** Tried in order (`stills.chains`) until the critic passes a picture: Seedream 4.5
+edit (about $0.04), then Nano Banana 2 edit as the redraw (about $0.12 at 2K). The critic
+rejects a picture where a named person clearly contradicts their design, a cartoon or
+plastic-skinned picture, broken hands or faces, written text, or a different action than the
+narrated words; it is told not to fail a picture for small differences. The second painter is
+told what the critic refused in the first (the fault leads its prompt), so the redraw is a
+correction. If both are refused, the corrected one is used and counted as doubted in the
+report. The free painters
+take no references, so they paint only when no paid picture could be made (no key, or over
+the cap): Cloudflare Workers AI's FLUX.1 schnell (secrets `CF_ACCOUNT_ID` and `CF_API_TOKEN`;
+10,000 free neurons a day, roughly 170 pictures; square output, cropped to 16:9) and
+Pollinations (keyless, slow, no guarantee). References are sent to the models as JPEGs of at
+most 2048 px, a tenth of the upload of the full-size pictures.
+
+**Sharpness.** Pictures that go into the film are painted at 2K (`model_args.shot`: 2560x1440,
+Seedream's smallest custom size; `shot_alt`: Nano Banana's "2K") and kept at `picture_size`
+(2560x1440) until the edit, so a push-in ends on real detail and nothing is enlarged. The
+report's `illustrator.painter_sizes` shows the size each painter really sent back.
+
+**The colorist.** Each picture comes from a model that sees only its own prompt, so one can
+come back twice as bright as its neighbours or with another colour cast. The colorist measures
+every picture against the film's median and corrects only the ones outside a tolerance
+(`grade_strength`, 0.75 of the way back to it): brightness with a gamma curve, so black stays
+black; contrast only raised, for a flat grey frame; colour cast only for film frames (a
+security-camera view keeps its own colour). The report lists each change.
+
+**The camera and the film finish** (`production/stills/camera.py`). With `motion: "drift"` (the
+default) every story picture gets a slow, steady move suited to its framing: wide shots pan,
+close ones push in, a scare lunges and settles, a security camera holds still, the end card
+holds still. A move runs at an even speed for the whole shot, a little further for a longer
+shot, so the picture is moving when it cuts in and when it cuts out. Moves are rendered with
+sub-pixel accuracy (FFmpeg's `perspective` filter per frame): the usual `zoompan` filter steps
+by 0.2-0.4 px from frame to frame on a slow zoom, which shows as a faint shake. `motion: "none"`
+holds every picture still. Every shot then gets the same finish, whichever painter made it:
+- fine film grain (`looks.cinematic.grain`), laid into the picture at the size it is shown.
+  It is not animated: grain that changes every frame multiplies the file size and is the first
+  thing YouTube's encoder smears;
+- a vignette (`vignette`) fixed to the frame, so it stays put when a shot pans;
+- colours converted for HD video (BT.709) and labelled. FFmpeg's default is the
+  standard-definition matrix, which showed the channel's blood red as orange-red in HD players;
+- an encode that spends more of its bitrate on dark areas (x264 `aq-mode=3`, CRF 18).
+
+Shorts keep the film's 24 frames a second, so its camera moves stay smooth in them.
 
 **Sound library.** Music, room tones, effects and stings come first from the channel's own
 library (`production/library.py`), published as the GitHub release `sound-library`: a catalogue
