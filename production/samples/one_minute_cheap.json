@@ -1,0 +1,330 @@
+{
+ "id": 9003,
+ "title": "The Baby Monitor",
+ "kind": "long",
+ "intro": "Some voices carry further than they should. The lantern is lit.",
+ "body": "My daughter Lily is four. She sleeps with the baby monitor on. Last night, at twelve past three, it crackled. Lily was whispering. \"I can't. Mummy will hear.\" Then another voice. Low. Patient. \"Mummy is asleep.\" I ran. Her door was shut. Her night-light was off. I had left it on. Lily was asleep, facing the wall. Nobody else. I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again. Lily hadn't moved. Then the voice came, so close it touched the microphone. \"Mummy's awake now.\"",
+ "outro": "Lily is five now. She still won't sleep without the monitor. She says he likes to listen.",
+ "narration": "Some voices carry further than they should. The lantern is lit.\n\nMy daughter Lily is four. She sleeps with the baby monitor on. Last night, at twelve past three, it crackled. Lily was whispering. \"I can't. Mummy will hear.\" Then another voice. Low. Patient. \"Mummy is asleep.\" I ran. Her door was shut. Her night-light was off. I had left it on. Lily was asleep, facing the wall. Nobody else. I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again. Lily hadn't moved. Then the voice came, so close it touched the microphone. \"Mummy's awake now.\"\n\nLily is five now. She still won't sleep without the monitor. She says he likes to listen.",
+ "cast": [
+  {
+   "name": "Mara",
+   "look": "a woman in her early thirties, exhausted, dark brown hair tied back loosely, a grey oversized cardigan over dark pyjamas, no jewellery"
+  },
+  {
+   "name": "Lily",
+   "look": "a four-year-old girl with messy fair hair, pale yellow pyjamas with small stars"
+  }
+ ],
+ "bible": {
+  "red_accent": "the baby monitor's small red light",
+  "hero": {
+   "name": "Mara",
+   "who": "a tired mother of a four-year-old"
+  }
+ },
+ "scenes": [
+  {
+   "text": "Some voices carry further than they should. The lantern is lit.",
+   "visual": "The Storyteller in the dark of the hollow, mist around his boots, holding his red lantern low, far behind him one small lit upstairs window of a lonely house",
+   "location": "the hollow",
+   "characters": [],
+   "mood": "eerie",
+   "delivery": "steady",
+   "sfx": [
+    "a faint radio crackle"
+   ],
+   "key_moment": false
+  },
+  {
+   "text": "My daughter Lily is four. She sleeps with the baby monitor on.",
+   "visual": "Lily asleep in a small bedroom under a star-patterned duvet, a star night-light glowing, the baby monitor on the bedside table with its small red light on",
+   "location": "Lily's bedroom",
+   "characters": [
+    "Lily"
+   ],
+   "mood": "calm",
+   "delivery": "steady",
+   "sfx": [
+    "a soft electronic hum"
+   ],
+   "key_moment": false
+  },
+  {
+   "text": "Last night, at twelve past three, it crackled. Lily was whispering. \"I can't. Mummy will hear.\"",
+   "visual": "Close on the baby monitor receiver on Mara's bedside table in the dark, its red sound lights jumping, Mara asleep beyond it, out of focus",
+   "location": "Mara's bedroom",
+   "characters": [
+    "Mara"
+   ],
+   "mood": "uneasy",
+   "delivery": "hushed",
+   "sfx": [
+    "a baby monitor crackling"
+   ],
+   "key_moment": false
+  },
+  {
+   "text": "Then another voice. Low. Patient. \"Mummy is asleep.\"",
+   "visual": "Mara awake in bed, frozen, eyes wide, staring at the receiver's red lights, holding her breath",
+   "location": "Mara's bedroom",
+   "characters": [
+    "Mara"
+   ],
+   "mood": "dread",
+   "delivery": "hushed",
+   "sfx": [
+    "static breathing"
+   ],
+   "key_moment": true
+  },
+  {
+   "text": "I ran. Her door was shut. Her night-light was off. I had left it on.",
+   "visual": "A dark upstairs landing lit by one failing, flickering bulb; Mara at Lily's closed door, hand on the handle, no light at all under the door",
+   "location": "the upstairs landing",
+   "characters": [
+    "Mara"
+   ],
+   "mood": "dread",
+   "delivery": "tense",
+   "sfx": [
+    "bare feet on wooden floorboards"
+   ],
+   "key_moment": false
+  },
+  {
+   "text": "Lily was asleep, facing the wall. Nobody else.",
+   "visual": "From the doorway: Lily's dark bedroom, Lily asleep facing the wall, the night-light dead, the corners of the room deep black and empty",
+   "location": "Lily's bedroom",
+   "characters": [
+    "Lily"
+   ],
+   "mood": "dread",
+   "delivery": "hushed",
+   "sfx": [],
+   "key_moment": false
+  },
+  {
+   "text": "I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again. Lily hadn't moved.",
+   "visual": "Mara sitting on the floor of Lily's bedroom against the wall, the receiver in her lap, grey pre-dawn light and fog at the window, Lily asleep in the bed beside her",
+   "location": "Lily's bedroom",
+   "characters": [
+    "Mara",
+    "Lily"
+   ],
+   "mood": "dread",
+   "delivery": "slow",
+   "sfx": [
+    "a baby monitor crackling"
+   ],
+   "key_moment": false
+  },
+  {
+   "text": "Then the voice came, so close it touched the microphone. \"Mummy's awake now.\"",
+   "visual": "Mara frozen on the floor staring down at the receiver in her lap; right behind her shoulder, in the corner beside the bed, a tall, too-thin shadow bends down toward her ear, darker than the dark, no face",
+   "location": "Lily's bedroom",
+   "characters": [
+    "Mara"
+   ],
+   "mood": "terror",
+   "delivery": "hushed",
+   "sfx": [
+    "a close, wet breath"
+   ],
+   "key_moment": true
+  },
+  {
+   "text": "Lily is five now. She still won't sleep without the monitor. She says he likes to listen.",
+   "visual": "The Storyteller in the hollow lowers his red lantern; far behind him the small upstairs window, a tiny red monitor light glowing in it",
+   "location": "the hollow",
+   "characters": [],
+   "mood": "eerie",
+   "delivery": "slow",
+   "sfx": [],
+   "key_moment": false
+  }
+ ],
+ "pauses": [
+  {
+   "after": "Then another voice.",
+   "ms": 500
+  },
+  {
+   "after": "I had left it on.",
+   "ms": 800
+  },
+  {
+   "after": "Nobody else.",
+   "ms": 700
+  },
+  {
+   "after": "Lily hadn't moved.",
+   "ms": 900
+  },
+  {
+   "after": "Mummy's awake now.\"",
+   "ms": 1200
+  }
+ ],
+ "packaging": {
+  "titles": [
+   "The Baby Monitor",
+   "Mummy's Awake Now"
+  ],
+  "thumbnail_text": "MUMMY'S AWAKE",
+  "thumbnail_brief": "a terrified mother on a dark child's bedroom floor clutching a baby monitor, a tall faceless shadow bending over her shoulder",
+  "description": "At 3:12 the baby monitor picked up two voices. A Hollow Lines test story. Cheap image models.",
+  "tags": [
+   "horror",
+   "scary story",
+   "baby monitor",
+   "creepy",
+   "short horror"
+  ],
+  "end_screen_line": "The monitor is still on."
+ },
+ "comment_question": "Would you have stayed in that room?",
+ "stills": {
+  "max_usd": 3.0,
+  "cold_open": false,
+  "title_seconds": 2.0,
+  "end_screen_seconds": 4.0,
+  "thumbnails": 1,
+  "shorts": 1,
+  "max_effects": 8,
+  "parallel": 3,
+  "target_seconds": 52,
+  "beat_min_seconds": 3.5,
+  "beat_max_seconds": 7.0,
+  "models": {
+   "reference": "fal-ai/bytedance/seedream/v4.5/text-to-image",
+   "sheet": "fal-ai/bytedance/seedream/v5/lite/edit",
+   "shot": "fal-ai/bytedance/seedream/v5/lite/edit",
+   "shot_text": "fal-ai/bytedance/seedream/v4.5/text-to-image",
+   "shot_alt": "fal-ai/bytedance/seedream/v4.5/edit",
+   "hero": "fal-ai/bytedance/seedream/v4.5/edit",
+   "hero_text": "fal-ai/bytedance/seedream/v4.5/text-to-image",
+   "thumbnail": "fal-ai/bytedance/seedream/v4.5/edit",
+   "voice": "fal-ai/elevenlabs/tts/eleven-v3",
+   "sfx": "fal-ai/elevenlabs/sound-effects/v2",
+   "music": "fal-ai/ace-step-1.5",
+   "vision": "fal-ai/any-llm/vision"
+  },
+  "model_args": {
+   "reference": {
+    "image_size": {
+     "width": 2752,
+     "height": 1548
+    },
+    "num_images": 1
+   },
+   "sheet": {
+    "image_size": {
+     "width": 2560,
+     "height": 1440
+    },
+    "num_images": 1
+   },
+   "shot": {
+    "image_size": {
+     "width": 2752,
+     "height": 1548
+    },
+    "num_images": 1
+   },
+   "shot_text": {
+    "image_size": {
+     "width": 2752,
+     "height": 1548
+    },
+    "num_images": 1
+   },
+   "shot_alt": {
+    "image_size": {
+     "width": 2752,
+     "height": 1548
+    },
+    "num_images": 1
+   },
+   "hero": {
+    "image_size": {
+     "width": 2752,
+     "height": 1548
+    },
+    "num_images": 1
+   },
+   "hero_text": {
+    "image_size": {
+     "width": 2752,
+     "height": 1548
+    },
+    "num_images": 1
+   },
+   "thumbnail": {
+    "image_size": {
+     "width": 2560,
+     "height": 1440
+    },
+    "num_images": 1
+   },
+   "voice": {
+    "stability": 0.5
+   },
+   "vision": {
+    "model": "google/gemini-2.5-flash"
+   }
+  },
+  "prices": {
+   "fal-ai/nano-banana-2": 0.08,
+   "fal-ai/nano-banana-2/edit": 0.08,
+   "fal-ai/nano-banana-pro": 0.15,
+   "fal-ai/nano-banana-pro/edit": 0.15,
+   "fal-ai/bytedance/seedream/v4.5/edit": 0.04,
+   "fal-ai/bytedance/seedream/v4.5/text-to-image": 0.04,
+   "fal-ai/elevenlabs/tts/eleven-v3": 0.1,
+   "fal-ai/elevenlabs/sound-effects/v2": 0.002,
+   "fal-ai/elevenlabs/music": 0.013333333333333334,
+   "fal-ai/ace-step-1.5": 0.0003,
+   "fal-ai/any-llm/vision": 0.002,
+   "fal-ai/bytedance/seedream/v5/lite/edit": 0.035
+  },
+  "chains": {
+   "reference": [
+    "fal:reference",
+    "fal:reference",
+    "cloudflare",
+    "pollinations"
+   ],
+   "sheet": [
+    "fal:sheet",
+    "fal:sheet",
+    "fal:shot_alt",
+    "cloudflare",
+    "pollinations"
+   ],
+   "beat": [
+    "fal:shot",
+    "fal:shot_alt",
+    "cloudflare",
+    "pollinations"
+   ],
+   "scare": [
+    "fal:hero",
+    "fal:shot",
+    "cloudflare",
+    "pollinations"
+   ],
+   "thumbnail": [
+    "fal:thumbnail"
+   ]
+  },
+  "text_roles": {
+   "shot": "shot_text",
+   "shot_alt": "shot_text",
+   "sheet": "shot_text",
+   "thumbnail": "shot_text",
+   "hero": "hero_text"
+  },
+  "model_units": {}
+ }
+}
