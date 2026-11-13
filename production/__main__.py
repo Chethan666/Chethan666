@@ -75,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
     lib.add_argument("--generate-music", action="store_true", help="also make the ACE-Step cues (paid, capped)")
     lib.add_argument("--max-usd", type=float, default=1.0, help="cap for --generate-music")
     lib.add_argument("--runs", nargs="*", default=[], help="sync: video output folders (each with sounds_used.json)")
+    lib.add_argument("--fresh", action="store_true", help="build: ignore the current library and start over")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(message)s")
@@ -344,7 +345,7 @@ def library(args: argparse.Namespace, cfg: dict) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     existing = Path(args.existing) if args.existing else None
-    if existing is None:
+    if existing is None and not getattr(args, "fresh", False):
         base = release_base(lib_cfg)
         got = out.parent / "library-current.json"
         try:

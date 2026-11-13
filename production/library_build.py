@@ -46,12 +46,12 @@ KMAC_CREDIT = ('"{title}" Kevin MacLeod (incompetech.com) Licensed under Creativ
 # Words in a track's feel, genre or description that say which score mood it can carry.
 MOOD_WORDS = {
     "terror": ["intense", "aggressive", "action", "frantic", "chaotic", "chase", "violent", "panic", "terror",
-               "climax", "driving", "pounding", "horrific", "brutal"],
+               "climax", "pounding", "horrific", "brutal"],
     "dread": ["suspense", "suspenseful", "tense", "tension", "dark", "unnerving", "ominous", "menacing", "dread",
               "creepy", "sinister", "horror", "scary", "threat", "pulse", "heartbeat"],
     "unease": ["mysterious", "eerie", "somber", "sombre", "haunting", "haunted", "ambient", "drone", "atmosphere",
-               "atmospheric", "unease", "uneasy", "melancholy", "lonely", "bleak", "spooky", "ghost", "calm",
-               "sad", "quiet", "night"],
+               "atmospheric", "unease", "uneasy", "melancholy", "lonely", "bleak", "spooky", "ghost", "somber",
+               "sad", "quiet", "night", "mystical"],
 }
 SFX_KIND_WORDS = {"ambience": ["ambience", "ambient", "atmosphere", "amb", "room", "tone", "roomtone", "loop",
                                "wind", "rain", "forest", "crowd", "traffic", "night", "hum", "background"],
@@ -87,8 +87,8 @@ def slug(text: str, n: int = 40) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:n] or "sound"
 
 
-def make_id(kind: str, title: str, source: str) -> str:
-    return f"{kind}-{slug(title, 32)}-{hashlib.sha1(source.encode()).hexdigest()[:6]}"
+def make_id(kind: str, title: str, source: str, file: str = "") -> str:
+    return f"{kind}-{slug(title, 32)}-{hashlib.sha1((source + '|' + file).encode()).hexdigest()[:8]}"
 
 
 def words_from_filename(name: str) -> str:
@@ -151,8 +151,16 @@ class Builder:
         file, seconds = got
         if kind == "music" and seconds < 25:
             kind = "ambience" if seconds >= 8 else "sting"
+        if kind == "ambience" and seconds < 8:
+            kind = "sfx"
+        twin = next((x for x in self.sounds if x.source == source and x.kind == kind
+                     and abs(x.seconds - seconds) < 0.5), None)
+        if twin is not None:
+            (self.out / file).unlink(missing_ok=True)
+            self.count(origin, "duplicate")
+            return None
         moods = moods or (moods_of(f"{title} {description} {' '.join(tags or [])}") if kind == "music" else [])
-        sound = Sound(id=make_id(kind, title, source), kind=kind, title=title[:120], file=file,
+        sound = Sound(id=make_id(kind, title, source, file), kind=kind, title=title[:120], file=file,
                       description=description[:400], tags=[t[:40] for t in (tags or [])][:20], moods=moods,
                       intensity=intensity or intensity_of(moods), seconds=round(seconds, 2),
                       loop=bool(loop) if loop is not None else kind == "ambience", license=lic, source=source,
@@ -187,12 +195,17 @@ class Builder:
             data = json.loads(self.http(str(src.get("catalogue", "https://incompetech.com/music/royalty-free/"
                                                                   "pieces.json"))))
             items = data if isinstance(data, list) else next((v for v in data.values() if isinstance(v, list)), [])
+            need = {f.lower() for f in src.get("need_feels", [])}
             for p in items:
                 p = {str(k).lower(): v for k, v in p.items()} if isinstance(p, dict) else {}
                 feel = {f.strip().lower() for f in re.split(r"[,;/|]", str(p.get("feel", ""))) if f.strip()}
                 genre = str(p.get("genre", "")).lower()
-                if (feel & feels or any(g in genre for g in src.get("genres", []))) and not feel & exclude:
+                horror = any(g in genre for g in src.get("genres", [])) or \
+                    genre.strip() in {str(x) for x in src.get("exact_genres", [])}
+                if (horror or (feel & feels and (not need or feel & need))) and not feel & exclude:
+                    p["_rank"] = (0 if horror else 1, -len(feel & need), str(p.get("title", "")))
                     picks.append(p)
+            picks.sort(key=lambda p: p["_rank"])
         except Exception as exc:  # noqa: BLE001
             log.warning("incompetech catalogue not read (%s); using the listed titles", str(exc)[:120])
         if not picks:
@@ -260,12 +273,17 @@ class Builder:
                 files.append(url)
         kind_hint = src.get("kind", "music")
         page_moods = src.get("moods", {}).get(page)
+        hand_picked = page in src.get("pages", [])
+        if not hand_picked and not relevant(f"{title} {desc} {' '.join(tags)}", src.get("require")):
+            self.count("opengameart", "off_topic")
+            return
         for url in files[: int(src.get("max_files_per_page", 8))]:
             raw = self.http(url)
             members = [(Path(url).name, raw)] if not url.lower().endswith(".zip") else unzip_audio(raw)
-            prefer = [m for m in members if m[0].lower().endswith((".ogg", ".flac", ".wav"))]
-            for name, data in (prefer or members)[: int(src.get("max_files_per_page", 8))]:
-                kind = classify(name, desc, kind_hint)
+            prefer = [m for m in members if m[0].lower().endswith((".ogg", ".flac", ".wav"))] or members
+            useful = [m for m in prefer if relevant(words_from_filename(m[0]), src.get("require_file"))]
+            for name, data in useful[: int(src.get("max_files_per_pack", 12))]:
+                kind = classify(name, title, kind_hint)
                 credit = (f'"{title}" by {author or "unknown"} (OpenGameArt.org, {page}), licensed {lic.upper()}'
                           if lic.startswith("cc-by") else "")
                 self.add(data, Path(name).suffix, kind=kind, title=f"{title} - {words_from_filename(name)}"
@@ -274,45 +292,68 @@ class Builder:
                          moods=page_moods)
 
     def src_fma(self, src: dict[str, Any]) -> None:
-        from datasets import Audio, load_dataset  # installed by the library workflow only
+        import pyarrow.parquet as pq  # installed with `datasets` by the library workflow
+        from huggingface_hub import HfFileSystem
 
-        ds = load_dataset(src.get("dataset", "benjamin-paine/free-music-archive-full"), src.get("config"),
-                          split="train", streaming=True)
-        try:
-            ds = ds.cast_column("audio", Audio(decode=False))
-        except Exception:  # noqa: BLE001
-            pass
+        fs = HfFileSystem()
+        name = src.get("dataset", "benjamin-paine/free-music-archive-full")
+        files = sorted(fs.glob(f"datasets/{name}/**/*.parquet"))
+        if src.get("config"):
+            files = [f for f in files if f"/{src['config']}/" in f] or files
         genres = [g.lower() for g in src.get("genres", [])]
-        wanted, scanned, deadline = int(src.get("max", 30)), 0, time.time() + float(src.get("minutes", 25)) * 60
-        added = 0
-        for row in ds:
-            scanned += 1
-            if scanned > int(src.get("scan", 30000)) or time.time() > deadline or added >= wanted:
+        wanted, added = int(src.get("max", 30)), 0
+        deadline = time.time() + float(src.get("minutes", 25)) * 60
+        why: dict[str, int] = {}
+        labels: dict[str, list[str]] | None = None
+        report = self.report.setdefault("fma", {})
+        report["files"] = len(files)
+        for path in files[: int(src.get("max_files", 400))]:
+            if added >= wanted or time.time() > deadline:
                 break
-            r = {str(k).lower(): v for k, v in row.items()}
-            lic = license_of(str(r.get("license") or r.get("license_title") or r.get("license_url") or ""))
-            if not lic:
-                continue
-            instrumental = r.get("instrumental")
-            if instrumental not in (None, 1, True, "1", "yes", "Yes"):
-                continue
-            gv = r.get("genres") or r.get("genre") or r.get("genre_top") or ""
-            g = gv if isinstance(gv, str) else " ".join(str(x) for x in gv)
-            if genres and not any(x in g.lower() for x in genres):
-                continue
-            audio = r.get("audio") or {}
-            data = audio.get("bytes") if isinstance(audio, dict) else None
-            if not data:
-                continue
-            title = str(r.get("title") or r.get("track_title") or "untitled")
-            artist = str(r.get("artist") or r.get("artist_name") or "unknown")
-            page = str(r.get("url") or r.get("track_url") or "https://freemusicarchive.org")
-            credit = f'"{title}" by {artist} (Free Music Archive, {page}), licensed {lic.upper()}'
-            got = self.add(data, Path(str(audio.get("path") or "x.mp3")).suffix, kind="music", title=f"{title} - {artist}",
-                           description=f"{g} instrumental", tags=[x for x in re.split(r"[,;|]", g) if x][:8],
-                           source=page, license=lic, author=artist, credit=credit, origin="fma")
-            added += 1 if got else 0
-        self.report.setdefault("fma", {})["scanned"] = scanned
+            with fs.open(path, "rb") as fh:
+                pf = pq.ParquetFile(fh)
+                if labels is None:
+                    labels = class_labels(pf.schema_arrow.metadata or {})
+                    report["columns"] = pf.schema_arrow.names[:40]
+                cols = [c for c in pf.schema_arrow.names if c.lower() != "audio"]
+                rows = pf.read(columns=cols).to_pylist()
+                if "example" not in report and rows:
+                    report["example"] = {k: str(decode_label(k, v, labels))[:80] for k, v in rows[0].items()}
+                keep = []
+                for i, row in enumerate(rows):
+                    reason = fma_reason(row, labels, genres)
+                    why[reason] = why.get(reason, 0) + 1
+                    if reason == "ok":
+                        keep.append(i)
+                if not keep:
+                    continue
+                bounds, total = [], 0
+                for g in range(pf.num_row_groups):
+                    n = pf.metadata.row_group(g).num_rows
+                    bounds.append((total, total + n, g))
+                    total += n
+                groups: dict[int, Any] = {}
+                for i in keep[: wanted - added]:
+                    g0, g = next((a, g) for a, b, g in bounds if a <= i < b)
+                    if g not in groups:
+                        groups[g] = pf.read_row_group(g, columns=["audio"]).column("audio")
+                    audio = groups[g][i - g0].as_py() or {}
+                    data = audio.get("bytes") if isinstance(audio, dict) else None
+                    if not data:
+                        continue
+                    r = {str(k).lower(): decode_label(k, v, labels) for k, v in rows[i].items()}
+                    lic = license_of(str(r.get("license") or r.get("license_title") or r.get("license_url") or ""))
+                    title = str(r.get("title") or r.get("track_title") or "untitled")
+                    artist = str(r.get("artist") or r.get("artist_name") or "unknown")
+                    page = str(r.get("url") or r.get("track_url") or "https://freemusicarchive.org")
+                    g_text = genre_text(r)
+                    credit = f'"{title}" by {artist} (Free Music Archive, {page}), licensed {lic.upper()}'
+                    got = self.add(data, Path(str(audio.get("path") or "x.mp3")).suffix or ".mp3", kind="music",
+                                   title=f"{title} - {artist}", description=f"{g_text} instrumental",
+                                   tags=[x.strip() for x in re.split(r"[,;|]", g_text) if x.strip()][:8],
+                                   source=page, license=lic, author=artist, credit=credit, origin="fma")
+                    added += 1 if got else 0
+        report["reasons"] = why
 
     def src_zip(self, src: dict[str, Any]) -> None:
         url = str(src["url"])
@@ -363,6 +404,96 @@ class Builder:
                          intensity=t.get("intensity"), source=f"fal:{model}", license="generated",
                          origin="acestep", loop=True)
         self.report.setdefault("acestep", {})["usd"] = round(self.spent, 3)
+
+
+HORROR_WORDS = ("horror", "creepy", "scary", "spooky", "dark", "eerie", "haunt", "ghost", "fear", "dread", "suspense",
+                "tension", "tense", "ominous", "sinister", "nightmare", "terror", "menac", "unsettl", "ambient",
+                "ambience", "atmospher", "drone", "gloom", "doom", "grim", "evil", "monster", "zombie", "night",
+                "mystery", "mysterious", "thriller", "macabre", "occult", "cemetery", "graveyard", "blood")
+SFX_WORDS = ("door", "creak", "footstep", "step", "walk", "knock", "wind", "rain", "thunder", "storm", "whisper",
+             "breath", "heart", "scream", "moan", "groan", "growl", "glass", "break", "crash", "drip", "water",
+             "clock", "tick", "phone", "ring", "bell", "chain", "metal", "wood", "floor", "crow", "owl", "wolf",
+             "howl", "cricket", "forest", "fire", "hum", "buzz", "static", "radio", "hit", "impact", "sting",
+             "riser", "boom", "slam", "scratch", "laugh", "cry", "voice", "ghost", "monster", "ambience", "ambient",
+             "room", "cave", "church", "organ", "piano", "drone", "car", "engine", "night", "dog", "creature")
+
+
+def relevant(text: str, require: str | None) -> bool:
+    """Whether a page or file is about what we want: "horror" (dark words), "sfx" (useful effects), or anything."""
+    t = text.lower()
+    if require == "horror":
+        return any(w in t for w in HORROR_WORDS)
+    if require == "sfx":
+        return any(w in t for w in SFX_WORDS) or any(w in t for w in HORROR_WORDS)
+    if require == "sfx_file":
+        return any(w in t for w in SFX_WORDS) and not any(w in t for w in ("ui ", "click", "menu", "coin", "jump",
+                                                                             "powerup", "laser", "pickup"))
+    return True
+
+
+def class_labels(metadata: dict) -> dict[str, list[str]]:
+    """Column -> label names, from the Hugging Face features stored in a parquet file's metadata."""
+    raw = metadata.get(b"huggingface") or metadata.get("huggingface")
+    if not raw:
+        return {}
+    try:
+        info = json.loads(raw)
+    except ValueError:
+        return {}
+    features = (info.get("info") or {}).get("features") or info.get("features") or {}
+    out: dict[str, list[str]] = {}
+
+    def names_of(f: Any) -> list[str] | None:
+        if isinstance(f, dict):
+            if f.get("_type") == "ClassLabel" and f.get("names"):
+                return [str(n) for n in f["names"]]
+            for key in ("feature", "dtype"):
+                if key in f:
+                    return names_of(f[key])
+        if isinstance(f, list) and f:
+            return names_of(f[0])
+        return None
+
+    for col, f in (features.items() if isinstance(features, dict) else []):
+        names = names_of(f)
+        if names:
+            out[col] = names
+    return out
+
+
+def decode_label(col: str, value: Any, labels: dict[str, list[str]] | None) -> Any:
+    names = (labels or {}).get(col)
+    if not names:
+        return value
+    if isinstance(value, int) and 0 <= value < len(names):
+        return names[value]
+    if isinstance(value, list):
+        return [names[v] if isinstance(v, int) and 0 <= v < len(names) else v for v in value]
+    return value
+
+
+def genre_text(r: dict[str, Any]) -> str:
+    parts = []
+    for k, v in r.items():
+        if "genre" in k and v:
+            parts.append(v if isinstance(v, str) else " ".join(str(x) for x in v) if isinstance(v, list) else str(v))
+    return ", ".join(parts)
+
+
+def fma_reason(row: dict[str, Any], labels: dict[str, list[str]] | None, genres: list[str]) -> str:
+    r = {str(k).lower(): decode_label(k, v, labels) for k, v in row.items()}
+    if not license_of(str(r.get("license") or r.get("license_title") or r.get("license_url") or "")):
+        return "license"
+    commercial = r.get("allow_commercial_use")
+    if commercial is not None and str(commercial).lower() in ("0", "no", "false"):
+        return "not_commercial"
+    instrumental = r.get("instrumental")
+    if instrumental is not None and str(instrumental).lower() not in ("1", "yes", "true"):
+        return "vocals"
+    g = genre_text(r).lower()
+    if genres and not any(x in g for x in genres):
+        return "genre"
+    return "ok"
 
 
 def oga_license(page_html: str) -> str:

@@ -14,15 +14,12 @@
         "eerie",
         "somber",
         "intense",
-        "tense",
-        "ominous",
-        "haunting",
-        "creepy"
+        "mystical",
+        "aggressive",
+        "action"
       ],
       "genres": [
-        "horror",
-        "dark ambient",
-        "soundtrack"
+        "horror"
       ],
       "exclude_feels": [
         "bright",
@@ -33,9 +30,11 @@
         "playful",
         "romantic",
         "silly",
-        "funny"
+        "funny",
+        "grooving",
+        "relaxed"
       ],
-      "max": 70,
+      "max": 110,
       "titles": [
         "Gathering Darkness",
         "Darkest Child",
@@ -97,6 +96,16 @@
         "Unholy Knight",
         "Village Consort",
         "Wretched Destroyer"
+      ],
+      "need_feels": [
+        "dark",
+        "eerie",
+        "suspenseful",
+        "unnerving",
+        "somber"
+      ],
+      "exact_genres": [
+        "10"
       ]
     },
     {
@@ -119,10 +128,17 @@
       "searches": [
         "https://opengameart.org/art-search-advanced?keys=horror&field_art_type_tid%5B%5D=12&sort_by=count&sort_order=DESC",
         "https://opengameart.org/art-search-advanced?keys=dark+ambient&field_art_type_tid%5B%5D=12&sort_by=count&sort_order=DESC",
-        "https://opengameart.org/art-search-advanced?keys=creepy&field_art_type_tid%5B%5D=12&sort_by=count&sort_order=DESC"
+        "https://opengameart.org/art-search-advanced?keys=creepy&field_art_type_tid%5B%5D=12&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=suspense&field_art_type_tid%5B%5D=12&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=scary&field_art_type_tid%5B%5D=12&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=eerie&field_art_type_tid%5B%5D=12&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=haunted&field_art_type_tid%5B%5D=12&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=tension&field_art_type_tid%5B%5D=12&sort_by=count&sort_order=DESC"
       ],
-      "max_pages": 45,
-      "max_files_per_page": 6
+      "max_pages": 70,
+      "max_files_per_page": 6,
+      "require": "horror",
+      "max_files_per_pack": 4
     },
     {
       "type": "opengameart",
@@ -141,10 +157,26 @@
         "https://opengameart.org/art-search-advanced?keys=ambience&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
         "https://opengameart.org/art-search-advanced?keys=scary&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
         "https://opengameart.org/art-search-advanced?keys=rain&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
-        "https://opengameart.org/art-search-advanced?keys=wind&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC"
+        "https://opengameart.org/art-search-advanced?keys=wind&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=thunder&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=heartbeat&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=whisper&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=scream&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=knock&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=ghost&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=monster&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=glass+break&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=clock&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=crickets&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=stinger&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=impact&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC",
+        "https://opengameart.org/art-search-advanced?keys=drone&field_art_type_tid%5B%5D=13&sort_by=count&sort_order=DESC"
       ],
-      "max_pages": 50,
-      "max_files_per_page": 6
+      "max_pages": 90,
+      "max_files_per_page": 4,
+      "require": "sfx",
+      "require_file": "sfx_file",
+      "max_files_per_pack": 20
     },
     {
       "type": "fma",
@@ -160,11 +192,15 @@
         "sound art",
         "musique",
         "industrial",
-        "minimal"
+        "minimal",
+        "field recording",
+        "sound collage",
+        "electroacoustic"
       ],
-      "max": 30,
+      "max": 40,
       "scan": 40000,
-      "minutes": 25
+      "minutes": 30,
+      "max_files": 972
     },
     {
       "type": "zip",

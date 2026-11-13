@@ -234,6 +234,11 @@ jobs:
           pip install -q numpy soundfile datasets
           GEN=()
           if [ "$MODE" = sound-library-music ]; then GEN=(--generate-music --max-usd 1); fi
+          # overrides "fresh": start the library over (the release is deleted and rebuilt from the sources)
+          if [[ " $OVERRIDES " == *" fresh "* ]]; then
+            gh release delete sound-library --yes --cleanup-tag || true
+            GEN+=(--fresh)
+          fi
           python -m production --config "$CONFIG" library build "${GEN[@]}" --out build/library 2>&1 | tee library.txt
           if ! gh release view sound-library >/dev/null 2>&1; then
             gh release create sound-library --title "Sound library" --latest=false \
@@ -242,8 +247,8 @@ jobs:
           FILES=(build/library/*)
           echo "Uploading ${#FILES[@]} files"
           gh release upload sound-library "${FILES[@]}" --clobber
-          python -m production --config "$CONFIG" library show --existing build/library/library.json --out build/show | head -80 > library-show.txt
-          { echo '## Sound library'; echo '```'; tail -c 30000 library.txt; echo; cat library-show.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          python -m production --config "$CONFIG" library show --existing build/library/library.json --out build/show > library-show.txt
+          { echo '## Sound library'; echo '```'; tail -c 30000 library.txt; echo; head -250 library-show.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Give back any Vast.ai machine this run rented
         if: always() && env.MODE == 'video-vast'

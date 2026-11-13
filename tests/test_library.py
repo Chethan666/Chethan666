@@ -46,6 +46,32 @@ class LicenseTests(unittest.TestCase):
             self.assertEqual(license_of(bad), "", bad)
 
 
+class SourceRuleTests(unittest.TestCase):
+    def test_fma_labels_stored_as_numbers_are_decoded(self):
+        from production.library_build import class_labels, fma_reason
+
+        meta = {b"huggingface": json.dumps({"info": {"features": {
+            "license": {"_type": "ClassLabel", "names": ["Attribution-NonCommercial 4.0", "CC0 1.0 Universal"]},
+            "instrumental": {"_type": "ClassLabel", "names": ["No", "Yes"]},
+            "genres": {"feature": {"_type": "ClassLabel", "names": ["Pop", "Ambient", "Drone"]}}}}}).encode()}
+        labels = class_labels(meta)
+        self.assertEqual(labels["license"][1], "CC0 1.0 Universal")
+        ok = {"license": 1, "instrumental": 1, "genres": [1, 2]}
+        self.assertEqual(fma_reason(ok, labels, ["ambient"]), "ok")
+        self.assertEqual(fma_reason(dict(ok, license=0), labels, ["ambient"]), "license")
+        self.assertEqual(fma_reason(dict(ok, instrumental=0), labels, ["ambient"]), "vocals")
+        self.assertEqual(fma_reason(dict(ok, genres=[0]), labels, ["ambient"]), "genre")
+
+    def test_off_topic_pages_and_files_are_left_out(self):
+        from production.library_build import relevant
+
+        self.assertTrue(relevant("Creepy night ambience loop", "horror"))
+        self.assertFalse(relevant("Happy JRPG town theme", "horror"))
+        self.assertTrue(relevant("DOOR Wood Creak Open", "sfx_file"))
+        self.assertFalse(relevant("ui click 3", "sfx_file"))
+        self.assertFalse(relevant("Rabbit eating salad", "sfx_file"))
+
+
 class SearchTests(unittest.TestCase):
     def setUp(self):
         self.lib = Library([
