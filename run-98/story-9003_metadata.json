@@ -1,0 +1,54 @@
+{
+  "story_id": 9003,
+  "title": "The Baby Monitor",
+  "other_titles": [
+    "Mummy's Awake Now"
+  ],
+  "description": "At 3:12 the baby monitor picked up two voices. A Hollow Lines test story. Cheap image models.\n\nMusic and sound:\n\"Measured Paces\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"The Dread\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"Darkening Developments\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"Horror Sound Effects Library\" by little-robot-sound-factory (OpenGameArt.org, https://opengameart.org/content/horror-sound-effects-library), licensed CC-BY-3.0\n\"Horror Hit\" by vividreality (OpenGameArt.org, https://opengameart.org/content/horror-hit), licensed CC-BY-3.0\n\"Eery/horror SFX\" by allergicracoon (OpenGameArt.org, https://opengameart.org/content/eeryhorror-sfx), licensed CC-BY-3.0",
+  "tags": [
+    "horror",
+    "scary story",
+    "baby monitor",
+    "creepy",
+    "short horror"
+  ],
+  "pinned_comment": "Would you have stayed in that room?",
+  "end_screen_line": "The monitor is still on.",
+  "credit": "",
+  "made_for_kids": false,
+  "duration_seconds": 62.6,
+  "chapters": [],
+  "sound_credits": [
+    "\"Measured Paces\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"The Dread\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"Darkening Developments\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"Horror Sound Effects Library\" by little-robot-sound-factory (OpenGameArt.org, https://opengameart.org/content/horror-sound-effects-library), licensed CC-BY-3.0",
+    "\"Horror Hit\" by vividreality (OpenGameArt.org, https://opengameart.org/content/horror-hit), licensed CC-BY-3.0",
+    "\"Eery/horror SFX\" by allergicracoon (OpenGameArt.org, https://opengameart.org/content/eeryhorror-sfx), licensed CC-BY-3.0"
+  ],
+  "sounds_used": [
+    "music-measured-paces-10bb0bc5",
+    "music-the-dread-ee7456ee",
+    "music-darkening-developments-365c398d",
+    "ambience-horror-sound-effects-library-amb-06d295a5",
+    "ambience-horror-sound-effects-library-amb-06d295a5",
+    "ambience-horror-sound-effects-library-amb-06d295a5",
+    "sting-horror-hit-horror-hit-9a540839",
+    "sfx-eery-horror-sfx-heartbeat-da0e70d4",
+    "ambience-sci-fi-ambience-sfx-cfb9c522"
+  ],
+  "thumbnails": [
+    "thumbnail_1.jpg"
+  ],
+  "shorts": [
+    "short_1.mp4"
+  ],
+  "shorts_windows": [
+    [
+      20.0,
+      51.8
+    ]
+  ],
+  "end_screen_starts": 58.6,
+  "synthetic_media": true
+}
