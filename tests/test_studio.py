@@ -240,7 +240,7 @@ class StudioTests(unittest.TestCase):
         self.assertIn("bytedance/seedance-2.0/fast/image-to-video", endpoints)
         self.assertIn("fal-ai/elevenlabs/music", endpoints)
         voiced = [a.get("text", "") for e, a in made["fal"].calls if e.endswith("eleven-v3")]
-        self.assertTrue(any(t.startswith("[whispers]") for t in voiced))  # the hushed scene is performed
+        self.assertTrue(any(t.startswith("[quietly]") for t in voiced))  # the hushed scene is performed
         meta = json.loads((out / "metadata.json").read_text())
         self.assertEqual(meta["title"], "The Extra Passenger")
         self.assertFalse((out / "work").exists())
