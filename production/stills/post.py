@@ -182,9 +182,11 @@ class PackagerAgent:
         made = []
         for k, angle in enumerate(THUMB_ANGLES[: int(cfg.get("thumbnails", 3))]):
             out = board.out / f"thumbnail_{k + 1}.jpg"
-            words = (f" Big bold hand-lettered words \"{text.upper()}\" in the left third, the last word in blood "
-                     "red, readable at phone size." if text else " No text.")
-            prompt = (f"A YouTube thumbnail. {d['house']} Match the style of the reference images.{words} Picture: "
+            lettering = str((d.get("look") or {}).get("lettering") or "big bold hand-lettered words")
+            words = (f" The words \"{text.upper()}\" in {lettering}, in the left third, the last word in blood "
+                     "red, readable at phone size; nothing else written." if text else " No text.")
+            prompt = (f"A YouTube thumbnail. {d['house']} Match the look of the reference images and keep each "
+                      f"person's face exactly as in them.{words} Picture: "
                       f"{angle}. Brief: {brief} Extreme contrast, one clear focal point, lots of darkness, nothing "
                       "small or busy.")
             raw = board.work / f"thumb_{k + 1}.png"
@@ -222,9 +224,10 @@ class PackagerAgent:
             "thumbnails": [p.name for p in thumbs], "shorts": [p.name for p in shorts],
             "shorts_windows": [[round(a, 1), round(b, 1)] for a, b in windows],
             "end_screen_starts": round(d["offset"] + d["story_seconds"], 1),
-            # YouTube's label is for realistic altered or synthetic media; painted illustrations are not
-            # realistic. Set stills.synthetic_media = true if the look ever becomes photographic.
-            "synthetic_media": bool(cfg.get("synthetic_media", False)),
+            # YouTube's "altered or synthetic content" label is for realistic made-up people and events:
+            # on for the cinematic look, off for illustrations; stills.synthetic_media true/false overrides.
+            "synthetic_media": bool((d.get("look") or {}).get("synthetic_media", False)
+                                    if cfg.get("synthetic_media") is None else cfg.get("synthetic_media")),
         }
         (board.out / "metadata.json").write_text(json.dumps(metadata, indent=2, ensure_ascii=False))
         (board.out / "beats.json").write_text(shotlist.save(beats))

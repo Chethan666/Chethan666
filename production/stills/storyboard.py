@@ -1,10 +1,11 @@
-"""The storyboard: the narration timeline cut into beats, each staged as one illustration.
+"""The storyboard: the narration timeline cut into beats, each staged as one still picture.
 
 A beat covers one or more spoken chunks of one scene and lasts 5-11 s, so a picture holds
 long enough to be looked at but changes before it goes stale. An open model (the story
 factory's planner role) stages each beat like a storyboard artist: the framing, exactly
 what the picture shows, who is in it, one sound, whether it is a scare and how much it
-matters. The host's intro and outro show The Storyteller. If the model fails, the scene's
+matters, and whether it is seen through a security camera, a phone or an old photo when
+the story itself looks through one. The host's intro and outro show The Storyteller. If the model fails, the scene's
 own plan fills the beat in.
 """
 
@@ -22,8 +23,9 @@ from .board import Board
 log = logging.getLogger(__name__)
 
 HOST = "The Storyteller"
-SYSTEM = ("You are the storyboard artist of Hollow Lines, a horror storytelling channel told in still, "
-          "painted illustrations over a narrator's voice. You stage every beat for dread and clarity: one "
+VIEWS = ("film", "cctv", "phone", "polaroid")
+SYSTEM = ("You are the storyboard artist of Hollow Lines, a horror storytelling channel told in still "
+          "pictures, like frames of a dark horror film, over a narrator's voice. You stage every beat for dread and clarity: one "
           "idea per picture, a strong composition, faces and body language that read at phone size, darkness "
           "used as space, the threat mostly unseen. Answer with JSON only.")
 SCHEMA = {
@@ -38,6 +40,7 @@ SCHEMA = {
             "sound": {"type": "string"},
             "scare": {"type": "boolean"},
             "importance": {"type": "integer"},
+            "view": {"type": "string", "enum": list(VIEWS)},
         }}}},
 }
 
@@ -57,10 +60,10 @@ def prompt(beats: list[Shot], scenes: list[dict[str, Any]], cast: list[dict[str,
                       f"{', '.join(map(str, sc.get('characters') or []))}; mood: {sc.get('mood', '')}; "
                       f"key moment: {bool(sc.get('key_moment'))}\n  plan: {sc.get('visual', '')}\n{lines}")
     return (f"Cast (fixed designs): {cast_text}\nThe story's red accent: {red or 'none'}\n\n" + "\n\n".join(blocks) +
-            "\n\nStage every beat listed above as ONE still illustration (use its number as index):\n"
+            "\n\nStage every beat listed above as ONE still picture (use its number as index):\n"
             "- framing: vary it within a scene (establish wide, then medium, close, insert); never the same "
             "framing three times in a row\n"
-            "- picture: two concrete sentences an illustrator can paint: who is where, doing what, with what "
+            "- picture: two concrete sentences a cinematographer can shoot: who is where, doing what, with what "
             "expression and body language, the setting with its few telling objects, the light source, and "
             "where the red accent is if it is in frame. Show the exact moment the words describe. Keep the "
             "threat half-seen: a silhouette, a shape in a doorway, eyes in the dark, placed off-centre. "
@@ -70,6 +73,9 @@ def prompt(beats: list[Shot], scenes: list[dict[str, Any]], cast: list[dict[str,
             "- sound: one short sound effect for this beat (\"a door creaks open slowly\"), or \"\"\n"
             "- scare: true only for the few beats where something frightening is revealed\n"
             "- importance: 1 (connective) to 5 (the moment the story turns on)\n"
+            "- view: \"film\" for almost every beat; \"cctv\", \"phone\" or \"polaroid\" only when the words "
+            "say we are looking at a security-camera feed, a phone photo or video, or an old photograph, and "
+            "then the picture shows what that camera sees. Never for [HOST] beats\n"
             "No text, signs or captions to read in any picture.")
 
 
@@ -142,6 +148,8 @@ class StoryboardAgent:
                     beat.importance = min(max(int(item.get("importance", 2)), 1), 5)
                 except (TypeError, ValueError):
                     pass
+                view = str(item.get("view") or "film")
+                beat.view = view if view in VIEWS and beat.index not in host_beats else "film"
                 beat.directed = True
                 got += 1
         return got

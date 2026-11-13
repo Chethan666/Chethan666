@@ -131,7 +131,8 @@ class Planner:
         if task == "storyboard":
             import re
             return {"beats": [{"index": int(i), "framing": "close", "picture": f"Beat {i}: Dana grips the wheel",
-                               "characters": ["dana"], "sound": "", "scare": i == "3", "importance": 4}
+                               "characters": ["dana"], "sound": "", "scare": i == "3", "importance": 4,
+                               "view": "cctv" if i == "3" else "film"}
                               for i in re.findall(r"beat (\d+) \(", prompt)]}
         if task == "character_design":
             return {"characters": [{"name": "Dana", "design": "a woman of forty in a navy driver's jacket"}]}
@@ -164,6 +165,48 @@ class UnitTests(unittest.TestCase):
 
 
 @unittest.skipUnless(HAVE, "video libraries or ffmpeg not installed")
+class LookTests(unittest.TestCase):
+    def test_the_default_look_is_cinematic_and_a_style_overrides_its_text(self):
+        from production.stills.images import house_look
+
+        look = house_look(cfg())
+        self.assertEqual(look["name"], "cinematic")
+        self.assertIn("35mm", look["style"])
+        self.assertIn("cartoon", look["wrong"])
+        self.assertTrue(look["synthetic_media"])
+        self.assertIn("photograph", house_look(cfg(look="illustrated"))["wrong"])
+        self.assertEqual(house_look(cfg(style="My own look."))["style"], "My own look.")
+
+    @unittest.skipUnless(HAVE, "video libraries or ffmpeg not installed")
+    def test_film_finish_adds_grain_and_darkens_the_corners(self):
+        from production.stills.images import finish
+
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        Image.new("RGB", (320, 180), (90, 90, 90)).save(root / "flat.png")
+        finish(root / "flat.png", root / "film.png", 0.04, 0.3, 1)
+        v = np.asarray(Image.open(root / "film.png").convert("L"), dtype=np.float32)
+        self.assertGreater(v[80:100, 150:170].std(), 2.0)  # grain
+        self.assertLess(v[:20, :20].mean(), v[80:100, 150:170].mean() - 10)  # vignette
+        finish(root / "flat.png", root / "same.png", 0.0, 0.0, 1)
+        self.assertEqual((root / "same.png").read_bytes(), (root / "flat.png").read_bytes())
+
+    def test_a_beat_prompt_locks_each_person_to_their_sheet(self):
+        from production.shots import Shot
+        from production.stills.art import IllustratorAgent
+        from production.stills.images import house_look
+
+        beat = Shot(index=3, scene=1, t0=0, t1=5, text="", framing="close", picture="Dana looks at the mirror.",
+                    characters=["Dana"])
+        cast = {"Dana": "a woman of forty, always wears thin round glasses"}
+        text = IllustratorAgent().prompt(beat, "HOUSE.", cast, ["Dana"], True, house_look(cfg()), "Seen on CCTV")
+        self.assertIn("identical face", text)
+        self.assertIn("Seen on CCTV", text)
+        self.assertIn("plastic", text)  # what the realistic look avoids
+        self.assertIn("film still", text)
+        self.assertIn("always wears thin round glasses", IllustratorAgent.check_text(beat, cast))
+
+
 class PainterTests(unittest.TestCase):
     def setUp(self):
         self.root = Path(tempfile.mkdtemp())
@@ -274,6 +317,10 @@ class TeamTests(unittest.TestCase):
         prompts = [a.get("prompt", "") for e, a in fal.calls if "seedream" in e]
         self.assertTrue(any("navy driver's jacket" in p for p in prompts))  # the designed character
         self.assertFalse(any("stick figure" in p for p in prompts))
+        self.assertTrue(any("security camera" in p for p in prompts))  # beat 3 is seen on a camera
+        self.assertTrue(all("identical face" in p for p in prompts if "character sheet of Dana" in p))
+        self.assertEqual(summary["agents"]["illustrator"]["look"], "cinematic")
+        self.assertTrue(json.loads((out / "metadata.json").read_text())["synthetic_media"])
 
     def test_without_any_key_the_video_is_still_made_and_qa_says_what_to_check(self):
         summary, out, _ = self.make()
@@ -282,6 +329,13 @@ class TeamTests(unittest.TestCase):
         self.assertEqual(summary["qa"]["status"], "check")
         self.assertTrue(any("placeholder" in i for i in summary["qa"]["issues"]))
         self.assertEqual(summary["usd"], 0)
+
+    def test_the_illustrated_look_is_still_available(self):
+        summary, out, fal = self.make(FakeFal, Router(), look="illustrated")
+        prompts = [a.get("prompt", "") for e, a in fal.calls if "seedream" in e]
+        self.assertTrue(prompts and all("graphic novel" in p for p in prompts))
+        self.assertFalse(any("security camera" in p for p in prompts))  # cameras belong to the film look
+        self.assertFalse(json.loads((out / "metadata.json").read_text())["synthetic_media"])
 
     def test_drift_motion_and_the_cap(self):
         summary, out, _ = self.make(FakeFal, motion="drift", max_usd=0.3)

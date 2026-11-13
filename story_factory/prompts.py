@@ -12,9 +12,9 @@ from typing import Any, Sequence
 
 CHANNEL = """\
 Hollow Lines is an animated horror storytelling channel for a global audience of teens and
-adults (not made for kids). Every video is told in still, painted illustrations (a dark
-graphic-novel look: deep shadows, a muted cold palette and a single blood-red accent) over
-voices and music. The host, The Storyteller, a tall man in a long coat and wide-brimmed hat
+adults (not made for kids). Every video is told in still pictures that look like frames of a
+dark, slow-burn horror film (real-looking people and places, low light, deep shadows, a
+muted cold colour grade, film grain and a single blood-red accent) over voices and music. The host, The Storyteller, a tall man in a long coat and wide-brimmed hat
 carrying a red-flamed lantern, opens and closes long episodes, speaking directly to the
 viewer. The story itself is usually told in the first person by the one it happened to (a
 first-person teller gets their own voice); characters speak their quoted lines in their own
@@ -683,7 +683,8 @@ def scene_plan(narration: str, scene_range: tuple[int, int], key_range: tuple[in
             "emotional peaks that deserve a brand-new image.\n"
             "Also write the cast: every character who appears, with one fixed look an illustrator "
             "can repeat in every image (build, height, clothing, hair or headwear, one distinctive "
-            "detail), in the channel's painted illustration style. Scenes refer to characters by these exact "
+            "detail; any glasses or other accessory always worn, never sometimes), as a real person "
+            "who could be cast in a film. Scenes refer to characters by these exact "
             f"names.\n{canon}")
 
 

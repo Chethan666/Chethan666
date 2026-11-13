@@ -1,8 +1,8 @@
 # Production (pipeline 2)
 
 Pipeline 2 turns an approved story into a finished video. The default is **stills mode**: the
-story told in still, painted illustrations over voices and music, with no moving clips and no
-stick figures. The older chalk modes are kept below (`--studio`, `--drawn`, or
+story told in still pictures that look like frames of a dark horror film, over voices and
+music, with no moving clips and no stick figures. The older chalk modes are kept below (`--studio`, `--drawn`, or
 `stills.enabled=false`).
 
 ## Stills mode: the agent team
@@ -30,9 +30,22 @@ same voice. A first-person story (decided from the text) is told by its teller i
 their own, matched to them by the planner (a man, a woman, an older person). Every quoted line
 is read by its speaker in a distinct voice. A third-person story is told by the host throughout.
 
-**Pictures.** One house look for the channel (`stills.style`: a dark, painterly graphic-novel
-illustration, muted cold palette, one blood-red accent). Older stories' stick-figure cast notes
-are turned into real character designs. Painters are tried in order (`stills.chains`) until
+**Pictures.** One house look for the channel, `stills.look`:
+- `cinematic` (the default): frames of a slow-burn horror film shot on 35mm. Real-looking
+  people and places, low light from one source, a muted cold grade, one blood-red accent. Every
+  picture then gets the same film grain and vignette in code, so pictures from different
+  painters match. YouTube's "altered or synthetic content" box is ticked in `metadata.json`.
+- `illustrated`: the dark painted graphic-novel look used before November 2026.
+
+`stills.style` replaces the look's text when set. The storyboard can show a beat through a
+security camera, a phone flash photo or an old instant photo (`stills.cameras`) when the story
+itself looks through one.
+
+Character designs fix every feature for the whole story (accessories are "always" or "never",
+so glasses don't come and go). Each beat's prompt asks for the same face, hair, clothes and
+accessories as the character sheet, and the critic rejects a picture where a named person
+clearly contradicts their design, a cartoon or plastic-skinned picture, broken hands or faces,
+or any written text. Older stories' stick-figure cast notes are turned into real designs. Painters are tried in order (`stills.chains`) until
 the critic passes a picture: Seedream 4.5 edit with the style frame and character sheets
 (about $0.04), Nano Banana 2 edit as the redraw (about $0.08), then the free ones. The free
 painters need no fal key: Cloudflare Workers AI's FLUX.1 schnell (secrets `CF_ACCOUNT_ID` and

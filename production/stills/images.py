@@ -55,16 +55,61 @@ def still_check(path: Path) -> tuple[bool, str]:
     return True, "ok"
 
 
-CRITIC_SYSTEM = ("You are the picture editor of a horror storytelling channel told in still illustrations. "
+CRITIC_SYSTEM = ("You are the picture editor of a horror storytelling channel told in still pictures. "
                  "Every picture must match the channel's house style and show the narrated moment clearly. "
                  "Answer with JSON only.")
+
+
+def house_look(cfg: dict[str, Any]) -> dict[str, Any]:
+    """The channel's look (`stills.look`) with its style text; `stills.style` overrides the text."""
+    looks = cfg.get("looks") or {}
+    name = str(cfg.get("look") or "cinematic")
+    look = dict(looks.get(name) or looks.get("cinematic") or {})
+    look.setdefault("style", "A dark, moody horror picture with one motivated light source.")
+    look.setdefault("noun", "picture")
+    for key in ("people", "avoid", "wrong", "lettering"):
+        look.setdefault(key, "")
+    look.setdefault("grain", 0.0)
+    look.setdefault("vignette", 0.0)
+    look.setdefault("synthetic_media", False)
+    if str(cfg.get("style") or "").strip():
+        look["style"] = str(cfg["style"]).strip()
+    look["name"] = name
+    return look
+
+
+def finish(src: Path, dst: Path, grain: float, vignette: float, seed: int) -> Path:
+    """The same film grain and vignette on every picture, whichever painter made it.
+
+    Pictures from different painters (Seedream, Nano Banana, FLUX) differ in sharpness and
+    noise; one shared finish makes them read as frames of the same film.
+    """
+    if grain <= 0 and vignette <= 0:
+        if src != dst:
+            dst.write_bytes(src.read_bytes())
+        return dst
+    with Image.open(src) as im:
+        rgb = np.asarray(im.convert("RGB"), dtype=np.float32) / 255.0
+    h, w = rgb.shape[:2]
+    if vignette > 0:
+        y, x = np.ogrid[0:h, 0:w]
+        r = np.hypot((x - w / 2) / (w / 2), (y - h / 2) / (h / 2)) / np.sqrt(2)
+        rgb = rgb * (1.0 - vignette * np.clip(r, 0, 1) ** 2)[..., None]
+    if grain > 0:
+        rng = np.random.default_rng(seed)
+        noise = rng.normal(0.0, grain, (h // 2 + 1, w // 2 + 1)).astype(np.float32)
+        noise = np.repeat(np.repeat(noise, 2, 0), 2, 1)[:h, :w]  # grain a little coarser than a pixel
+        rgb = rgb + noise[..., None] * (0.5 + 0.5 * (1.0 - rgb))  # stronger in the shadows, like film
+    Image.fromarray((np.clip(rgb, 0, 1) * 255).astype("uint8")).save(dst)
+    return dst
 
 
 class Critic:
     """Checks a picture in code, then by eye with a vision model when one is configured."""
 
-    def __init__(self, studio: Studio | None, style: str):
+    def __init__(self, studio: Studio | None, style: str, wrong: str = ""):
         self.studio, self.style = studio, style
+        self.wrong = wrong or "it does not match the house style at all"
         self.lock = threading.Lock()
         self.log: list[str] = []
 
@@ -84,12 +129,13 @@ class Critic:
         except OverBudget:
             return True, "no budget left for checks"
         prompt = (f"House style: {self.style}\nThe picture should show: {picture}\n\nLook at the image. Fail it ONLY "
-                  "if one of these is clearly true: it is a photograph or looks photographic instead of an "
-                  "illustration; it is bright and cheerful rather than dark; it contains readable words, letters "
-                  "or a watermark; it is split into panels or is a collage or a character sheet; a person has "
-                  "clearly broken anatomy (extra limbs, melted face); or it shows something unrelated to the "
-                  'moment. Small differences in detail are fine. Reply exactly as JSON: {"ok": true or false, '
-                  '"reason": "short reason"}')
+                  f"if one of these is clearly true: {self.wrong}; it is bright and cheerful rather than dark; "
+                  "it contains readable words, letters, a timestamp or a watermark; it is split into panels or is "
+                  "a collage or a character sheet; a person has clearly broken anatomy (extra limbs or fingers, "
+                  "a melted or doubled face); a named person clearly contradicts their description (wrong hair "
+                  "colour, glasses missing or added, different clothes, a different age); or it shows something "
+                  "unrelated to the moment. Small differences in detail are fine. Reply exactly as JSON: "
+                  '{"ok": true or false, "reason": "short reason"}')
         try:
             result = studio.fal.run(model, dict(studio.args.get("vision", {}), prompt=prompt,
                                                 system_prompt=CRITIC_SYSTEM, image_urls=[data_uri(_small(image))]))

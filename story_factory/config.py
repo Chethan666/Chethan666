@@ -285,18 +285,62 @@ DEFAULTS: dict[str, Any] = {
         # Audio loudness for YouTube.
         "loudness_lufs": -14.0,
     },
-    # Pipeline 2, stills mode (the default): the story told in still painted illustrations, voices
+    # Pipeline 2, stills mode (the default): the story told in still pictures (cinematic film stills), voices
     # and music, made by a team of agents (production/stills). Runs free without keys (Kokoro,
     # free picture services, synthesized sound); with FAL_KEY the paid models below are used.
     "stills": {
         "enabled": True,
         # Spending cap per video in USD (estimates from `prices`); past it, free fallbacks.
         "max_usd": 10.0,
-        # The channel's one house look, sent with every picture.
-        "style": ("A dark, painterly horror illustration in the style of a graphic novel: confident ink "
-                  "linework, textured brushwork, deep shadows and heavy chiaroscuro, a muted, desaturated "
-                  "palette of cold blue-greys, sickly greens and bone white, cinematic 16:9 composition with "
-                  "a single motivated light source. Moody and unsettling, never gory."),
+        # The channel's house look, sent with every picture: "cinematic" (stills from a dark horror
+        # film) or "illustrated" (a painted graphic novel). A non-empty "style" replaces the look's text.
+        "look": "cinematic",
+        "style": "",
+        "looks": {
+            "cinematic": {
+                "style": ("A still frame from a dark, slow-burn horror film, shot on 35mm: photorealistic real "
+                          "people and places, natural skin texture, low-key lighting from one motivated source "
+                          "(a lamp, a screen, a torch, moonlight through a window), deep shadows that swallow "
+                          "the edges of the frame, shallow depth of field, muted, desaturated colour grade of "
+                          "cold teal-greys and sodium amber, fine film grain, anamorphic 16:9 composition. "
+                          "Quiet, real and unsettling, never gory, never glossy."),
+                "noun": "film still",
+                "people": ("real, ordinary people a casting director could cast (not models): believable faces, "
+                           "worn everyday clothes"),
+                "avoid": ("No plastic or airbrushed skin, no CGI or video-game look, no cartoon or painting, no "
+                          "lens flare, no bright stock-photo lighting. Hands relaxed, half-hidden or out of frame."),
+                "wrong": ("it looks like a cartoon, drawing, painting or 3D render instead of a real film frame; "
+                          "skin is glossy, plastic or airbrushed like a stock photo"),
+                "lettering": "bold, clean, condensed sans-serif capitals with a slight distressed edge",
+                "grain": 0.035,  # film grain added in code, so every painter's pictures match
+                "vignette": 0.22,
+                "synthetic_media": True,  # realistic made-up people and events: YouTube's AI label
+            },
+            "illustrated": {
+                "style": ("A dark, painterly horror illustration in the style of a graphic novel: confident ink "
+                          "linework, textured brushwork, deep shadows and heavy chiaroscuro, a muted, desaturated "
+                          "palette of cold blue-greys, sickly greens and bone white, cinematic 16:9 composition "
+                          "with a single motivated light source. Moody and unsettling, never gory."),
+                "noun": "illustration",
+                "people": "illustrated people with clear, repeatable shapes",
+                "avoid": "",
+                "wrong": "it is a photograph or looks photographic instead of an illustration",
+                "lettering": "big bold hand-lettered words",
+                "grain": 0.0, "vignette": 0.0,
+                "synthetic_media": False,
+            },
+        },
+        # Cameras a beat may be "seen through" when the story gives a reason (a security camera, a
+        # phone, an old photo); otherwise every beat is a film frame. Only used with the cinematic look.
+        "cameras": {
+            "film": "",
+            "cctv": ("Seen on a security camera: high fixed corner angle, wide lens distortion, grainy "
+                     "monochrome night-vision greys, soft focus, no timestamp or text"),
+            "phone": ("A phone photo taken in the dark: harsh direct flash, blown highlights close to the lens, "
+                      "deep black behind, slight motion blur, tilted framing"),
+            "polaroid": ("An old instant photograph: faded warm colours, soft focus, light leaks at one edge, "
+                         "shown full frame with no border"),
+        },
         # "none": every picture is held perfectly still; "drift": a slow push or pan across it.
         "motion": "none",
         "beat_min_seconds": 5.0, "beat_max_seconds": 11.0,
@@ -363,7 +407,8 @@ DEFAULTS: dict[str, Any] = {
         "parallel": 4, "render_workers": 3, "max_effects": 30,
         "cold_open": True, "title_seconds": 3.0, "end_screen_seconds": 20.0,
         "burn_captions": False, "shorts": 2, "short_max_seconds": 55.0, "thumbnails": 3,
-        "loudness_lufs": -14.0, "synthetic_media": False,
+        # YouTube's "altered or synthetic content" flag: None follows the look (on for cinematic).
+        "loudness_lufs": -14.0, "synthetic_media": None,
     },
     # Pipeline 2 on open models: a 40-60 s piece made on a rented Vast.ai GPU (mode video-vast).
     "vast": {

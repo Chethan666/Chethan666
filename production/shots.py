@@ -77,6 +77,7 @@ class Shot:
     importance: int = 2
     tier: str = "still"  # hero, medium or still (a living still)
     directed: bool = False
+    view: str = "film"  # stills: film, or seen through a cctv, phone or polaroid camera
 
     @property
     def seconds(self) -> float:
