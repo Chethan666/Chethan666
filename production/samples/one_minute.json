@@ -1,164 +1,189 @@
 {
- "id": 9002,
- "title": "Route 14",
+ "id": 9003,
+ "title": "The Baby Monitor",
  "kind": "long",
- "intro": "A bus route with one stop too many. The lantern is lit.",
- "body": "I drive the last bus on Route 14. Twelve stops, then the depot. Last Tuesday, someone rang the bell after stop twelve. There's nothing out there. Just fields, and one dead streetlight. I checked the mirror. One passenger. A woman in a wet yellow raincoat, hood up, on the back seat. I never saw her get on. I pulled over under the streetlight. It flickered on. The doors hissed open. She didn't move. I turned around. The back seat was empty. Just a puddle, and the smell of river water. I faced the road again, and the camera screen above my head showed her. Standing right behind my seat.",
- "outro": "Route 14 still runs every night. If the bell rings after the last stop, keep driving.",
- "narration": "A bus route with one stop too many. The lantern is lit.\n\nI drive the last bus on Route 14. Twelve stops, then the depot. Last Tuesday, someone rang the bell after stop twelve. There's nothing out there. Just fields, and one dead streetlight. I checked the mirror. One passenger. A woman in a wet yellow raincoat, hood up, on the back seat. I never saw her get on. I pulled over under the streetlight. It flickered on. The doors hissed open. She didn't move. I turned around. The back seat was empty. Just a puddle, and the smell of river water. I faced the road again, and the camera screen above my head showed her. Standing right behind my seat.\n\nRoute 14 still runs every night. If the bell rings after the last stop, keep driving.",
+ "intro": "Some voices carry further than they should. The lantern is lit.",
+ "body": "My daughter Lily is four. She sleeps with the baby monitor on. Last night, at twelve past three, it crackled. Lily was whispering. \"I can't. Mummy will hear.\" Then another voice. Low. Patient. \"Mummy is asleep.\" I ran. Her door was shut. Her night-light was off. I had left it on. Lily was asleep, facing the wall. Nobody else. I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again. Lily hadn't moved. And through the monitor, so close it touched the microphone, the low voice said, \"Mummy's awake now.\"",
+ "outro": "Lily is five now. She still won't sleep without the monitor. She says he likes to listen.",
+ "narration": "Some voices carry further than they should. The lantern is lit.\n\nMy daughter Lily is four. She sleeps with the baby monitor on. Last night, at twelve past three, it crackled. Lily was whispering. \"I can't. Mummy will hear.\" Then another voice. Low. Patient. \"Mummy is asleep.\" I ran. Her door was shut. Her night-light was off. I had left it on. Lily was asleep, facing the wall. Nobody else. I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again. Lily hadn't moved. And through the monitor, so close it touched the microphone, the low voice said, \"Mummy's awake now.\"\n\nLily is five now. She still won't sleep without the monitor. She says he likes to listen.",
  "cast": [
   {
-   "name": "Tomas",
-   "look": "a man in his fifties, grey stubble, heavy tired eyes, a navy bus driver's jacket with a reflective stripe, wedding ring"
+   "name": "Mara",
+   "look": "a woman in her early thirties, exhausted, dark brown hair tied back loosely, a grey oversized cardigan over dark pyjamas, no jewellery"
   },
   {
-   "name": "The Woman in Yellow",
-   "look": "a thin woman in a dripping yellow raincoat, hood always up, her face always hidden in shadow, pale hands"
+   "name": "Lily",
+   "look": "a four-year-old girl with messy fair hair, pale yellow pyjamas with small stars"
   }
  ],
  "bible": {
-  "red_accent": "the glowing red STOP bell light",
+  "red_accent": "the baby monitor's small red light",
   "hero": {
-   "name": "Tomas",
-   "who": "a night bus driver on a rural route"
+   "name": "Mara",
+   "who": "a tired mother of a four-year-old"
   }
  },
  "scenes": [
   {
-   "text": "A bus route with one stop too many. The lantern is lit.",
-   "visual": "The Storyteller in the dark beside an empty rain-soaked country road, holding his red lantern",
+   "text": "Some voices carry further than they should. The lantern is lit.",
+   "visual": "The Storyteller in the dark of the hollow, mist around his boots, holding his red lantern low, far behind him one small lit upstairs window of a lonely house",
    "location": "the hollow",
    "characters": [],
    "mood": "eerie",
    "delivery": "steady",
    "sfx": [
-    "distant rain"
+    "a faint radio crackle"
    ],
    "key_moment": false
   },
   {
-   "text": "I drive the last bus on Route 14. Twelve stops, then the depot.",
-   "visual": "Tomas behind the wheel of an empty night bus, dashboard glow on his face, rain on the windscreen",
-   "location": "inside a night bus on a country road",
+   "text": "My daughter Lily is four. She sleeps with the baby monitor on.",
+   "visual": "Lily asleep in a small bedroom under a star-patterned duvet, a star night-light glowing, the baby monitor on the bedside table with its small red light on",
+   "location": "Lily's bedroom",
    "characters": [
-    "Tomas"
+    "Lily"
    ],
-   "mood": "uneasy",
+   "mood": "calm",
    "delivery": "steady",
    "sfx": [
-    "a diesel bus engine idling"
+    "a soft electronic hum"
    ],
    "key_moment": false
   },
   {
-   "text": "Last Tuesday, someone rang the bell after stop twelve. There's nothing out there. Just fields, and one dead streetlight.",
-   "visual": "Close on the bus's red STOP bell light glowing, dark fields through the window behind it",
-   "location": "inside a night bus on a country road",
-   "characters": [],
-   "mood": "uneasy",
-   "delivery": "tense",
-   "sfx": [
-    "a bus stop bell ding"
-   ],
-   "key_moment": false
-  },
-  {
-   "text": "I checked the mirror. One passenger. A woman in a wet yellow raincoat, hood up, on the back seat. I never saw her get on.",
-   "visual": "The bus's interior mirror: far behind, a woman in a dripping yellow raincoat sits on the back seat, hood hiding her face",
-   "location": "inside a night bus on a country road",
+   "text": "Last night, at twelve past three, it crackled. Lily was whispering. \"I can't. Mummy will hear.\"",
+   "visual": "Close on the baby monitor receiver on Mara's bedside table in the dark, its red sound lights jumping, Mara asleep beyond it, out of focus",
+   "location": "Mara's bedroom",
    "characters": [
-    "Tomas",
-    "The Woman in Yellow"
+    "Mara"
+   ],
+   "mood": "uneasy",
+   "delivery": "hushed",
+   "sfx": [
+    "a baby monitor crackling"
+   ],
+   "key_moment": false
+  },
+  {
+   "text": "Then another voice. Low. Patient. \"Mummy is asleep.\"",
+   "visual": "Mara awake in bed, frozen, eyes wide, staring at the receiver's red lights, holding her breath",
+   "location": "Mara's bedroom",
+   "characters": [
+    "Mara"
    ],
    "mood": "dread",
    "delivery": "hushed",
    "sfx": [
-    "rain drumming on a bus roof"
+    "static breathing"
+   ],
+   "key_moment": true
+  },
+  {
+   "text": "I ran. Her door was shut. Her night-light was off. I had left it on.",
+   "visual": "A dark upstairs landing lit by one failing, flickering bulb; Mara at Lily's closed door, hand on the handle, no light at all under the door",
+   "location": "the upstairs landing",
+   "characters": [
+    "Mara"
+   ],
+   "mood": "dread",
+   "delivery": "tense",
+   "sfx": [
+    "bare feet on wooden floorboards"
    ],
    "key_moment": false
   },
   {
-   "text": "I pulled over under the streetlight. It flickered on. The doors hissed open. She didn't move.",
-   "visual": "The bus stopped under a single flickering streetlight in empty fields, its doors open onto the dark",
-   "location": "a lonely roadside in empty fields at night",
-   "characters": [],
+   "text": "Lily was asleep, facing the wall. Nobody else.",
+   "visual": "From the doorway: Lily's dark bedroom, Lily asleep facing the wall, the night-light dead, the corners of the room deep black and empty",
+   "location": "Lily's bedroom",
+   "characters": [
+    "Lily"
+   ],
+   "mood": "dread",
+   "delivery": "hushed",
+   "sfx": [],
+   "key_moment": false
+  },
+  {
+   "text": "I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again.",
+   "visual": "Mara sitting on the floor of Lily's bedroom against the wall, the receiver in her lap, grey pre-dawn light and fog at the window, Lily asleep in the bed beside her",
+   "location": "Lily's bedroom",
+   "characters": [
+    "Mara",
+    "Lily"
+   ],
    "mood": "dread",
    "delivery": "slow",
    "sfx": [
-    "bus doors hissing open",
-    "a streetlight buzzing"
+    "a baby monitor crackling"
    ],
    "key_moment": false
   },
   {
-   "text": "I turned around. The back seat was empty. Just a puddle, and the smell of river water.",
-   "visual": "The empty back seat of the bus, a puddle of dark water on the floor beneath it, the aisle lights dim",
-   "location": "inside a night bus on a country road",
-   "characters": [],
-   "mood": "dread",
-   "delivery": "hushed",
-   "sfx": [
-    "water dripping"
-   ],
-   "key_moment": true
-  },
-  {
-   "text": "I faced the road again, and the camera screen above my head showed her. Standing right behind my seat.",
-   "visual": "The bus's grainy security camera view of the driver's seat from above: Tomas at the wheel, and the hooded woman in the yellow raincoat standing right behind him",
-   "location": "inside a night bus on a country road",
+   "text": "Lily hadn't moved. And through the monitor, so close it touched the microphone, the low voice said, \"Mummy's awake now.\"",
+   "visual": "Mara frozen on the floor staring down at the receiver in her lap; right behind her shoulder, in the corner beside the bed, a tall, too-thin shadow bends down toward her ear, darker than the dark, no face",
+   "location": "Lily's bedroom",
    "characters": [
-    "Tomas",
-    "The Woman in Yellow"
+    "Mara"
    ],
    "mood": "terror",
-   "delivery": "urgent",
+   "delivery": "hushed",
    "sfx": [
-    "a sudden burst of static"
+    "a close, wet breath"
    ],
    "key_moment": true
   },
   {
-   "text": "Route 14 still runs every night. If the bell rings after the last stop, keep driving.",
-   "visual": "The Storyteller lowers his red lantern as a lit bus disappears into the rain behind him",
+   "text": "Lily is five now. She still won't sleep without the monitor. She says he likes to listen.",
+   "visual": "The Storyteller in the hollow lowers his red lantern; far behind him the small upstairs window, a tiny red monitor light glowing in it",
    "location": "the hollow",
    "characters": [],
    "mood": "eerie",
-   "delivery": "steady",
+   "delivery": "slow",
    "sfx": [],
    "key_moment": false
   }
  ],
  "pauses": [
   {
-   "after": "There's nothing out there.",
-   "ms": 600
+   "after": "Then another voice.",
+   "ms": 500
   },
   {
-   "after": "She didn't move.",
+   "after": "I had left it on.",
+   "ms": 800
+  },
+  {
+   "after": "Nobody else.",
+   "ms": 700
+  },
+  {
+   "after": "Lily hadn't moved.",
    "ms": 900
   },
   {
-   "after": "showed her.",
-   "ms": 700
+   "after": "Mummy's awake now.\"",
+   "ms": 1200
   }
  ],
  "packaging": {
   "titles": [
-   "Route 14",
-   "The Bell After the Last Stop"
+   "The Baby Monitor",
+   "Mummy's Awake Now"
   ],
-  "thumbnail_text": "LAST STOP",
-  "thumbnail_brief": "a hooded woman in a yellow raincoat reflected in a bus mirror at night",
-  "description": "A night bus driver hears the bell ring after the last stop. A Hollow Lines test story.",
+  "thumbnail_text": "MUMMY'S AWAKE",
+  "thumbnail_brief": "a terrified mother on a dark child's bedroom floor clutching a baby monitor, a tall faceless shadow bending over her shoulder",
+  "description": "At 3:12 the baby monitor picked up two voices. A Hollow Lines test story.",
   "tags": [
    "horror",
    "scary story",
-   "night bus",
-   "creepy"
+   "baby monitor",
+   "creepy",
+   "short horror"
   ],
-  "end_screen_line": "The bell is ringing again."
+  "end_screen_line": "The monitor is still on."
  },
- "comment_question": "Would you have kept driving?",
+ "comment_question": "Would you have stayed in that room?",
  "stills": {
   "max_usd": 3.0,
   "cold_open": false,

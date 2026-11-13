@@ -126,13 +126,14 @@ INSIDE = ("inside", "interior", "indoors", "window", "windscreen", "windshield",
 
 def atmosphere_in(picture: str) -> list[str]:
     """What moves in the air of a picture, from its own words: the storyboard's fallback.
-    Rain only when nothing says the camera is indoors or behind glass (rain over an interior
-    would fall inside the room)."""
+    Rain and fog only when nothing says the camera is indoors or behind glass (fog seen through
+    a window must not drift across the room)."""
     text = picture.lower()
     found = []
-    if any(w in text for w in ("rain", "downpour", "storm", "drizzle")) and not any(w in text for w in INSIDE):
+    outdoors = not any(w in text for w in INSIDE)
+    if any(w in text for w in ("rain", "downpour", "storm", "drizzle")) and outdoors:
         found.append("rain")
-    if any(w in text for w in ("fog", "mist", "haze")):
+    if any(w in text for w in ("fog", "mist", "haze")) and outdoors:
         found.append("fog")
     if any(w in text for w in ("flicker", "failing light", "buzzing light", "guttering", "candle")):
         found.append("flicker")

@@ -86,7 +86,7 @@ def prompt(beats: list[Shot], scenes: list[dict[str, Any]], cast: list[dict[str,
             "then the picture shows what that camera sees. Never for [HOST] beats\n"
             "- atmosphere: what visibly moves in the air of this picture, for the edit to animate: \"rain\" only "
             "when rain falls between the camera and the scene (outdoors, never over an interior or behind "
-            "glass), \"fog\" for mist or fog in the air, \"flicker\" when the picture's light is a failing lamp, "
+            "glass), \"fog\" for mist or fog in the air around the camera (outdoors, not fog seen through a window), \"flicker\" when the picture's light is a failing lamp, "
             "a guttering candle or a stuttering screen; [] for most beats. Keep it consistent within a scene\n"
             "No text, signs or captions to read in any picture.")
 

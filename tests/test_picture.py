@@ -193,6 +193,7 @@ class Atmosphere(unittest.TestCase):
         self.assertEqual(atmosphere_in("Rain lashes the empty road; fog rolls over the fields."), ["rain", "fog"])
         self.assertEqual(atmosphere_in("Inside the bus, rain streaks the windows."), [])
         self.assertEqual(atmosphere_in("A candle gutters on the table."), ["flicker"])
+        self.assertEqual(atmosphere_in("Mara on the bedroom floor, fog at the window."), [])
 
 
 @unittest.skipUnless(HAVE, "video libraries or ffmpeg not installed")
