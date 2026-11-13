@@ -3,9 +3,9 @@
  "title": "The Baby Monitor",
  "kind": "long",
  "intro": "Some voices carry further than they should. The lantern is lit.",
- "body": "My daughter Lily is four. She sleeps with the baby monitor on. Last night, at twelve past three, it crackled. Lily was whispering. \"I can't. Mummy will hear.\" Then another voice. Low. Patient. \"Mummy is asleep.\" I ran. Her door was shut. Her night-light was off. I had left it on. Lily was asleep, facing the wall. Nobody else. I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again. Lily hadn't moved. And through the monitor, so close it touched the microphone, the low voice said, \"Mummy's awake now.\"",
+ "body": "My daughter Lily is four. She sleeps with the baby monitor on. Last night, at twelve past three, it crackled. Lily was whispering. \"I can't. Mummy will hear.\" Then another voice. Low. Patient. \"Mummy is asleep.\" I ran. Her door was shut. Her night-light was off. I had left it on. Lily was asleep, facing the wall. Nobody else. I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again. Lily hadn't moved. Then the voice came, so close it touched the microphone. \"Mummy's awake now.\"",
  "outro": "Lily is five now. She still won't sleep without the monitor. She says he likes to listen.",
- "narration": "Some voices carry further than they should. The lantern is lit.\n\nMy daughter Lily is four. She sleeps with the baby monitor on. Last night, at twelve past three, it crackled. Lily was whispering. \"I can't. Mummy will hear.\" Then another voice. Low. Patient. \"Mummy is asleep.\" I ran. Her door was shut. Her night-light was off. I had left it on. Lily was asleep, facing the wall. Nobody else. I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again. Lily hadn't moved. And through the monitor, so close it touched the microphone, the low voice said, \"Mummy's awake now.\"\n\nLily is five now. She still won't sleep without the monitor. She says he likes to listen.",
+ "narration": "Some voices carry further than they should. The lantern is lit.\n\nMy daughter Lily is four. She sleeps with the baby monitor on. Last night, at twelve past three, it crackled. Lily was whispering. \"I can't. Mummy will hear.\" Then another voice. Low. Patient. \"Mummy is asleep.\" I ran. Her door was shut. Her night-light was off. I had left it on. Lily was asleep, facing the wall. Nobody else. I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again. Lily hadn't moved. Then the voice came, so close it touched the microphone. \"Mummy's awake now.\"\n\nLily is five now. She still won't sleep without the monitor. She says he likes to listen.",
  "cast": [
   {
    "name": "Mara",
@@ -105,7 +105,7 @@
    "key_moment": false
   },
   {
-   "text": "I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again.",
+   "text": "I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again. Lily hadn't moved.",
    "visual": "Mara sitting on the floor of Lily's bedroom against the wall, the receiver in her lap, grey pre-dawn light and fog at the window, Lily asleep in the bed beside her",
    "location": "Lily's bedroom",
    "characters": [
@@ -120,7 +120,7 @@
    "key_moment": false
   },
   {
-   "text": "Lily hadn't moved. And through the monitor, so close it touched the microphone, the low voice said, \"Mummy's awake now.\"",
+   "text": "Then the voice came, so close it touched the microphone. \"Mummy's awake now.\"",
    "visual": "Mara frozen on the floor staring down at the receiver in her lap; right behind her shoulder, in the corner beside the bed, a tall, too-thin shadow bends down toward her ear, darker than the dark, no face",
    "location": "Lily's bedroom",
    "characters": [
