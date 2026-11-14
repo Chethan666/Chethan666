@@ -34,6 +34,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("-v", "--verbose", action="store_true")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("check", help="list what each paid model on fal.ai expects (no spend)")
+    h = sub.add_parser("host", help="paint candidates for the Storyteller's fixed sheet and portrait (paid, once)")
+    h.add_argument("--out", default="out/host_refs")
+    h.add_argument("--candidates", type=int, default=2)
+    h.add_argument("--max-usd", type=float, default=1.5)
     a = sub.add_parser("approve", help="a person has watched the video: approve it for publishing (or reject it)")
     a.add_argument("--story", type=int, required=True)
     a.add_argument("--reject", metavar="REASON", help="reject instead, with the reason")
@@ -75,6 +79,12 @@ def main(argv: list[str] | None = None) -> int:
         return check(stills.get("models", {}), stills.get("model_args", {}))
     if args.command == "library":
         return library(args, cfg)
+    if args.command == "host":
+        from production.media import Fal
+        from .stills import host
+        report = host.make(cfg.get("stills", {}), Fal(), Path(args.out), args.candidates, args.max_usd)
+        print(json.dumps(report, indent=2))
+        return 0 if any("portrait" in c for c in report["candidates"]) else 1
     conn = db.connect(cfg["database"])
     if args.command in ("approve", "publish", "stats"):
         return channel(args, conn)

@@ -192,25 +192,30 @@ SHEET_SYSTEM = ("You check reference sheets for a horror film told in still pict
 def sheet_ok(studio: Any, image: Path, kind: str, name: str, design: str) -> tuple[bool, str]:
     """Does a reference sheet show what its design says? `kind`: "character", "portrait" (a
     close portrait painted from the character's sheet) or "location"."""
+    # Only what would make every picture painted from the sheet wrong: run 104 repainted sheets for a
+    # single bed instead of a double one, a blue tint and brown eyes ($0.43 for nothing a viewer sees).
     age = ("; a child who clearly looks older or younger than the age the design gives (a four-year-old "
            "painted as a child of eight is wrong)")
     if kind == "portrait":
-        rules = ("it is not one single close portrait of one person; the person clearly contradicts the design (a "
-                 "different age or sex, hair, or clothes; a face that the design keeps in shadow is shown lit in "
-                 f"full){age}; other people are in it")
+        rules = ("it is not one single close portrait of one person; it is clearly a different person from the "
+                 "design (a different age or sex, a different hair colour, clothes of a different kind); a face "
+                 f"that the design keeps in shadow is shown lit in full{age}; other people are in it")
     elif kind == "character":
-        rules = ("the views do not show one and the same person; the person clearly contradicts the design (a "
-                 "different age or sex, hair, or clothes; a face that the design keeps hidden is shown)"
-                 f"{age}; other people are in it")
+        rules = ("the views do not show one and the same person; the person is clearly someone else than the "
+                 "design (a different age or sex, a different hair colour, clothes of a different kind); a face "
+                 f"that the design keeps hidden is shown{age}; other people are in it")
     else:
-        rules = ("it clearly contradicts the design (a different kind of vehicle, building or room, or other main "
-                 "colours); its views show two different places; people are in it")
+        rules = ("it is clearly a different kind of place (a different kind of vehicle, building or room); its "
+                 "views show two different places; people are in it")
+    details = ("furniture sizes, colour tints, eye colour, small objects and accessories, how many views, "
+               "the exact light") if kind != "portrait" else "eye colour, small accessories, the exact light"
     verdict = ask_vision(studio, f"This should be a {kind} reference sheet of {name}: {design[:500]}\n"
                                  f"Fail it ONLY if one of these is clearly true: {rules}; it contains written "
                                  "words or labels; it is bright and cheerful; anything is clearly broken or "
-                                 "melted. Small differences are fine. When you fail it, say in one sentence what "
-                                 'is wrong and what it should show. Reply exactly as JSON: {"ok": true or false, '
-                                 '"reason": "short reason"}', image, "reference_check", SHEET_SYSTEM, width=1280)
+                                 f"melted. Never fail it for details: {details}. When you fail it, say in one "
+                                 'sentence what is wrong and what it should show. Reply exactly as JSON: '
+                                 '{"ok": true or false, "reason": "short reason"}', image, "reference_check",
+                         SHEET_SYSTEM, width=1280)
     if verdict is None or "ok" not in verdict:
         return True, "not checked"
     return bool(verdict.get("ok")), str(verdict.get("reason", ""))[:200]

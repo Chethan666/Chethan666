@@ -301,6 +301,10 @@ DEFAULTS: dict[str, Any] = {
         # Each character also gets a large face portrait painted from their sheet; pictures are painted
         # from portrait + sheet, and the checker compares every face with its portrait.
         "portraits": True, "face_check": True,
+        # The Storyteller's sheet and portrait, made once (`python -m production host`) and kept here:
+        # used for every video once both files exist.
+        "host_references": {"sheet": "production/assets/host/sheet.jpg",
+                            "portrait": "production/assets/host/portrait.jpg"},
         # The animation stage (production/stills/motion.py): chosen beats become clips made from their
         # finished pictures, checked like pictures; everything else stays a still. Off until an
         # image-to-video model is set in `models.clip`. beats: "scares", "key" (scares and key

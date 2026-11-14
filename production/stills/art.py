@@ -39,8 +39,8 @@ log = logging.getLogger(__name__)
 
 HOST_DESIGN = ("a tall, gaunt man of indeterminate age in a long, worn charcoal greatcoat and a shapeless old black "
                "felt hat with a wide, drooping brim (never a cowboy hat), his face always mostly in shadow under "
-               "the brim except for pale, kind, tired eyes; he always carries an old iron lantern whose flame "
-               "burns blood red")
+               "the brim except for pale, kind, tired eyes; he always carries a plain old iron railway lantern with "
+               "glass panes (no faces, masks or carvings on it) whose flame burns blood red")
 # How the host is shown in his sheet and portrait: a face seen in full there is copied into every picture
 # (run 103: his portrait showed his whole face, and a cowboy).
 HOST_FACE = ("His face stays mostly in shadow under the drooping brim: only his pale, tired eyes and the line of "
@@ -68,6 +68,47 @@ def age_lock(age: int) -> str:
                 "for the body, round full cheeks, a small button nose, short arms and legs, small chubby hands, "
                 "as tall as a kitchen table")
     return f"Exactly {age} years old, a child, never a teenager: a child's face and proportions"
+
+
+LIGHT = r"(night[- ]?lights?|lamps?|lights?|bulbs?|torch(?:es)?|candles?|lanterns?|screens?)"
+OFF = re.compile(LIGHT + r"\b[^.!?\"]{0,25}?\b(?:was|were|is|are|went|had gone|had been|stayed)\s+(?:off|out|dark)\b"
+                 r"|\b(?:turned|switched|clicked|blew)\s+(?:off|out)\s+(?:the\s+|her\s+|his\s+|my\s+)?" + LIGHT, re.I)
+ON = re.compile(r"\b(?:turned|switched|clicked|flicked)\s+(?:it\s+|them\s+|the\s+\w+\s+)?on\b"
+                r"|\b(?:came|flickered|blinked)\s+(?:back\s+)?on\b", re.I)
+
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def host_references(cfg: dict[str, Any]) -> tuple[Path, Path] | None:
+    """The Storyteller's fixed sheet and portrait (`host_references`), made once and kept in the
+    repository: the host is the same man in every episode, and no painter kept his face in shadow
+    when asked again each time (run 104: six refused sheets). None until both files exist."""
+    refs = cfg.get("host_references") or {}
+    sheet, face = (ROOT / str(refs.get(k, "")) if refs.get(k) else None for k in ("sheet", "portrait"))
+    return (sheet, face) if sheet and face and sheet.is_file() and face.is_file() else None
+
+
+def lights_off(beats: list[Shot], host_beats: set[int] | frozenset[int] = frozenset()) -> dict[int, list[str]]:
+    """Lights the story has said are off, per story beat from the one that says so until one is
+    switched on again. A location sheet shows its lamps lit, and every picture copies it: run 104's
+    night-light glowed in the very pictures whose narration says it was off."""
+    off: list[str] = []
+    out: dict[int, list[str]] = {}
+    for b in sorted(beats, key=lambda b: b.index):
+        if b.index in host_beats:
+            continue
+        text = str(b.text or "")
+        if ON.search(text):
+            off = []
+        for m in OFF.finditer(text):
+            name = (m.group(1) or m.group(2) or "light").lower().replace("nightlight", "night-light")
+            name = re.sub(r"night[- ]light", "night-light", name)
+            if name not in off:
+                off.append(name)
+        if off:
+            out[b.index] = list(off)
+    return out
 
 DESIGN_SCHEMA = {"type": "object", "required": ["characters"], "properties": {"characters": {"type": "array", "items": {
     "type": "object", "required": ["name", "design"],
@@ -246,6 +287,9 @@ class ArtDirectorAgent:
         d["style_frame"] = got
         sheets: dict[str, Path] = {}
         people = [c for c in cast if c["name"] in {n for b in d["beats"] for n in b.characters}][:8]
+        fixed = host_references(cfg)
+        if fixed:
+            people = [c for c in people if c["name"] != HOST]  # painted once, kept in the repository
         checks: list[dict[str, Any]] = []
 
         def checked(kind: str, name: str, design: str):
@@ -332,16 +376,19 @@ class ArtDirectorAgent:
             return c["name"], path
 
         portraits: dict[str, Path] = {}
+        if fixed and HOST in {n for b in d["beats"] for n in b.characters}:
+            sheets[HOST], portraits[HOST] = fixed
         if cfg.get("portraits", True):
             with ThreadPoolExecutor(max_workers=int(cfg.get("parallel", 4))) as pool:
-                for name, path in pool.map(portrait, [c for c in people if c["name"] in sheets]):
+                for name, path in pool.map(portrait, [c for c in people if c["name"] in sheets
+                                                      and c["name"] not in portraits]):
                     if path is not None:
                         portraits[name] = path
         d["portraits"] = portraits
         last = {(c["kind"], c["sheet"]): c for c in checks}  # a sheet's last check is the one that stands
         d["reference_issues"] = [f"{c['kind']} sheet of {c['sheet']}: {c['why']}" for c in last.values() if not c["ok"]]
         return {"style_frame": bool(got), "style_frame_by": source, "sheets": sorted(sheets),
-                "portraits": sorted(portraits),
+                "portraits": sorted(portraits), "host_references": bool(fixed),
                 "designs": {c["name"]: c["design"] for c in cast},
                 "places": [{"name": x["name"], "scenes": x["scenes"], "design": x["design"],
                             "sheet": x.get("sheet") is not None} for x in sets],
@@ -376,7 +423,7 @@ class IllustratorAgent:
 
     def prompt(self, beat: Shot, house: str, cast: dict[str, str], refs: list[str], style_frame: bool,
                look: dict[str, Any] | None = None, camera: str = "", place: dict[str, Any] | None = None,
-               lessons: str = "", faces: set[str] | frozenset[str] = frozenset()) -> str:
+               lessons: str = "", faces: set[str] | frozenset[str] = frozenset(), dark: list[str] | None = None) -> str:
         """`style_frame`: reference image 1 is there (the place's sheet when `place` has one, else
         the style frame). `place`: the set this beat is in, {"name", "design", "sheet"}. `faces`:
         the people in `refs` sent as two images, a close portrait and then the sheet."""
@@ -420,6 +467,10 @@ class IllustratorAgent:
         # nearly all pictures that ignored their description (it sat behind 190 words of style).
         # Then what is fixed (place, people), what each reference is for, the look, and what to avoid.
         warned = f" Avoid what went wrong before: {lessons}." if lessons else ""
+        if dark:  # the story switched these off: the sheet's lit lamps must not win
+            things = " and ".join(f"the {x}" for x in dark)
+            picture += (f" {things[0].upper() + things[1:]} {'is' if len(dark) == 1 else 'are'} switched OFF and dark "
+                        "in this picture, even where a reference image shows it lit.")
         return (f"One single 16:9 {look.get('noun', 'frame')}, one frame, never split into panels.{lens} "
                 f"{FRAMING.get(beat.framing, beat.framing)}. "
                 f"{picture}{empty}{where}{(' Characters: ' + people + '.') if people else ''} "
@@ -463,10 +514,13 @@ class IllustratorAgent:
         key_beats = {b.index for b in rest[: max(1, round(float(cfg.get("key_share", 0.25)) * len(beats)))]}
 
         def tier(beat: Shot) -> str:
-            return "scare" if beat.index in strongest else "key" if beat.index in key_beats else "beat"
+            # the host's pictures open and close every video: they get the corrector like a key beat
+            return ("scare" if beat.index in strongest else
+                    "key" if beat.index in key_beats or beat.index in host_beats else "beat")
 
         warned = lessons.load(board.conn) if cfg.get("lessons", True) else ""
         d["tiers"] = {b.index: tier(b) for b in beats}
+        dark = lights_off(beats, host_beats)
 
         def one(beat: Shot, fix: str = "") -> tuple[int, Path | None]:
             names = [n for n in beat.characters if n in sheets][:3]
@@ -476,7 +530,7 @@ class IllustratorAgent:
                                                  ([portraits[n]] if n in portraits else []) + [sheets[n]]]
             camera = str(cameras.get(beat.view, "")) if use_cameras else ""
             text = self.prompt(beat, d["house"], cast, names, bool(first), look, camera, place, warned,
-                               {n for n in names if n in portraits})
+                               {n for n in names if n in portraits}, dark.get(beat.index))
             faces = [(n, portraits[n]) for n in names if n in portraits] if cfg.get("face_check", True) else []
             if float(cfg.get("letterbox", 0) or 0) > 1.78:  # cinema bars will cover the top and bottom
                 text = text.replace("never split into panels.", "never split into panels. Composed for a wide "
@@ -487,7 +541,9 @@ class IllustratorAgent:
             tag = f"_fix{abs(hash(fix)) % 10_000}" if fix else ""
             path, source = painter.paint(text, refs, folder / f"beat_{beat.index:03d}{tag}.png",
                                          ["beat", beat.index, text], chains.get(tier(beat), chains["beat"]),
-                                         check=self.check_text(beat, cast), accept_minor=tier(beat) == "beat",
+                                         check=self.check_text(beat, cast) + "".join(
+                                             f" The {x} is off and dark." for x in dark.get(beat.index, [])),
+                                         accept_minor=tier(beat) == "beat",
                                          capped=True, redraw=bool(fix), faces=faces)
             sources[beat.index] = source
             return beat.index, path  # clean: the colorist grades it, the edit adds grain and vignette

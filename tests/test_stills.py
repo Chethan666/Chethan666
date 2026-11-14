@@ -83,6 +83,7 @@ def cfg(**over):
     c = copy.deepcopy(DEFAULTS["stills"])
     c["sound_library"] = dict(c["sound_library"], enabled=False)  # no release downloads in tests
     c["listener"] = ""  # no Whisper download in tests (the listener has its own tests)
+    c["host_references"] = {}  # the repository's fixed host pictures are not part of these tests
     c["video_size"], c["picture_size"] = [1280, 720], [1376, 774]  # a smaller frame: quicker tests
     c.update({"end_screen_seconds": 3.0, "title_seconds": 2.0, "max_usd": 5.0, "parallel": 2, "pollinations": False,
               "beat_min_seconds": 2.0, "beat_max_seconds": 5.0}, **over)
@@ -326,6 +327,29 @@ class TeamTests(unittest.TestCase):
         self.assertEqual(summary["agents"]["art"]["portraits"], ["Dana", "The Storyteller"])
         self.assertLessEqual(summary["usd"], 7.0)
         self.assertFalse((out / "work").exists())
+
+    def test_the_host_references_are_painted_once_and_then_used_by_every_video(self):
+        from production import voice
+        from production.stills import host, pipeline
+
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        fal = FakeFal(root)
+        report = host.make(cfg(), fal, root / "host_refs", candidates=2)
+        self.assertEqual([c.get("portrait") for c in report["candidates"]], ["host_portrait_1.jpg", "host_portrait_2.jpg"])
+        endpoints = [e for e, _ in fal.calls]
+        self.assertEqual(endpoints.count("fal-ai/nano-banana-pro"), 2)  # each sheet from words alone
+        self.assertEqual(endpoints.count("fal-ai/nano-banana-pro/edit"), 2)  # each portrait from its sheet
+        self.assertFalse((root / "host_refs" / "work").exists())
+        refs = {"sheet": str(root / "host_refs" / "host_sheet_1.jpg"),
+                "portrait": str(root / "host_refs" / "host_portrait_1.jpg")}
+        video = FakeFal(root)
+        summary = pipeline.produce(story(first_person=True), root / "out", voice.SilentVoice(), Router(),
+                                   cfg(host_references=refs), video)
+        self.assertTrue(summary["agents"]["art"]["host_references"])
+        prompts = [a.get("prompt", "") for e, a in video.calls]
+        self.assertFalse(any("reference sheet of one person, The Storyteller" in p for p in prompts))
+        self.assertIn("The Storyteller", summary["agents"]["art"]["portraits"])
 
     def test_a_story_becomes_a_packaged_stills_video(self):
         from story_factory.config import DEFAULTS

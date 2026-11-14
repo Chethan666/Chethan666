@@ -10,7 +10,9 @@ mkdir -p "$dest"
 shrink() {  # picture -> JPEG at most 1280 px wide
   ffmpeg -nostdin -hide_banner -loglevel error -y -i "$1" -vf "scale='min(1280,iw)':-2" -q:v 4 "$2" || true
 }
-find "$src" -type f \( -name '*.png' -o -name '*.jpg' \) ! -path '*/work/*' | while read -r f; do
+# the host's reference candidates are shared at full size: the chosen pair goes into the repository
+find "$src" -type f -path '*/host_refs/*.jpg' ! -path '*/work/*' | while read -r f; do cp "$f" "$dest/"; done
+find "$src" -type f \( -name '*.png' -o -name '*.jpg' \) ! -path '*/work/*' ! -path '*/host_refs/*' | while read -r f; do
   name=$(echo "${f#$src/}" | tr '/' '_'); shrink "$f" "$dest/${name%.*}.jpg"
 done
 find "$src" -type f -name 'video.mp4' | while read -r v; do
@@ -23,7 +25,7 @@ find "$src" -type f -name 'video.mp4' | while read -r v; do
       "$dest/${dir}_frame_${part}.jpg" || true
   done
 done
-find "$src" -type f \( -name 'report.json' -o -name 'beats.json' -o -name 'metadata.json' \) \
+find "$src" -type f \( -name 'report.json' -o -name 'beats.json' -o -name 'metadata.json' -o -name 'host_report.json' \) \
   ! -path '*/work/*' | while read -r f; do cp "$f" "$dest/$(echo "${f#$src/}" | tr '/' '_')"; done
 cd "$RUNNER_TEMP/review"
 git init -q

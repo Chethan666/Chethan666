@@ -7,7 +7,8 @@
 # Pipeline 1 is the story factory and pipeline 2 turns its stories into videos.
 #   mode=video-test: pipeline 2 makes a ~35 s video from the script in production/samples/test_story.json
 #     (overrides "script=one_minute.json" picks another script in production/samples, e.g. the 60 s test;
-#      add "bakeoff=all" for the picture bake-off: no video, every picture painted by each setup, side by side)
+#      add "bakeoff=all" for the picture bake-off: no video, every picture painted by each setup, side by side;
+#      "host=make" paints candidates for the Storyteller's fixed references instead, about $0.60)
 #               (no story database needed), capped at $1.50
 #   mode=video-approve / video-reject: after watching a video (story_id), approve it for publishing or not
 #               (video-reject takes the reason in `overrides`)
@@ -193,11 +194,18 @@ jobs:
             case "$kv" in
               script=*) SCRIPT="production/samples/${kv#script=}" ;;  # video-test: another sample script
               bakeoff=*) BAKEOFF=(--bakeoff "${kv#bakeoff=}") ;;  # pictures only, by each setup (e.g. bakeoff=all)
+              host=make) HOST_MAKE=1 ;;  # paint candidates for the Storyteller's fixed references (~$0.60)
               *) SETS+=(--set "$kv") ;;
             esac
           done
           if [ "$MODE" = video-test ]; then ARGS=(--script "$SCRIPT"); fi
           ARGS+=("${BAKEOFF[@]}")
+          if [ -n "${HOST_MAKE:-}" ]; then
+            python -m production --config "$CONFIG" "${SETS[@]}" host --out out/host_refs 2>&1 | tee video-summary.txt
+            status=${PIPESTATUS[0]}
+            { echo '## Host references'; echo '```'; tail -c 20000 video-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            exit $status
+          fi
           python -m production --config "$CONFIG" "${SETS[@]}" produce "${ARGS[@]}" 2>&1 | tee video-summary.txt
           status=${PIPESTATUS[0]}
           { echo '## Video'; echo '```'; tail -c 60000 video-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"

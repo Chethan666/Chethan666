@@ -732,5 +732,42 @@ class Ages(unittest.TestCase):
         self.assertIn("in shadow is shown lit in full", asked[0])
 
 
+
+class LightsOff(unittest.TestCase):
+    def test_a_light_the_story_switches_off_stays_off_until_switched_on(self):
+        from production.stills.art import lights_off
+
+        beats = [beat(4, picture="x"), beat(5, picture="x"), beat(6, picture="x"), beat(7, picture="x"),
+                 beat(8, picture="x"), beat(9, picture="x")]
+        texts = ["Then another voice.", "I ran. Her door was shut. Her night-light was off. I had left it on.",
+                 "Lily was asleep, facing the wall.", "I switched the lamp on.", "Nothing.", "He turned off the torch."]
+        for b, t in zip(beats, texts):
+            b.text = t
+        self.assertEqual(lights_off(beats, {9}), {5: ["night-light"], 6: ["night-light"]})  # "left it on" is the past
+        beats[5].text = "She turned off the lamp."
+        self.assertEqual(lights_off(beats)[9], ["lamp"])
+
+    def test_the_picture_and_its_check_are_told_the_light_is_off(self):
+        from production.stills.art import IllustratorAgent
+
+        b = beat(6, picture="Lily asleep, facing the wall.")
+        text = IllustratorAgent().prompt(b, "HOUSE.", {}, [], True, {}, "", None, "", frozenset(), ["night-light"])
+        self.assertIn("The night-light is switched OFF and dark in this picture", text)
+
+
+class HostReferences(unittest.TestCase):
+    def test_the_host_is_painted_from_fixed_references_once_both_exist(self):
+        from production.stills import art
+
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        cfg = {"host_references": {"sheet": str(root / "sheet.jpg"), "portrait": str(root / "portrait.jpg")}}
+        self.assertIsNone(art.host_references(cfg))  # not made yet: painted per video as before
+        for name in ("sheet.jpg", "portrait.jpg"):
+            Image.new("RGB", (64, 36), (20, 20, 20)).save(root / name)
+        self.assertEqual(art.host_references(cfg), (root / "sheet.jpg", root / "portrait.jpg"))
+        self.assertIn("no faces, masks or carvings", art.HOST_DESIGN)  # run 104: a demon face on his lantern
+
+
 if __name__ == "__main__":
     unittest.main()
