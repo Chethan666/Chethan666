@@ -90,8 +90,14 @@ class SoundAgent:
             library = None
         # The sound director decides each sound: from the library, newly made, or left out.
         can_make = bool(lib_cfg.get("generate_missing", True)) and board.studio is not None
+        # Which kinds may be made (`generate_kinds`: "music" and/or "sfx" for effects, room tone and
+        # the sting), and only those whose model is configured.
+        kinds = {k for k in (lib_cfg.get("generate_kinds") or ("music", "sfx"))
+                 if can_make and board.studio is not None and board.studio.models.get(k)}
+        can_make = can_make and bool(kinds)
         decided = sounds.pick(board, library, score.cue_names, int(board.cfg.get("max_effects", 30)),
-                              float(lib_cfg.get("min_score", 0.55)), can_make=can_make)
+                              float(lib_cfg.get("min_score", 0.55)), can_make=can_make,
+                              music_made="music" in kinds)
         library_report: dict[str, Any] = dict(decided.report, library=library is not None)
         score.prompts, score.skip = dict(decided.make), set(decided.skip)
         if library is not None:
@@ -101,6 +107,7 @@ class SoundAgent:
             d["credits"] = library.credits(used)
             library_report.update(fetched=len(score.chosen), credits=len(d["credits"]))
         score.generate_missing = can_make
+        score.make_kinds = kinds
         stings = [d["cold_seconds"]] if d["cold"] and d["title_seconds"] else []
         try:
             mixed = score.mix(d["track"], d["speech"], d["beats"], d["offset"], d["scenes"], stings=stings,

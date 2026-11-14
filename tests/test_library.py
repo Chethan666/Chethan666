@@ -272,6 +272,32 @@ class PickTests(unittest.TestCase):
         self.assertEqual(d.make["music_terror"], "frantic horror strings, instrumental")  # made by ACE-Step
         self.assertIn("fx_002", d.skip)  # left out on purpose
         self.assertEqual(d.report["decided_by_model"], 3)
+        # music never made (generate_kinds ["sfx"]): the director's "make" is dropped, the closest track used
+        d2 = director.pick(board, lib, ["dread", "terror"], 10, music_made=False)
+        self.assertNotIn("music_terror", d2.make)
+        self.assertEqual(d2.make, {})
+        self.assertIn(d2.chosen["music_dread"].id, ("m", "m2"))  # music comes from the library
+
+    def test_only_the_allowed_kinds_of_sound_are_paid_for(self):
+        import numpy as np
+        from production.paid import Budget, Studio
+        from production.score import Score
+
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        asked = []
+
+        class Fal:
+            def run(self, endpoint, args):
+                asked.append(endpoint)
+                raise AssertionError("nothing should be generated")
+
+        studio = Studio(Fal(), Budget(1.0, {}), root / "cache", {"models": {"music": "fal-ai/ace-step-1.5"}})
+        score = Score(studio, root / "w", 24000)
+        score.make_kinds = {"sfx"}  # effects may be made, music never
+        self.assertIsNone(score._gen("music", {"prompt": "drone"}, "music_dread"))
+        self.assertEqual(asked, [])
+        self.assertIsInstance(np.zeros(1), np.ndarray)
 
 
 @unittest.skipUnless(HAVE, "audio libraries or ffmpeg not installed")

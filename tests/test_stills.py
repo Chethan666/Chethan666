@@ -395,7 +395,8 @@ class TeamTests(unittest.TestCase):
         self.assertIn("google/nano-banana-2.1", endpoints)  # the style frame, from words alone
         self.assertIn("google/nano-banana-2.1/edit", endpoints)  # sheets, beats and the thumbnail, from references
         self.assertFalse(any("seedream" in e or "nano-banana-pro" in e for e in endpoints))  # Nano Banana 2.1 only
-        self.assertIn("fal-ai/ace-step-1.5", endpoints)  # music the library lacked, when making is allowed
+        self.assertNotIn("fal-ai/ace-step-1.5", endpoints)  # music is never made (generate_kinds ["sfx"])
+        self.assertIn("fal-ai/elevenlabs/sound-effects/v2", endpoints)  # effects the library lacked are
         self.assertIn("art_review", summary["agents"])
         self.assertIn("script_check", summary["agents"])
         self.assertTrue(summary["agents"]["sound"]["mix"]["checked"])
@@ -468,10 +469,13 @@ class TeamTests(unittest.TestCase):
         self.assertEqual(beats[1]["atmosphere"], ["rain", "flicker"])
         self.assertEqual(summary["agents"]["edit"]["atmosphere"], {"rain": 1, "flicker": 1})
 
-    def test_by_default_only_pictures_voice_and_checks_are_paid_for(self):
+    def test_by_default_music_is_never_paid_for(self):
         summary, _, fal = self.make(FakeFal)
         endpoints = {e for e, _ in fal.calls}
-        self.assertFalse(any("ace-step" in e or "music" in e or "sound-effects" in e for e in endpoints), endpoints)
+        self.assertFalse(any("ace-step" in e or "music" in e for e in endpoints), endpoints)
+        off = dict(cfg()["sound_library"], generate_missing=False)  # library only: nothing made at all
+        summary, _, fal = self.make(FakeFal, sound_library=off)
+        self.assertFalse(any("sound-effects" in e or "ace-step" in e for e, _ in fal.calls))
         self.assertEqual(summary["agents"]["sound"]["generated"], 0)
 
     def test_without_any_key_the_video_is_still_made_and_qa_says_what_to_check(self):

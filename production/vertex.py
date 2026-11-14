@@ -111,9 +111,22 @@ class Vertex:
         return (f"https://{self.host}/v1/projects/{self.project}/locations/{self.location}"
                 f"/publishers/google/models/{model}:{method}")
 
+    WAITS = (10.0, 30.0, 60.0)  # a busy model or a per-minute quota: wait and ask again before falling back
+
     def _post(self, model: str, body: dict[str, Any]) -> dict[str, Any]:
-        return self.http(self.url(model), method="POST", body=body, timeout=300,
-                         headers={"Authorization": f"Bearer {self.token()}", "Content-Type": "application/json"})
+        for k in range(len(self.WAITS) + 1):
+            try:
+                return self.http(self.url(model), method="POST", body=body, timeout=300,
+                                 headers={"Authorization": f"Bearer {self.token()}",
+                                          "Content-Type": "application/json"})
+            except MediaError as exc:
+                text = str(exc)
+                busy = any(w in text for w in ("HTTP 429", "HTTP 503", "RESOURCE_EXHAUSTED", "UNAVAILABLE"))
+                if not busy or k == len(self.WAITS):
+                    raise
+                log.info("Vertex %s busy (%s); asking again in %.0f s", model, text[:120], self.WAITS[k])
+                time.sleep(self.WAITS[k])
+        raise MediaError(f"vertex {model}: no answer")
 
     @staticmethod
     def _parts(args: dict[str, Any]) -> list[dict[str, Any]]:

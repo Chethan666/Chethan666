@@ -94,7 +94,7 @@ def _line(s: Sound) -> str:
 
 
 def prompt(story_title: str, items: list[tuple[dict[str, Any], list[tuple[Sound, float]]]],
-           library: Library | None = None, can_make: bool = True) -> str:
+           library: Library | None = None, can_make: bool = True, music_made: bool = True) -> str:
     blocks = []
     for need, cands in items:
         head = f"NEED {need['need']} ({need['kind']}): {need['text'][:160]}"
@@ -125,7 +125,8 @@ def prompt(story_title: str, items: list[tuple[dict[str, Any], list[tuple[Sound,
             "sparse, instrumental\". Other sounds cost about $0.01: describe exactly what is heard.\n"
             "3. Leave it out (effects only): \"id\" = \"\" and \"generate\" = \"\".\n"
             "Prefer the library when a candidate truly fits; make a new one when it doesn't. Return every NEED "
-            "once.")
+            "once." + ("" if music_made else " Music cannot be made for this video: for every music NEED pick "
+                       "the closest listed track."))
 
 
 @dataclass
@@ -137,7 +138,7 @@ class Decisions:
 
 
 def pick(board: Any, library: Library | None, cue_names: list[str], max_effects: int,
-         min_score: float = 0.55, can_make: bool = True) -> Decisions:
+         min_score: float = 0.55, can_make: bool = True, music_made: bool = True) -> Decisions:
     """For each need: a library sound, a new sound described by the director, or nothing."""
     all_needs = needs(board.data, cue_names, max_effects)
     items = [(n, shortlist(library, n) if library is not None else []) for n in all_needs]
@@ -147,7 +148,8 @@ def pick(board: Any, library: Library | None, cue_names: list[str], max_effects:
     if router is not None:
         try:
             result = router.one("planner").generate_json(
-                "sound_pick", SYSTEM, prompt(str(board.story.get("title", "")), items, library, can_make), SCHEMA)
+                "sound_pick", SYSTEM, prompt(str(board.story.get("title", "")), items, library, can_make,
+                                             music_made), SCHEMA)
             allowed = {n["need"]: {s.id: s for s, _ in c} for n, c in items}
             kinds = {n["need"]: n["kind"] for n, _ in items}
             for p in result.get("picks", []) if isinstance(result, dict) else []:
@@ -155,6 +157,8 @@ def pick(board: Any, library: Library | None, cue_names: list[str], max_effects:
                     continue
                 need, sid = str(p["need"]), str(p.get("id", "")).strip()
                 text = str(p.get("generate") or "").strip() if can_make else ""
+                if kinds[need] == "music" and not music_made:
+                    text = ""  # music is never made here: the closest library track (below)
                 if sid in allowed[need]:
                     out.chosen[need] = allowed[need][sid]
                 elif sid:
@@ -173,7 +177,7 @@ def pick(board: Any, library: Library | None, cue_names: list[str], max_effects:
             continue  # undecided and nothing in the library: made from the default description
         best, score = cands[0]
         # Any sting will do; with nothing to be made, the closest music and room tone too.
-        floor = {"music": 0.0 if not can_make else 0.9, "sting": 0.0,
+        floor = {"music": 0.0 if not (can_make and music_made) else 0.9, "sting": 0.0,
                  "ambience": 0.0 if not can_make else min_score}.get(n["kind"], min_score)
         if score >= floor:
             out.chosen[n["need"]] = best

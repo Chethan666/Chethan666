@@ -510,7 +510,9 @@ DEFAULTS: dict[str, Any] = {
             "release_tag": "sound-library",
             "local_dir": "",  # a folder with library.json and the files, instead of the release
             "min_score": 0.55,  # how well an effect must match its description to be used
-            "generate_missing": False,  # True: the director may have missing sounds made on fal (ACE-Step, effects); False: library only, never pays for sound
+            # Missing sounds: effects, room tone and the sting may be made by ElevenLabs Sound Effects on
+            # fal (a few cents a video); music always comes from the library (no paid music).
+            "generate_missing": True, "generate_kinds": ["sfx"],
             "save_generated": True,  # paid-for sounds go into the library after the run
         },
         # YouTube's "altered or synthetic content" flag: None follows the look (on for cinematic).

@@ -57,6 +57,7 @@ class Score:
         # fx_007, sting): used instead of generating. `generate_missing` False never pays for sound.
         self.chosen: dict[str, Path] = {}
         self.generate_missing = True
+        self.make_kinds: set[str] | None = None  # None: any kind may be made; else only these
         # The sound director's own descriptions for sounds it chose to have made (by name), and
         # the effects it chose to leave out.
         self.prompts: dict[str, str] = {}
@@ -73,8 +74,10 @@ class Score:
                 return decode(picked, self.rate)
             except MediaError as exc:
                 log.warning("Library sound for %s unreadable: %s", name, str(exc)[:120])
-        if not self.generate_missing or self.studio is None or role not in self.studio.models:
+        if not self.generate_missing or self.studio is None or not self.studio.models.get(role):
             return None
+        if self.make_kinds is not None and role not in self.make_kinds:
+            return None  # e.g. music from the library only, effects made when missing
         try:
             path = self.studio.call(role, args, "audio", self.work / f"{name}.mp3", f"sound_{role}", units=units)
             self.generated.append({"name": name, "role": role, "path": path,

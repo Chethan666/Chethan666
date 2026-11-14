@@ -59,6 +59,16 @@ class VertexTests(unittest.TestCase):
         self.assertEqual(got, {"output": '{"ok": true}'})
         self.assertEqual(calls[0][1]["systemInstruction"], {"parts": [{"text": "judge"}]})
 
+    def test_a_busy_model_is_asked_again_after_a_wait(self):
+        v, calls = self.client([MediaError("POST x: HTTP 429: RESOURCE_EXHAUSTED"), answer_picture()])
+        v.WAITS = (0.0, 0.0, 0.0)
+        v.run("vertex:gemini-nano-banana-2.1", {"prompt": "x"})
+        self.assertEqual(len(calls), 2)
+        v2, _ = self.client([MediaError("HTTP 429")] * 4)
+        v2.WAITS = (0.0, 0.0, 0.0)
+        with self.assertRaises(MediaError):  # then the router sends it to fal
+            v2.run("vertex:gemini-nano-banana-2.1", {"prompt": "x"})
+
     def test_a_regional_location_uses_its_own_host(self):
         v = Vertex(credentials={}, project="p", location="us-central1", token="t", http=lambda *a, **k: {})
         self.assertTrue(v.url("m").startswith("https://us-central1-aiplatform.googleapis.com/v1/projects/p/"

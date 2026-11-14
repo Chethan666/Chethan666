@@ -344,6 +344,37 @@ using your own client), and keep the refresh token. Never paste these into a cha
 them. Until the app is verified by Google, uploads from it stay private, which is what we
 want anyway.
 
+## Paid services
+
+| Job | Service | Key (GitHub secret) | Cost |
+|---|---|---|---|
+| Every picture (Nano Banana 2.1) and the picture checks (Gemini) | Google Cloud **Vertex AI** | `GCP_SERVICE_ACCOUNT_JSON` | about $0.05 a 2K picture; free while Google Cloud credits last |
+| Narration (ElevenLabs v3) and missing sound effects (ElevenLabs Sound Effects) | **fal.ai** | `FAL_KEY` | about $0.10 per 1,000 characters (~$0.90 an episode); effects a few cents |
+| Music | the channel's sound library | none | free (`sound_library.generate_kinds` is `["sfx"]`: music is never generated) |
+| If Vertex fails (not a refused picture) | the same request to Nano Banana 2.1 on fal | `FAL_KEY` | $0.08 a picture, only then |
+
+Without `GCP_SERVICE_ACCOUNT_JSON` every picture is painted on fal as before. ElevenLabs is used
+through fal rather than its own API: pay as you go at about half the per-character price of
+ElevenLabs' monthly plans at this channel's volume.
+
+### Setting up Google Cloud (Vertex AI)
+
+1. In the Google Cloud console (console.cloud.google.com), choose or create a project and note its
+   **project ID**. Make sure the project uses the billing account with the free-trial credits.
+2. APIs & Services, Library: enable the **Vertex AI API**.
+3. IAM & Admin, Service accounts: **create a service account** (e.g. `story-factory`) and give it
+   the role **Vertex AI User**.
+4. Open the service account, Keys, Add key, **Create new key**, JSON. A file downloads.
+5. In GitHub: the repository's Settings, Secrets and variables, Actions, **New repository secret**:
+   name `GCP_SERVICE_ACCOUNT_JSON`, value: the whole content of that file. Then delete the file
+   from your computer. (Optional: a repository *variable* `GCP_PROJECT` if the project differs
+   from the key's; `GCP_LOCATION` is `global` unless set.)
+6. Run **mode = video-check**: it signs in to Vertex and finds `gemini-nano-banana-2.1` and the
+   checker model, without generating anything. A model that is not found may first need to be
+   enabled in the Vertex AI Model Garden.
+
+Never paste the key into a chat, an issue or a file in the repository.
+
 ## Running it
 
 In GitHub Actions: run the workflow with **mode = video** (optionally a **story_id**).
