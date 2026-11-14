@@ -1,0 +1,419 @@
+{
+  "mode": "stills",
+  "video": "/home/runner/work/Horror/Horror/out/story-9003/video.mp4",
+  "seconds": 61.8,
+  "story_seconds": 55.8,
+  "beats": 12,
+  "point_of_view": "first",
+  "voices": {
+    "engine": "elevenlabs",
+    "host": "Brian",
+    "teller": "Charlotte",
+    "teller_kind": "woman",
+    "characters": {
+      "Lily": "Laura",
+      "Mara": "Alice",
+      "The Voice (from monitor)": "George"
+    }
+  },
+  "usd": 1.46,
+  "usd_by_task": {
+    "art_review": 0.0,
+    "picture_hero": 0.45,
+    "picture_reference": 0.08,
+    "picture_sheet": 0.2,
+    "picture_shot": 0.52,
+    "picture_thumbnail": 0.08,
+    "reference_check": 0.01,
+    "thumbnail_check": 0.0,
+    "vision": 0.04,
+    "voice": 0.08
+  },
+  "fal_balance_ran_out": false,
+  "qa": {
+    "status": "check",
+    "issues": [
+      "the scare picture (beat 5) passed no check: look at it",
+      "art review 5/10: Lily's nightlight is on, but the description says it's off in line 6. The nightl; Mara is asleep but the monitor is on her bedside table, facing away from her. Th; The baby monitor's red light is too intense and distracting. It should be subtle"
+    ],
+    "video_seconds": 61.8,
+    "loudness_lufs": -14.9,
+    "true_peak_dbtp": -1.4,
+    "seconds": 10.3
+  },
+  "agents": {
+    "script_check": {
+      "words": 122,
+      "estimated_seconds": 43.6,
+      "target_seconds": 52.0,
+      "scenes": 9,
+      "issues": [],
+      "seconds": 0.0
+    },
+    "casting": {
+      "point_of_view": "first",
+      "teller": "woman",
+      "why": "The 'I' telling the story is explicitly 'Mummy' from the daughter Lily's perspective, which in the first person aligns with the hero Mara's description as a mother.",
+      "engine": "elevenlabs",
+      "host_voice": "Brian",
+      "teller_voice": "Charlotte",
+      "quoted_lines": 3,
+      "character_voices": {
+        "Lily": "Laura",
+        "Mara": "Alice",
+        "The Voice (from monitor)": "George"
+      },
+      "seconds": 6.4
+    },
+    "voice": {
+      "seconds_of_speech": 55.8,
+      "chunks": 26,
+      "speakers": [
+        "Lily",
+        "The Voice (from monitor)",
+        "host",
+        "narrator"
+      ],
+      "lines_read_by_kokoro": 0,
+      "words_per_minute": 131,
+      "performance": {
+        "directed": true,
+        "sentences": 17,
+        "plain": 6,
+        "tags": {
+          "[curious]": 1,
+          "[exhales]": 1,
+          "[fearfully]": 1,
+          "[gasps]": 1,
+          "[hesitantly]": 1,
+          "[nervously]": 1,
+          "[ominously]": 1,
+          "[quietly]": 2,
+          "[urgently]": 1,
+          "[whispers]": 1
+        },
+        "unknown_tags": []
+      },
+      "listener": {
+        "model": "base.en",
+        "takes": 13,
+        "reread": 0,
+        "worst_match": 0.82
+      },
+      "seconds": 59.7
+    },
+    "storyboard": {
+      "beats": 12,
+      "directed_by_model": 12,
+      "host_beats": 2,
+      "scares": 3,
+      "check": {
+        "checked": true,
+        "fixed": [
+          {
+            "beat": 4,
+            "problem": "Mara is described as lying rigid, fully awake in bed, but line 4 says \"Then another voice. Low. Patient. \"Mummy is asleep.\"\" The image shows Mara reacting to that voice, but the problem is: the line i"
+          },
+          {
+            "beat": 7,
+            "problem": "Line 7 is \"I sat on her floor until dawn, the monitor in my lap.\" However, the picture includes Lily sleeping in the bed beside Mara. The line is focused solely on Mara's action (sitting with the moni"
+          }
+        ]
+      },
+      "average_seconds": 4.7,
+      "seconds": 75.0
+    },
+    "art": {
+      "style_frame": true,
+      "style_frame_by": "fal:reference",
+      "sheets": [
+        "Lily",
+        "Mara",
+        "The Storyteller"
+      ],
+      "designs": {
+        "Mara": "a woman in her early thirties, exhausted, dark brown hair tied back loosely, a grey oversized cardigan over dark pyjamas, no jewellery; Caucasian, early-thirties as noted. Slender, tired build. Pale fatigue-marked skin. Oval face, pronounced dark circles under her hazel eyes. Hair: dark brown, shoulder-length, always loosely tied back with flyaways. Wears no jewellery. Cardigan: exact shade of heather grey. Pyjama top: charcoal, trousers: black.",
+        "Lily": "a four-year-old girl with messy fair hair, pale yellow pyjamas with small stars; Caucasian, four years old. Slight, child's build. Fair, porcelain skin. Round face, small nose dotted with faint freckles. Hair: fine, fair blonde, bob-length, always slightly messy. Pyjamas: exact pale yellow with printed white stars. Pyjama fabric is brushed cotton.",
+        "The Storyteller": "a tall, gaunt man of indeterminate age in a long, worn charcoal coat and a wide-brimmed hat, his face mostly in shadow except for pale, kind, tired eyes; he always carries an old iron lantern whose flame burns blood red"
+      },
+      "places": [
+        {
+          "name": "Mara and Lily's house",
+          "scenes": [
+            1,
+            5,
+            6
+          ],
+          "design": "A modest, 1970s suburban house, mildly worn but clean. The interior walls are painted in a flat, faded cream now tinged grey in the low light. The main flooring is beige carpet, a little matted. At night, the only light sources are a small, warm-yellow star night-light in Lily's room and the tiny red LED of the baby monitor; otherwise, rooms are dark. The windows, with their cream cotton curtains, sometimes admit a dim, pre-dawn grey light or the suggestion of fog outside. The air is still.",
+          "sheet": true
+        },
+        {
+          "name": "The upstairs landing",
+          "scenes": [
+            4
+          ],
+          "design": "The narrow hallway upstairs, with the same faded cream walls and beige carpet as the rooms. A single, old ceiling fixture holds a failing bulb that flickers erratically, casting a dim, sickly-yellow light that makes the shadows jump. There are no other light sources. All bedroom doors are plain, painted wood. The air is thick and still.",
+          "sheet": true
+        }
+      ],
+      "reference_checks": [
+        {
+          "sheet": "The upstairs landing",
+          "kind": "location",
+          "ok": true,
+          "why": "None"
+        },
+        {
+          "sheet": "Mara and Lily's house",
+          "kind": "location",
+          "ok": true,
+          "why": "The image accurately depicts the described scene: a dark, worn 1970s suburban bedroom with a star nightlight, a baby monitor with a red LED, and beige carpet. The exterior view from the window is cons"
+        },
+        {
+          "sheet": "Mara",
+          "kind": "character",
+          "ok": true,
+          "why": "All details match the description perfectly."
+        },
+        {
+          "sheet": "Lily",
+          "kind": "character",
+          "ok": true,
+          "why": "None"
+        },
+        {
+          "sheet": "The Storyteller",
+          "kind": "character",
+          "ok": true,
+          "why": "None"
+        }
+      ],
+      "seconds": 139.9
+    },
+    "illustrator": {
+      "look": "cinematic",
+      "warned": "",
+      "faults_seen": {
+        "action": 4
+      },
+      "retry_usd": 0.08,
+      "retries_stopped": 0,
+      "cameras": {},
+      "pictures": 12,
+      "borrowed_neighbour": 0,
+      "placeholders": 0,
+      "scare_shots": [
+        4,
+        5,
+        10
+      ],
+      "key_beats": [],
+      "by_painter": {
+        "fal:reference (corrected)": 1,
+        "fal:sheet": 5,
+        "fal:hero": 1,
+        "fal:shot (corrected)": 1,
+        "fal:hero (doubted)": 1,
+        "fal:shot": 5,
+        "fal:shot (minor fault kept)": 4
+      },
+      "doubted_beats": [
+        5
+      ],
+      "painter_sizes": {
+        "fal:reference": "2752x1552",
+        "fal:sheet": "2560x1440",
+        "fal:hero": "2752x1536",
+        "fal:shot": "2752x1552"
+      },
+      "rejected": [
+        "style_frame (fal:reference): The picture shows the interior of a room, but the description asked for a wide establishing view of the house's exterior with no people.",
+        "beat_004 (fal:hero): The picture shows a woman reacting to the monitor, but the description asks for a tight shot of the baby monitor receiver only, with its speaker grille in focus.",
+        "beat_005 (fal:hero): The picture shows Mara on a staircase, not standing at Lily's closed bedroom door with her hand on the handle. It should show Mara at the door.",
+        "beat_005 (fal:shot): The door is ajar, not shut, and there is a red light visible from within the room, contradicting 'Her door was shut. Her night-light was off. I had left it on.' The picture should show Mara at a close",
+        "beat_011 (fal:shot, kept): The picture shows the storyteller lowering a lantern in a hollow, but the description says he is slowly lowering a red lantern. The flame is red, but the entire lantern appears to be glowing red, whic",
+        "beat_006 (fal:shot, kept): minor: The description states 'a dead night-light socket is visible' and 'The only vivid colour is the blood red of the baby monitor's small red light', but the image shows a working night light shaped like ",
+        "beat_009 (fal:shot, kept): The picture shows Lily crawling on the floor next to the bed, not sleeping in it. It should show Lily's sleeping form from the bed's foot, lying still with her back turned.",
+        "beat_000 (fal:shot, kept): The picture shows a baby monitor on the ground, which is not described in the prompt. The picture should show The Storyteller with his red lantern, and the distant house with a glowing yellow window, "
+      ],
+      "seconds": 229.0
+    },
+    "art_review": {
+      "reviewed": true,
+      "score": 5,
+      "flagged": [
+        {
+          "picture": 1,
+          "problem": "Lily's nightlight is on, but the description says it's off in line 6. The nightlight needs to be off. The light on the baby monitor is bright red, instead of a subtle glow, which clashes with the 'whi"
+        },
+        {
+          "picture": 2,
+          "problem": "Mara is asleep but the monitor is on her bedside table, facing away from her. The description mentions that Mara has the monitor in her lap, not on the bedside table. Her clothes don't match the descr"
+        },
+        {
+          "picture": 3,
+          "problem": "The baby monitor's red light is too intense and distracting. It should be subtle, as described in line 2 ('She sleeps with the baby monitor on'). The 'crackling' of the monitor is not visually represe"
+        },
+        {
+          "picture": 4,
+          "problem": "The baby monitor is showing a red light with an antenna, suggesting a signal, instead of 'crackled.' The focus should be on the 'whispering,' which should be implied by the lack of any obvious visual "
+        },
+        {
+          "picture": 5,
+          "problem": "The place is an upstairs landing, but it looks like a basement with a single light bulb hanging from the ceiling, which contradicts the 'upstairs landing' description. Mara is wearing different clothe"
+        },
+        {
+          "picture": 6,
+          "problem": "Lily is asleep, facing the wall, but her nightlight is on, which contradicts line 6. The window in the background shows a house that doesn't look like a suburban house; it looks more like a rustic cab"
+        },
+        {
+          "picture": 7,
+          "problem": "Mara is sitting on the floor, but her clothes are not the 'grey oversized cardigan over dark pyjamas' from the description. The baby monitor is on her lap, but it should be subtler, and its light is t"
+        },
+        {
+          "picture": 8,
+          "problem": "Mara's face is overly dark, and her hands are too large for her body. She looks like she's holding a baby monitor from another picture. The baby monitor should be more subtle and less distracting."
+        },
+        {
+          "picture": 9,
+          "problem": "Lily hasn't moved, but the nightlight is on, which contradicts line 6. The bed is too small for Lily, and she is lying on the floor. Her position is awkward and not natural."
+        },
+        {
+          "picture": 10,
+          "problem": "The monster is too clearly defined, which is not what 'a shadow or a shape' implies. The monster looks like a human, not a shadow. The focus should be on Mara's fear, not on the monster itself."
+        },
+        {
+          "picture": 11,
+          "problem": "The host is in an outdoor setting that is not 'a misty place,' as described in line 12. The house in the background is not 'a modest, 1970s suburban house.' The overall scene is too bright for a horro"
+        }
+      ],
+      "redrawn": [
+        {
+          "picture": 1,
+          "problem": "Lily's nightlight is on, but the description says it's off in line 6. The nightlight needs to be off. The light on the baby monitor is bright red, instead of a subtle glow, which clashes with the 'whi"
+        },
+        {
+          "picture": 2,
+          "problem": "Mara is asleep but the monitor is on her bedside table, facing away from her. The description mentions that Mara has the monitor in her lap, not on the bedside table. Her clothes don't match the descr"
+        }
+      ],
+      "strongest_picture": 10,
+      "seconds": 99.8
+    },
+    "colorist": {
+      "graded": 1,
+      "pictures": 12,
+      "film_brightness": 39.8,
+      "printed_down": 0.0,
+      "film_contrast": 30.1,
+      "changes": {
+        "5": {
+          "colour": 5.2
+        }
+      },
+      "seconds": 5.1
+    },
+    "motion": {
+      "enabled": false,
+      "seconds": 0.0
+    },
+    "edit_plan": {
+      "cold_open_beats": [],
+      "cold_open_seconds": 0.0,
+      "total_seconds": 61.8,
+      "seconds": 0.0
+    },
+    "sound": {
+      "music": [
+        "dread",
+        "terror",
+        "unease"
+      ],
+      "ambience": 4,
+      "effects": 0,
+      "synthesized": [],
+      "library": {
+        "library_sounds": 279,
+        "needs": 13,
+        "decided_by_model": 13,
+        "from_library": 8,
+        "made_new": 0,
+        "left_out": 5,
+        "from_library_by_kind": {
+          "music": 3,
+          "ambience": 4,
+          "sfx": 0,
+          "sting": 1
+        },
+        "picks": {
+          "music_unease": "music-apprehension-34af5f9e",
+          "music_dread": "music-night-break-ec6d60d8",
+          "music_terror": "music-bent-and-broken-56ffaa09",
+          "room_b9d1c7a39a8e47b3": "ambience-horror-sound-effects-library-amb-6075a55d",
+          "room_4cc20b250f1309d5": "ambience-sci-fi-ambience-sfx-cfb9c522",
+          "room_48c321019053676d": "ambience-sci-fi-ambience-sfx-cfb9c522",
+          "room_183a72bbe79863a1": "ambience-sci-fi-ambience-sfx-cfb9c522",
+          "sting": "sting-horror-hit-dd612c9d"
+        },
+        "made": {},
+        "library": true,
+        "fetched": 8,
+        "credits": 5
+      },
+      "generated": 0,
+      "saved_for_library": 0,
+      "mix": {
+        "checked": true,
+        "voice_over_bed_db": 9.8,
+        "after_db": 12.0,
+        "bed_lowered_db": 2.2
+      },
+      "seconds": 18.1
+    },
+    "edit": {
+      "segments": 14,
+      "size": "2560x1440",
+      "motion": "drift",
+      "moves": {
+        "push_in": 5,
+        "pan_right": 2,
+        "pan_left": 2,
+        "push_in_fast": 3,
+        "pull_out": 1,
+        "none": 1
+      },
+      "atmosphere": {
+        "rain": 1,
+        "flicker": 2,
+        "fog": 1
+      },
+      "seconds": 159.2
+    },
+    "packager": {
+      "thumbnails": 1,
+      "shorts": 1,
+      "chapters": 0,
+      "thumbnail_checks": [
+        {
+          "thumbnail": 1,
+          "ok": true,
+          "why": "The words 'MUMMY'S AWAKE' are clear, correctly spelled, and the focal point is the woman holding the baby monitor with the shadow in the background, creating a dark horror image. No other large words,"
+        }
+      ],
+      "seconds": 46.6
+    },
+    "qa": {
+      "status": "check",
+      "issues": [
+        "the scare picture (beat 5) passed no check: look at it",
+        "art review 5/10: Lily's nightlight is on, but the description says it's off in line 6. The nightl; Mara is asleep but the monitor is on her bedside table, facing away from her. Th; The baby monitor's red light is too intense and distracting. It should be subtle"
+      ],
+      "video_seconds": 61.8,
+      "loudness_lufs": -14.9,
+      "true_peak_dbtp": -1.4,
+      "seconds": 10.3
+    }
+  },
+  "review": "pending",
+  "render_minutes": 14.1
+}
