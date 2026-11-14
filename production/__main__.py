@@ -204,6 +204,9 @@ ALTERNATES = [  # listed alongside the configured models, to compare
     "fal-ai/flux-2-pro/edit", "fal-ai/flux-2-flex/edit", "fal-ai/flux-2/edit", "fal-ai/flux-2-max/edit",
     "fal-ai/seedvr/upscale/image", "fal-ai/clarity-upscaler", "fal-ai/recraft/upscale/crisp",
     "fal-ai/topaz/upscale/image", "fal-ai/crystal-upscaler",
+    # Nano Banana 2.1 (October 2026): its name on fal, to confirm
+    "fal-ai/nano-banana-2.1", "fal-ai/nano-banana-2.1/edit", "google/nano-banana-2.1", "google/nano-banana-2.1/edit",
+    "fal-ai/gemini-3.1-flash-image", "fal-ai/gemini-3.1-flash-image/edit",
 ]
 
 
