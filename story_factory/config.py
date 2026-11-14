@@ -301,7 +301,9 @@ DEFAULTS: dict[str, Any] = {
             # Spent by importance (runs 96 and 98 compared: PRODUCTION.md, "Cost and quality").
             # A style frame or a sheet that fails its check is painted once more, told what was wrong.
             "reference": ["fal:reference", "fal:reference", "cloudflare", "pollinations"],
-            "sheet": ["fal:sheet", "fal:sheet", "fal:shot", "cloudflare", "pollinations"],
+            # Sheets: Seedream 4.5 (it followed descriptions best), once more told what was wrong, then
+            # Seedream 5.0 Lite: a different model may succeed where the first failed twice.
+            "sheet": ["fal:sheet", "fal:sheet", "fal:sheet_alt", "cloudflare", "pollinations"],
             # Ordinary beats: Seedream, and a second Seedream try only for a serious fault (a picture
             # refused for a detail is kept).
             "beat": ["fal:shot", "fal:shot", "cloudflare", "pollinations"],
@@ -318,7 +320,8 @@ DEFAULTS: dict[str, Any] = {
         "cloudflare_model": "@cf/black-forest-labs/flux-1-schnell", "cloudflare_steps": 4,  # 4 keeps ~170 pictures a day free
         "models": {
             "reference": "fal-ai/bytedance/seedream/v4.5/text-to-image",  # style frame (text only)
-            "sheet": "fal-ai/bytedance/seedream/v5/lite/edit",    # character and location sheets (paints children too)
+            "sheet": "fal-ai/bytedance/seedream/v4.5/edit",       # character and location sheets (paints children too)
+            "sheet_alt": "fal-ai/bytedance/seedream/v5/lite/edit",
             "shot": "fal-ai/bytedance/seedream/v4.5/edit",        # every beat, from the references
             "shot_text": "fal-ai/bytedance/seedream/v4.5/text-to-image",
             "shot_alt": "fal-ai/nano-banana-2/edit",              # the corrector for key beats
@@ -334,11 +337,12 @@ DEFAULTS: dict[str, Any] = {
             "vision": "fal-ai/any-llm/vision",                   # the critic's eye
         },
         # An edit model asked without references uses its text-to-image twin.
-        "text_roles": {"shot": "shot_text", "shot_alt": "shot_alt_text", "sheet": "reference",
+        "text_roles": {"shot": "shot_text", "shot_alt": "shot_alt_text", "sheet": "reference", "sheet_alt": "reference",
                        "thumbnail": "shot_alt_text", "hero": "hero_text"},
         "model_args": {
             "reference": {"image_size": {"width": 2752, "height": 1548}, "num_images": 1},
             "sheet": {"image_size": {"width": 2560, "height": 1440}, "num_images": 1},
+            "sheet_alt": {"image_size": {"width": 2560, "height": 1440}, "num_images": 1},
             # Pictures that go into the film are painted at 2K, a little larger than the 1440p frame,
             # so they stay sharp under a camera move. Seedream: a custom size (from 2560x1440 up). Nano
             # Banana 2 and Pro: "2K" (the default "1K" is 1376x768, which goes soft when enlarged).

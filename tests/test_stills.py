@@ -348,7 +348,7 @@ class TeamTests(unittest.TestCase):
         places = summary["agents"]["art"]["places"]
         self.assertEqual([(x["name"], x["scenes"], x["sheet"]) for x in places], [("the night bus", [1, 2, 3], True)])
         sheet = [a["prompt"] for e, a in fal.calls
-                 if e == "fal-ai/bytedance/seedream/v5/lite/edit" and "location reference sheet" in a.get("prompt", "")]
+                 if e == "fal-ai/bytedance/seedream/v4.5/edit" and "location reference sheet" in a.get("prompt", "")]
         self.assertEqual(len(sheet), 1)
         self.assertIn("Two views of the same place side by side", sheet[0])
         in_bus = [p for p in prompts if "Place: the night bus: Outside: a cream" in p]
@@ -399,10 +399,10 @@ class TeamTests(unittest.TestCase):
         summary, out, fal = self.make(lambda root: FakeFal(root, reject_sheets=True), Router(), first_person=True)
         sheets = [(e, a["prompt"]) for e, a in fal.calls
                   if "A character reference sheet of one person, Dana" in a.get("prompt", "")]
-        # Seedream 5.0 Lite twice, then Seedream 4.5: each told what was wrong
-        self.assertEqual([e for e, _ in sheets], ["fal-ai/bytedance/seedream/v5/lite/edit",
-                                                  "fal-ai/bytedance/seedream/v5/lite/edit",
-                                                  "fal-ai/bytedance/seedream/v4.5/edit"])
+        # Seedream 4.5 twice, then Seedream 5.0 Lite: each told what was wrong
+        self.assertEqual([e for e, _ in sheets], ["fal-ai/bytedance/seedream/v4.5/edit",
+                                                  "fal-ai/bytedance/seedream/v4.5/edit",
+                                                  "fal-ai/bytedance/seedream/v5/lite/edit"])
         self.assertIn("Correct this from the previous attempt: three different people", sheets[1][1])
         self.assertIn("reference: character sheet of Dana: three different people", summary["qa"]["issues"])
         self.assertEqual(summary["qa"]["status"], "check")

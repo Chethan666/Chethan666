@@ -90,7 +90,7 @@ picture matters (see "Cost and quality" below for the evidence):
 | Pictures | Chain | Price per try |
 |---|---|---|
 | Style frame | Seedream 4.5 text-to-image, then once more if refused | $0.04 |
-| Character and place sheets | Seedream 5.0 Lite edit, again, then Seedream 4.5 | $0.035 / $0.04 |
+| Character and place sheets | Seedream 4.5 edit, again, then Seedream 5.0 Lite | $0.04 / $0.035 |
 | Ordinary beats | Seedream 4.5 edit; a second Seedream try only for a serious fault | $0.04 |
 | Key beats (`key_importance` 4+, at most `key_share` 25% of the story) | Seedream 4.5, then Nano Banana 2 edit at 2K as the corrector | $0.04 / $0.12 |
 | Scares (`scare_shots`, at most 4) | Nano Banana Pro edit at 2K, then Seedream 4.5 | $0.15 / $0.04 |
