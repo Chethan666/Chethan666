@@ -93,6 +93,18 @@ class Fal:
             raise MediaError(f"{endpoint}: {str(result['detail'])[:300]}")  # a failed job also says COMPLETED
         return result
 
+    def price(self, endpoint: str) -> str:
+        """fal's listed price for a model ("0.03 USD per image"), or "" when it cannot be read."""
+        try:
+            got = _request("https://api.fal.ai/v1/models/pricing?endpoint_id=" + urllib.parse.quote(endpoint, safe=""),
+                           headers=self.headers, timeout=30)
+        except MediaError:
+            return ""
+        for p in got.get("prices") or []:
+            if isinstance(p, dict) and p.get("unit_price") is not None:
+                return f"{p['unit_price']} {p.get('currency', 'USD')} per {p.get('unit', 'unit')}"
+        return ""
+
     def schema(self, endpoint: str) -> dict[str, Any]:
         """The model's input fields, from fal's public OpenAPI description."""
         url = "https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=" + urllib.parse.quote(endpoint, safe="")

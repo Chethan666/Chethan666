@@ -176,6 +176,10 @@ ALTERNATES = [  # listed alongside the configured models, to compare
     "fal-ai/nano-banana-pro", "fal-ai/nano-banana-pro/edit", "fal-ai/nano-banana-2", "fal-ai/nano-banana-2/edit",
     "fal-ai/bytedance/seedream/v4.5/text-to-image", "fal-ai/bytedance/seedream/v4.5/edit",
     "fal-ai/elevenlabs/tts/eleven-v3", "fal-ai/elevenlabs/sound-effects/v2", "fal-ai/ace-step-1.5",
+    # candidates for the picture bake-off: FLUX.2 with references, and detail (upscale) passes
+    "fal-ai/flux-2-pro/edit", "fal-ai/flux-2-flex/edit", "fal-ai/flux-2/edit", "fal-ai/flux-2-max/edit",
+    "fal-ai/seedvr/upscale/image", "fal-ai/clarity-upscaler", "fal-ai/recraft/upscale/crisp",
+    "fal-ai/topaz/upscale/image", "fal-ai/crystal-upscaler",
 ]
 
 
@@ -235,7 +239,8 @@ def check(models: dict, model_args: dict | None = None) -> int:
             failed += not role.startswith("(alt)")
             print(f"{role:<12} {endpoint}  NOT FOUND: {str(exc)[:160]}")
             continue
-        print(f"{role:<12} {endpoint}\n    inputs: {', '.join(info['fields'])}\n"
+        price = fal.price(endpoint) if os.environ.get("FAL_KEY") else ""
+        print(f"{role:<12} {endpoint}{'  [' + price + ']' if price else ''}\n    inputs: {', '.join(info['fields'])}\n"
               f"    required: {', '.join(info['required'])}")
         for field, choices in info.get("options", {}).items():
             print(f"    {field}: {json.dumps(choices)[:1500]}")
