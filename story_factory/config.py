@@ -397,7 +397,7 @@ DEFAULTS: dict[str, Any] = {
             "thumbnail": {"aspect_ratio": "16:9", "num_images": 1},
             "voice": {"stability": 0.5},
             "vision": {"model": "google/gemini-2.5-flash"},
-            "judge": {"model": "google/gemini-2.5-pro"},
+            "judge": {"model": "google/gemini-2.5-pro", "reasoning": True},  # this model refuses without it
             "flux": {"image_size": {"width": 2560, "height": 1440}, "output_format": "png", "safety_tolerance": "4"},
             "flux_text": {"image_size": {"width": 2560, "height": 1440}, "output_format": "png", "safety_tolerance": "4"},
             "upscale": {"upscale_mode": "target", "target_resolution": "2160p", "output_format": "png"},
