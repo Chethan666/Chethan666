@@ -394,6 +394,7 @@ class IllustratorAgent:
             return "scare" if beat.index in strongest else "key" if beat.index in key_beats else "beat"
 
         warned = lessons.load(board.conn) if cfg.get("lessons", True) else ""
+        d["tiers"] = {b.index: tier(b) for b in beats}
 
         def one(beat: Shot, fix: str = "") -> tuple[int, Path | None]:
             names = [n for n in beat.characters if n in sheets][:3]
@@ -402,6 +403,10 @@ class IllustratorAgent:
             refs = ([first] if first else []) + [sheets[n] for n in names]
             camera = str(cameras.get(beat.view, "")) if use_cameras else ""
             text = self.prompt(beat, d["house"], cast, names, bool(first), look, camera, place, warned)
+            if float(cfg.get("letterbox", 0) or 0) > 1.78:  # cinema bars will cover the top and bottom
+                text = text.replace("never split into panels.", "never split into panels. Composed for a wide "
+                                    "cinema frame: heads and the subject in the middle band, nothing important "
+                                    "near the top or bottom edge.", 1)
             if fix:  # the art review's note on the first version leads, so it is not lost at the end
                 text = f"Correct this from the previous attempt: {fix[:300].rstrip('. ')}. {text}"
             tag = f"_fix{abs(hash(fix)) % 10_000}" if fix else ""

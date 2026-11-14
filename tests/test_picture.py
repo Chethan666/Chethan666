@@ -537,6 +537,56 @@ class ReferenceCheck(unittest.TestCase):
             self.assertEqual(sheet_ok(None, image, "location", "the night bus", "x"), (True, "not checked"))
 
 
+@unittest.skipUnless(HAVE, "video libraries or ffmpeg not installed")
+class Clips(unittest.TestCase):
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+
+    def clip(self, name, source):
+        path = self.root / name
+        subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", source,
+                        "-pix_fmt", "yuv420p", str(path)], check=True)
+        return path
+
+    def test_a_short_clip_is_slowed_then_held_to_fill_its_beat(self):
+        from production.edit import FPS, Segment
+        from production.stills.post import render
+
+        clip = self.clip("c.mp4", "testsrc=size=640x360:rate=24:duration=4,eq=brightness=-0.3")
+        seg = Segment("seg_clip.mp4", 0.0, 6.0, None, clip=clip)
+        render(seg, self.root, {"grain": 0.018, "vignette": 0.22}, 1, (640, 360))
+        info = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_frames", "-show_entries",
+                               "stream=width,height,nb_read_frames,color_space", "-of", "csv=p=0",
+                               str(self.root / "seg_clip.mp4")], capture_output=True, text=True).stdout.strip()
+        self.assertEqual(info, f"640,360,bt709,{6 * FPS}")
+
+    def test_a_frozen_or_bright_clip_is_refused(self):
+        from production.stills.motion import frames, length, moves
+
+        frozen = self.clip("f.mp4", "color=c=0x202020:size=320x180:rate=24:duration=3")
+        alive = self.clip("a.mp4", "testsrc=size=320x180:rate=24:duration=3,eq=brightness=-0.3")
+        self.assertFalse(moves(frames(frozen, [0.1, 0.9], self.root / "f")))
+        self.assertTrue(moves(frames(alive, [0.1, 0.9], self.root / "a")))
+        self.assertEqual(length(5.8, [5, 10]), 5)  # 5 s slowed 1.25x covers 5.8 s
+        self.assertEqual(length(7.0, [5, 10]), 10)
+
+    def test_letterbox_bars_frame_a_cinema_screen(self):
+        from production.stills.camera import letterbox_filter
+
+        self.assertEqual(letterbox_filter(0, (2560, 1440)), "")
+        self.assertIn("h=184", letterbox_filter(2.39, (2560, 1440)))
+
+    def test_halation_warms_the_dark_around_a_light_and_leaves_the_dark_alone(self):
+        from production.stills.camera import halation
+
+        rgb = np.zeros((90, 160, 3), dtype=np.float32)
+        rgb[40:50, 75:85] = 1.0
+        out = halation(rgb, 0.5)
+        self.assertGreater(out[45, 86, 0], out[45, 86, 2])  # a warm haze just beside the light
+        self.assertEqual(float(out[5, 5].max()), 0.0)  # far from it, black stays black
+
+
 class FirstTry(unittest.TestCase):
     def test_a_person_with_a_sheet_needs_only_a_few_words(self):
         from production.stills.art import IllustratorAgent, short

@@ -30,6 +30,7 @@ over the moving picture, fixed to the frame like the vignette; flicker is a brig
 from __future__ import annotations
 
 import math
+import subprocess
 from pathlib import Path
 from typing import Iterable
 
@@ -93,8 +94,26 @@ def grain_on(rgb: np.ndarray, strength: float, seed: int) -> np.ndarray:
     return np.clip(rgb + (soft * strength * weight)[..., None], 0.0, 1.0)
 
 
+def halation(rgb: np.ndarray, strength: float) -> np.ndarray:
+    """Film's glow around bright lights: highlights bleed a warm red-orange haze into the dark
+    around them (on film, light scatters back through the emulsion). Only practical lights and
+    highlights are touched; a dark frame stays dark."""
+    if strength <= 0:
+        return rgb
+    luma = rgb @ np.array([0.299, 0.587, 0.114], dtype=np.float32)
+    bright = np.clip((luma - 0.62) / 0.38, 0.0, 1.0) ** 2
+    if float(bright.max()) <= 0:
+        return rgb
+    h, w = luma.shape
+    radius = max(2.0, 0.006 * w)
+    light = Image.fromarray((np.clip(rgb * bright[..., None], 0, 1) * 255).astype("uint8"))
+    glow = np.asarray(light.filter(ImageFilter.GaussianBlur(radius)), dtype=np.float32) / 255.0
+    glow = glow * np.array([1.0, 0.5, 0.32], dtype=np.float32) * strength
+    return 1.0 - (1.0 - rgb) * (1.0 - glow)  # screen: light only adds
+
+
 def canvas(picture: Path, out: Path, zoom: float, grain: float, seed: int,
-           size: tuple[int, int] = (W, H)) -> tuple[int, int]:
+           size: tuple[int, int] = (W, H), glow: float = 0.0) -> tuple[int, int]:
     """The picture at the largest size its move shows it (frame x zoom), with the film's grain.
 
     Pictures are kept larger than the frame until here, so a push-in ends on real detail
@@ -108,7 +127,7 @@ def canvas(picture: Path, out: Path, zoom: float, grain: float, seed: int,
             im = im.resize((max(round(im.width * scale), cw), max(round(im.height * scale), ch)), Image.LANCZOS)
         x, y = (im.width - cw) // 2, (im.height - ch) // 2
         rgb = np.asarray(im.crop((x, y, x + cw, y + ch)), dtype=np.float32) / 255.0
-    rgb = grain_on(rgb, grain, seed)
+    rgb = grain_on(halation(rgb, glow), grain, seed)
     Image.fromarray((rgb * 255.0 + 0.5).astype("uint8")).save(out, compress_level=1)
     return cw, ch
 
@@ -135,6 +154,33 @@ def move_filter(route: tuple[float, float, float, float, str], frames: int, canv
         parts.append(f"perspective=x0='{x0}':y0='{y0}':x1='{x1}':y1='{y0}':x2='{x0}':y2='{y1}':x3='{x1}':y3='{y1}':"
                      f"interpolation=cubic:sense=source:eval=frame,crop={w}:{h}:0:0")
     return ",".join(parts)
+
+
+def clip_filter(clip: Path, seconds: float, grain: float = 0.0, size: tuple[int, int] = (W, H),
+                max_stretch: float = 1.25) -> str:
+    """A moving clip made to fit its beat: slowed by up to `max_stretch` if it is short, then
+    holding its last frame; scaled and cropped to the frame; HD colours; the film's grain."""
+    w, h = size
+    probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+                            str(clip)], capture_output=True, text=True)
+    try:
+        length = float(probe.stdout.strip()) or seconds
+    except ValueError:
+        length = seconds
+    stretch = min(max(seconds / length, 1.0), max_stretch)
+    # Moving pictures need moving grain; kept faint, since it is the costliest thing to encode.
+    noise = f",noise=c0s={max(1, round(grain * 150))}:c0f=t" if grain > 0 else ""
+    return (f"setpts={stretch:.4f}*PTS,scale={w}:{h}:force_original_aspect_ratio=increase:flags=lanczos,"
+            f"crop={w}:{h},fps=24,tpad=stop_mode=clone:stop_duration={seconds + 1:.2f},{TO_VIDEO}{noise}")
+
+
+def letterbox_filter(ratio: float, size: tuple[int, int] = (W, H)) -> str:
+    """Black bars that frame the picture as a cinema screen (2.39 = anamorphic widescreen); 0 = none."""
+    w, h = size
+    if ratio <= w / h:
+        return ""
+    bar = int(round((h - w / ratio) / 2))
+    return f"drawbox=x=0:y=0:w={w}:h={bar}:color=black:t=fill,drawbox=x=0:y={h - bar}:w={w}:h={bar}:color=black:t=fill"
 
 
 def vignette_filter(vignette: float) -> str:

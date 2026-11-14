@@ -35,6 +35,7 @@ class Shot:
     picture: str = ""
     characters: list[str] = field(default_factory=list)
     sound: str = ""
+    motion: str = ""  # what moves if the beat becomes a clip (production/stills/motion.py)
     scare: bool = False
     importance: int = 2
     directed: bool = False

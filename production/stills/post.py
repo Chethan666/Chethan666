@@ -157,23 +157,32 @@ def render(seg: Segment, work: Path, finish: dict[str, float], seed: int = 0, si
     n = seg.frames()
     seconds = n / FPS
     move = seg.camera if seg.camera in camera.MOVES else "none"
-    route = camera.path(move, seconds)
     plate = work / f"{Path(seg.name).stem}_canvas.png"
-    canvas = camera.canvas(seg.picture, plate, max(route[0], route[1]), float(finish.get("grain", 0)), seed, size)
+    if seg.clip is not None:  # a moving clip: it carries its own movement, the finish is the same
+        source = ["-i", str(seg.clip)]
+        base = camera.clip_filter(seg.clip, seconds, float(finish.get("grain", 0)), size)
+        move = "clip"
+    else:
+        route = camera.path(move, seconds)
+        canvas = camera.canvas(seg.picture, plate, max(route[0], route[1]), float(finish.get("grain", 0)), seed,
+                               size, float(finish.get("halation", 0)))
+        source = ["-loop", "1", "-framerate", str(FPS), "-i", plate.name]
+        base = camera.move_filter(route, n, canvas, size)
     inputs, steps = camera.atmosphere(seg.atmosphere, textures or {}, 1, size)
-    tail = [camera.vignette_filter(float(finish.get("vignette", 0)))]
+    tail = [camera.vignette_filter(float(finish.get("vignette", 0))),
+            camera.letterbox_filter(float(finish.get("letterbox", 0)), size)]
     if seg.fade_in:
         tail.append(f"fade=t=in:st=0:d={seg.fade_in:.2f}")
     if seg.fade_out:
         tail.append(f"fade=t=out:st={max(seconds - seg.fade_out, 0):.2f}:d={seg.fade_out:.2f}")
     tail = [t for t in tail if t]
-    graph = ";".join([f"[0:v]{camera.move_filter(route, n, canvas, size)}[shot]", *steps,
+    graph = ";".join([f"[0:v]{base}[shot]", *steps,
                       f"[shot]{','.join(tail) or 'null'}[out]"])
     still = move == "none" and not seg.atmosphere
     tune = ["-tune", "stillimage"] if still else []
     # aq-mode 3 spends more of the bitrate on dark areas, where a horror film lives and where
     # an encoder otherwise leaves blocks and bands.
-    _ff(["-loop", "1", "-framerate", str(FPS), "-i", plate.name, *inputs, "-filter_complex", graph, "-map", "[out]",
+    _ff([*source, *inputs, "-filter_complex", graph, "-map", "[out]",
          "-frames:v", str(n), "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-x264-params", "aq-mode=3",
          # rain and flicker change every pixel every frame: a ceiling keeps the file sane (YouTube
          # asks for 16-24 Mbit/s at 1440p)
@@ -218,6 +227,9 @@ class EditAgent:
                 seg.camera = "push_in_fast" if n == len(cold) - 1 else "push_in"
             if d["title_seconds"]:
                 segs[len(cold)].camera = "push_in"
+        clips: dict[int, Path] = d.get("clips") or {}
+        for seg, beat in list(zip(story, beats)) + [(seg, beats[i]) for seg, i in zip(cold, d["cold"])]:
+            seg.clip = clips.get(beat.index)  # a beat the motion stage animated plays its clip
         textures: dict[str, Path] = {}
         if cfg.get("atmosphere", True):  # rain, fog or a failing light, where the storyboard saw them
             for seg, beat in list(zip(story, beats)) + [(seg, beats[i]) for seg, i in zip(cold, d["cold"])]:
@@ -233,7 +245,8 @@ class EditAgent:
                 story[k].fade_out = max(story[k].fade_out, dip)
                 story[k + 1].fade_in = max(story[k + 1].fade_in, dip)
         look = d.get("look") or {}
-        finish = {"grain": float(look.get("grain", 0)), "vignette": float(look.get("vignette", 0))}
+        finish = {"grain": float(look.get("grain", 0)), "vignette": float(look.get("vignette", 0)),
+                  "halation": float(look.get("halation", 0)), "letterbox": float(cfg.get("letterbox", 0) or 0)}
         work = board.work
         with ThreadPoolExecutor(max_workers=int(cfg.get("render_workers", 3))) as pool:
             names = list(pool.map(lambda job: render(job[1], work, finish, job[0], size, textures), enumerate(segs)))
@@ -254,7 +267,8 @@ class EditAgent:
         moves: dict[str, int] = {}
         air: dict[str, int] = {}
         for seg in segs:
-            moves[seg.camera] = moves.get(seg.camera, 0) + 1
+            kind = "clip" if seg.clip is not None else seg.camera
+            moves[kind] = moves.get(kind, 0) + 1
             for a in seg.atmosphere:
                 air[a] = air.get(a, 0) + 1
         return {"segments": len(segs), "size": f"{size[0]}x{size[1]}", "motion": motion, "moves": moves,
@@ -325,7 +339,7 @@ class PackagerAgent:
         windows = package.short_windows(beats, d["scenes"], d["offset"], int(cfg.get("shorts", 2)), 25.0,
                                         float(cfg.get("short_max_seconds", 55.0)))
         shorts = package.shorts(d["video"], windows, d["cues"], str(d["titles"][0]), board.out, board.work)
-        package.contact_sheet(beats, d["pictures"], board.out / "contact_sheet.jpg")
+        package.contact_sheet(beats, d["pictures"], board.out / "contact_sheet.jpg", moving=set(d.get("clips") or {}))
         package.preview(d["video"], board.out / "preview_60s.mp4")
         chapters = shotlist.chapters(board.router, d["scenes"], beats, d["offset"])
         description = str(d["packaging"].get("description", ""))

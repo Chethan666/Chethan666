@@ -26,6 +26,7 @@ can before the next agent builds on it (✓ = checks; ↻ = fixes itself):
 | 5 | Illustrator + critic | One picture per beat, painted at 2K from its place's sheet and its people's sheets; the scare shots by the strongest painter | ✓↻ each picture checked in code and by a vision model against its description and the narrated words; a refused picture goes to the next painter, which is told what was wrong; a refused paid picture is never replaced by a free painter's | Seedream 4.5 edit, then Nano Banana 2 edit | Cloudflare FLUX, Pollinations, a neighbour's picture |
 | 6 | Art review | All the pictures side by side with the narration: the same person and the same place look the same, the order tells the story, the scare lands | ✓↻ the worst `art_review_fixes` (2) are redrawn with its note (the critic checks the redraw) | vision model, ~$0.002 | |
 | 7 | Colorist | Measures every picture against the film's median brightness, contrast and colour cast | ✓↻ a picture outside the tolerance (one that would jump at the cut) is brought most of the way back; the rest are not touched | | |
+| 7b | Animation (off until a video model is set) | Chosen beats become clips made from their finished pictures | ✓ each clip checked in code (moves, not blank or bright) and by the vision model; a failed clip leaves its beat a still | an image-to-video model on fal | the still |
 | 8 | Edit plan | Cold open, title card, the story, end screen; captions | | | |
 | 9 | Sound | The sound director picks music, room tone, effects and stingers from the channel's sound library (or has them made, if `sound_library.generate_missing`) | ✓↻ the **mix check**: under speech the voice must stand `voice_over_bed_db` (12 dB) above everything else, or the bed is lowered | library (free) | synthesized drone and cues |
 | 10 | Edit | Every still becomes a shot at 1440p: a slow, steady camera move suited to its framing, rain, fog or a failing light where the storyboard saw them, fine film grain, a vignette, HD colours; exactly its frames, a dip to black between scenes, -14 LUFS | | | |
@@ -222,6 +223,39 @@ Every video run also pushes small review images (the contact sheet, thumbnails, 
 20 s, four full-size frames, the reports) to the `review-media` branch under `run-<number>/`,
 so a run can be judged without downloading the artifact; `mode = video-share` with a run id
 does the same for an earlier run.
+
+## From stills to moving video
+
+The pipeline is built as a film made of shots, so it can become a moving-video pipeline without
+being rebuilt. Each beat already has what a video model needs: a finished, graded picture of
+designed people in a designed place, its exact length, the movement in it (`Shot.motion`,
+written by the storyboard), its camera move and its atmosphere. The animation stage
+(`production/stills/motion.py`) sits between the colorist and the edit and is off until a model
+is set. To turn it on:
+
+1. Pick an image-to-video model on fal.ai and run `mode = video-check` with overrides
+   `stills.models.clip=<endpoint>` to see what it accepts.
+2. Set `stills.models.clip` (and `clip_alt` as its fallback), their prices per second in
+   `stills.prices`, the lengths they accept in `stills.animation.durations`, and the name of
+   their start-image field in `animation.image_field` (`image_url` for most, `start_image_url`
+   for Kling).
+3. Set `stills.animation.enabled = true` and which beats move: `beats = "scares"` (the
+   cheapest start), `"key"` (scares and key beats) or `"all"` (a fully moving video); and
+   `max_clips`.
+
+Every clip starts from the beat's picture, so the people, the place and the grade stay the
+same, and asks only for the beat's one movement with the camera nearly still. It is checked
+like a picture (it must move, must not be blank or bright, and its middle frame must show the
+beat); a clip that fails, or a model that fails, leaves the beat a still. The edit plays a clip
+at the beat's exact length (slowed by up to 1.25x, then holding its last frame) with the same
+grain, atmosphere, vignette, bars and colours as a still, so clips and stills cut together. Cost
+is the model's price per second times the clips' lengths, within the same `max_usd` cap; the
+contact sheet marks clips.
+
+**The cinematic finish**, for stills and clips alike: 24 frames a second, film grain, a
+vignette, halation (`looks.cinematic.halation`: the warm glow film gives around bright lights),
+a night grade, HD colours at 1440p, and optional cinema bars (`stills.letterbox = 2.39` frames
+every shot as anamorphic widescreen; the pictures are then composed for the middle band).
 
 ## Cost and quality
 

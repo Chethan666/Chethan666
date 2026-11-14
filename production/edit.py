@@ -48,6 +48,7 @@ class Segment:
     end: float
     picture: Path | None = None
     camera: str = "none"  # the camera move over it (production/stills/camera.py)
+    clip: Path | None = None  # a moving clip instead of the still (production/stills/motion.py)
     atmosphere: tuple[str, ...] = ()  # rain, fog, flicker
     fade_in: float = 0.0
     fade_out: float = 0.0

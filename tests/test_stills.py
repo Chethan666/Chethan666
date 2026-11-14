@@ -99,6 +99,10 @@ class FakeFal:
         self.bright = painted(folder / "bright.png", bright=True)
         self.bright_shots = bright_shots
         self.reject_vision = reject_vision
+        self.clip = folder / "fake_clip.mp4"
+        subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i",
+                        "testsrc=size=640x360:rate=24:duration=5,eq=brightness=-0.35", "-pix_fmt", "yuv420p",
+                        str(self.clip)], check=True)
         self.audio = folder / "fake.wav"
         t = np.arange(44100 * 2) / 44100
         soundfile.write(self.audio, (0.2 * np.sin(2 * np.pi * 220 * t)).astype(np.float32), 44100)
@@ -115,6 +119,8 @@ class FakeFal:
             return {"output": '{"ok": true, "reason": "fine"}'}
         if "elevenlabs" in endpoint or "ace-step" in endpoint:
             return {"audio": {"url": self.audio.as_uri()}}
+        if "i2v" in endpoint:  # an image-to-video model: a short moving clip
+            return {"video": {"url": self.clip.as_uri()}}
         if "seedream" in endpoint and self.bright_shots > 0:
             self.bright_shots -= 1
             return {"images": [{"url": self.bright.as_uri()}]}
@@ -309,8 +315,8 @@ class TeamTests(unittest.TestCase):
         self.assertFalse((out / "work").exists())
         self.assertEqual(json.loads((out / "metadata.json").read_text())["title"], "The Extra Passenger")
         self.assertEqual(list(summary["agents"]), ["script_check", "casting", "voice", "storyboard", "art",
-                                                   "illustrator", "art_review", "colorist", "edit_plan", "sound",
-                                                   "edit", "packager", "qa"])
+                                                   "illustrator", "art_review", "colorist", "motion", "edit_plan",
+                                                   "sound", "edit", "packager", "qa"])
         edit = summary["agents"]["edit"]
         self.assertEqual(edit["motion"], "drift")  # every story picture is a moving shot
         self.assertGreater(sum(n for move, n in edit["moves"].items() if move != "none"), 3)
@@ -407,6 +413,30 @@ class TeamTests(unittest.TestCase):
         self.assertIn("reference: character sheet of Dana: three different people", summary["qa"]["issues"])
         self.assertEqual(summary["qa"]["status"], "check")
         self.assertTrue((out / "video.mp4").exists())  # reported, not stopped
+
+    def test_switched_on_the_animation_stage_turns_the_scares_into_clips(self):
+        from story_factory.config import DEFAULTS
+
+        models = dict(DEFAULTS["stills"]["models"], clip="fal-ai/fake/i2v")
+        prices = dict(DEFAULTS["stills"]["prices"], **{"fal-ai/fake/i2v": 0.05})
+        animation = dict(DEFAULTS["stills"]["animation"], enabled=True, beats="all", max_clips=2)
+        summary, out, fal = self.make(FakeFal, Router(), first_person=True, models=models, prices=prices,
+                                      animation=animation)
+        motion = summary["agents"]["motion"]
+        self.assertEqual(motion["clips"], 2, motion)
+        cold = summary["agents"]["edit_plan"]["cold_open_beats"]  # the cold open may replay an animated beat
+        self.assertGreaterEqual(summary["agents"]["edit"]["moves"].get("clip"), 2)
+        self.assertLessEqual(summary["agents"]["edit"]["moves"].get("clip"), 2 + len(cold))
+        asked = [a for e, a in fal.calls if e == "fal-ai/fake/i2v"]
+        self.assertTrue(all("Keep the picture exactly as it is" in a["prompt"] for a in asked))
+        self.assertTrue(all(a["duration"] == "5" for a in asked))
+        self.assertTrue((out / "video.mp4").exists())
+        self.assertEqual(summary["qa"]["status"] in ("pass", "check"), True)
+
+    def test_the_animation_stage_is_off_by_default(self):
+        summary, _, fal = self.make(FakeFal)
+        self.assertEqual(summary["agents"]["motion"], {"enabled": False, "seconds": summary["agents"]["motion"]["seconds"]})
+        self.assertNotIn("clip", summary["agents"]["edit"]["moves"])
 
     def test_pictures_held_still_and_the_cap(self):
         summary, out, _ = self.make(FakeFal, motion="none", max_usd=0.3)

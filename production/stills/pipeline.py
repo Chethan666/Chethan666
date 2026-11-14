@@ -14,6 +14,7 @@ from .art import ArtDirectorAgent, IllustratorAgent
 from .board import Board, Showrunner, _json
 from .checks import ArtReviewAgent, ScriptCheckAgent
 from .grade import ColoristAgent
+from .motion import MotionAgent
 from .post import EditAgent, EditPlanAgent, PackagerAgent, QAAgent, SoundAgent
 from .storyboard import StoryboardAgent
 from .voices import CastingAgent, VoiceAgent
@@ -24,7 +25,8 @@ log = logging.getLogger(__name__)
 def team() -> list[Any]:
     """The agents, in the order the showrunner runs them."""
     return [ScriptCheckAgent(), CastingAgent(), VoiceAgent(), StoryboardAgent(), ArtDirectorAgent(),
-            IllustratorAgent(), ArtReviewAgent(), ColoristAgent(), EditPlanAgent(), SoundAgent(), EditAgent(), PackagerAgent(),
+            IllustratorAgent(), ArtReviewAgent(), ColoristAgent(), MotionAgent(),
+            EditPlanAgent(), SoundAgent(), EditAgent(), PackagerAgent(),
             QAAgent()]
 
 

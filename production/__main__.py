@@ -225,7 +225,7 @@ def check(models: dict, model_args: dict | None = None) -> int:
     print("FAL_KEY:", "set" if os.environ.get("FAL_KEY") else "MISSING (add it as a GitHub Actions secret)")
     fal = Fal(key=os.environ.get("FAL_KEY") or "not-needed-to-read-schemas")
     failed = 0
-    roles = dict(models)
+    roles = {role: endpoint for role, endpoint in models.items() if endpoint}  # empty: switched off
     seen = set(roles.values())
     roles.update({f"(alt) {e}": e for e in ALTERNATES if e not in seen})
     for role, endpoint in roles.items():

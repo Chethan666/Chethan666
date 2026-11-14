@@ -46,6 +46,7 @@ SCHEMA = {
             "importance": {"type": "integer"},
             "view": {"type": "string", "enum": list(VIEWS)},
             "atmosphere": {"type": "array", "items": {"type": "string", "enum": list(ATMOSPHERES)}},
+            "motion": {"type": "string"},
         }}}},
 }
 
@@ -81,6 +82,8 @@ def prompt(beats: list[Shot], scenes: list[dict[str, Any]], cast: list[dict[str,
             f"Beats marked [HOST] show {HOST}, the channel's host, in his place between the worlds, speaking "
             "to us; describe him with the moment's mood\n"
             "- characters: cast names in the picture (exact spelling), [] if none\n"
+            "- motion: if this picture were filmed, the one small movement in it, in at most 12 words "
+            "(\"her fingers tighten on the receiver\", \"the hooded shape leans closer\"); the camera holds still\n"
             "- sound: one short sound effect for this beat (\"a door creaks open slowly\"), or \"\"\n"
             "- scare: true only for the few beats where something frightening is revealed\n"
             "- importance: 1 (connective) to 5 (the moment the story turns on)\n"
@@ -157,6 +160,7 @@ class StoryboardAgent:
                 chars = [shotlist._canonical(str(n), names) for n in item.get("characters") or [] if str(n).strip()]
                 beat.characters = ([HOST] if beat.index in host_beats else chars)[:3]
                 beat.sound = str(item.get("sound", "")).strip()[:120]
+                beat.motion = str(item.get("motion", "")).strip()[:160]
                 beat.scare = bool(item.get("scare")) and beat.index not in host_beats
                 try:
                     beat.importance = min(max(int(item.get("importance", 2)), 1), 5)

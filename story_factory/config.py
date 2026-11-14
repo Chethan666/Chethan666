@@ -237,6 +237,7 @@ DEFAULTS: dict[str, Any] = {
                 # into each picture at the size it is shown, and a vignette fixed to the frame.
                 "grain": 0.018,
                 "vignette": 0.22,
+                "halation": 0.35,  # film's warm glow around bright lights (lamps, screens, the red accent)
                 # The film's brightness ceiling (mean luma, 0-255): above it the colorist prints every
                 # picture down together. Night horror sits around 30-40.
                 "max_brightness": 40,
@@ -272,6 +273,8 @@ DEFAULTS: dict[str, Any] = {
         # pan, close ones push in, a scare lunges and settles, a security camera holds still);
         # "none": every picture is held perfectly still.
         "motion": "drift",
+        # Cinema bars: 2.39 frames every shot as anamorphic widescreen inside the 16:9 video; 0 = none.
+        "letterbox": 0,
         # The video's frame. 1440p, not 1080p: YouTube gives 1440p uploads its better codec (VP9/AV1)
         # even when watched at 1080p, and dark, grainy pictures are where the plain one bands and
         # blocks. About twice the render time of 1080p.
@@ -295,6 +298,15 @@ DEFAULTS: dict[str, Any] = {
         # of max_usd; past it, every picture keeps its best try. `lessons`: the faults the critic refused
         # most often in earlier videos are named in every picture prompt (counted in the story database).
         "retry_share": 0.15, "lessons": True,
+        # The animation stage (production/stills/motion.py): chosen beats become clips made from their
+        # finished pictures, checked like pictures; everything else stays a still. Off until an
+        # image-to-video model is set in `models.clip`. beats: "scares", "key" (scares and key
+        # beats) or "all". durations: the clip lengths each model accepts, in seconds. image_field:
+        # the name a model gives its start picture ("image_url" for most, "start_image_url" for Kling).
+        "animation": {"enabled": False, "beats": "scares", "max_clips": 12, "max_stretch": 1.25,
+                   "durations": {"clip": [5, 10], "clip_alt": [5, 10]},
+                   "image_field": {"clip": "image_url", "clip_alt": "image_url"},
+                   "check_clips": True, "parallel": 3},
         "beat_min_seconds": 5.0, "beat_max_seconds": 11.0,
         "scene_dip_seconds": 0.35,
         # Painters tried in order until the critic passes a picture; each is told what the critic
@@ -339,6 +351,9 @@ DEFAULTS: dict[str, Any] = {
             # ElevenLabs instead: "fal-ai/elevenlabs/music" ($0.80 a minute, whole minutes).
             "music": "fal-ai/ace-step-1.5",
             "vision": "fal-ai/any-llm/vision",                   # the critic's eye
+            # Image-to-video models for the motion stage (off while empty): e.g. a Kling, Seedance or
+            # Wan image-to-video endpoint on fal.ai, with its price per second in `prices`.
+            "clip": "", "clip_alt": "",
         },
         # An edit model asked without references uses its text-to-image twin.
         "text_roles": {"shot": "shot_text", "shot_alt": "shot_alt_text", "sheet": "reference", "sheet_alt": "reference",
