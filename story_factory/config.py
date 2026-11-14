@@ -327,15 +327,16 @@ DEFAULTS: dict[str, Any] = {
             # Sheets: Seedream 4.5 (it followed descriptions best), once more told what was wrong, then
             # Seedream 5.0 Lite: a different model may succeed where the first failed twice.
             "sheet": ["fal:sheet", "fal:sheet", "fal:sheet_alt", "cloudflare", "pollinations"],
-            # Ordinary beats: Seedream, and a second Seedream try only for a serious fault (a picture
-            # refused for a detail is kept).
+            # Every picture of the film: Nano Banana 2.1 (the 5-way bake-off, run 109: as good as Pro
+            # for faces, places and the moment, at about half its price), and a second try only for a
+            # serious fault (a picture refused for a detail is kept).
             "beat": ["fal:shot", "fal:shot", "cloudflare", "pollinations"],
-            # Key beats (`key_importance`, at most `key_share` of the story): Nano Banana 2 corrects
-            # a refused picture far more often than Seedream does (about 2 in 3 against 1 in 7).
+            # Key beats (`key_importance`, at most `key_share` of the story): the corrector, told
+            # what was refused, keeps any detail fault too.
             "key": ["fal:shot", "fal:shot_alt", "cloudflare", "pollinations"],
-            # The scares (at most `scare_shots`, most important first) are the frames a viewer
-            # remembers and the ones a thumbnail is made from: the strongest painter first.
-            "scare": ["fal:hero", "fal:shot", "cloudflare", "pollinations"],
+            # The scares (at most `scare_shots`, most important first): Nano Banana 2.1, once more
+            # told what was refused.
+            "scare": ["fal:shot", "fal:hero", "cloudflare", "pollinations"],
             "thumbnail": ["fal:thumbnail"],
         },
         # The picture bake-off (`produce --bakeoff`, workflow overrides `bakeoff=...`): the same
@@ -343,36 +344,44 @@ DEFAULTS: dict[str, Any] = {
         "bakeoff": {
             "max_usd": 8.0, "retry_share": 0.06,
             "setups": {
-                "mix": {"label": "Today's mix: Seedream 4.5, Nano Banana Pro for scares"},
+                "default": {"label": "Default: Nano Banana 2.1 for everything"},
+                "seedream": {"label": "Seedream 4.5, Nano Banana Pro for scares (the default until run 109)",
+                             "chains": {"beat": ["fal:seedream", "fal:seedream"],
+                                        "key": ["fal:seedream", "fal:shot"],
+                                        "scare": ["fal:pro", "fal:seedream"]}},
                 "nb21": {"label": "Nano Banana 2.1, every picture",
                          "chains": {"beat": ["fal:nb21", "fal:nb21"], "key": ["fal:nb21", "fal:nb21"],
                                     "scare": ["fal:nb21", "fal:nb21"]}},
                 "sd35": {"label": "Stable Diffusion 3.5 Large, from words only (it takes no references)",
                          "chains": {"beat": ["fal:sd", "fal:sd"], "key": ["fal:sd", "fal:sd"],
                                     "scare": ["fal:sd", "fal:sd"]}},
-                "seedream_detail": {"label": "Seedream 4.5 (today's setup) + 4K detail pass", "detail": True},
+                "seedream_detail": {"label": "Seedream 4.5 + 4K detail pass", "detail": True,
+                                    "chains": {"beat": ["fal:seedream", "fal:seedream"],
+                                               "key": ["fal:seedream", "fal:shot"],
+                                               "scare": ["fal:pro", "fal:seedream"]}},
                 "flux2": {"label": "FLUX.2 pro, every picture",
                           "chains": {"beat": ["fal:flux", "fal:flux"], "key": ["fal:flux", "fal:flux"],
                                      "scare": ["fal:flux", "fal:flux"]}},
                 "pro": {"label": "Nano Banana Pro, every picture",
-                        "chains": {"beat": ["fal:hero", "fal:hero"], "key": ["fal:hero", "fal:hero"],
-                                   "scare": ["fal:hero", "fal:hero"]}},
+                        "chains": {"beat": ["fal:pro", "fal:pro"], "key": ["fal:pro", "fal:pro"],
+                                   "scare": ["fal:pro", "fal:pro"]}},
             },
         },
         "references": True,  # a style frame, character sheets and location sheets keep look, people and places the same
         "pollinations": True, "pollinations_gap_seconds": 16,
         "cloudflare_model": "@cf/black-forest-labs/flux-1-schnell", "cloudflare_steps": 4,  # 4 keeps ~170 pictures a day free
         "models": {
-            "reference": "fal-ai/bytedance/seedream/v4.5/text-to-image",  # style frame (text only)
-            "sheet": "fal-ai/bytedance/seedream/v4.5/edit",       # character and location sheets (paints children too)
-            "sheet_alt": "fal-ai/bytedance/seedream/v5/lite/edit",
-            "shot": "fal-ai/bytedance/seedream/v4.5/edit",        # every beat, from the references
-            "shot_text": "fal-ai/bytedance/seedream/v4.5/text-to-image",
-            "shot_alt": "fal-ai/nano-banana-2/edit",              # the corrector for key beats
-            "shot_alt_text": "fal-ai/nano-banana-2",
-            "hero": "fal-ai/nano-banana-pro/edit",                # the scare shots
-            "hero_text": "fal-ai/nano-banana-pro",
-            "thumbnail": "fal-ai/nano-banana-2/edit",
+            # Nano Banana 2.1 paints everything (run 109's 5-way bake-off; the user's choice)
+            "reference": "google/nano-banana-2.1",                # style frame (text only)
+            "sheet": "google/nano-banana-2.1/edit",               # character and location sheets, portraits
+            "sheet_alt": "google/nano-banana-2.1/edit",
+            "shot": "google/nano-banana-2.1/edit",                # every beat, from the references
+            "shot_text": "google/nano-banana-2.1",
+            "shot_alt": "google/nano-banana-2.1/edit",            # the corrector for key beats
+            "shot_alt_text": "google/nano-banana-2.1",
+            "hero": "google/nano-banana-2.1/edit",                # a refused scare
+            "hero_text": "google/nano-banana-2.1",
+            "thumbnail": "google/nano-banana-2.1/edit",
             "voice": "fal-ai/elevenlabs/tts/eleven-v3",
             "sfx": "fal-ai/elevenlabs/sound-effects/v2",
             # Music the sound library lacks: ACE-Step 1.5 (open source, ~$0.0003 a second). For
@@ -384,6 +393,9 @@ DEFAULTS: dict[str, Any] = {
             "flux": "fal-ai/flux-2-pro/edit", "flux_text": "fal-ai/flux-2-pro",
             # Nano Banana 2.1 (October 2026): ranked at or above Pro, at about half its price
             "nb21": "google/nano-banana-2.1/edit", "nb21_text": "google/nano-banana-2.1",
+            # Seedream 4.5 for the film's pictures (the default until run 109; the cheaper bake-off setup)
+            "seedream": "fal-ai/bytedance/seedream/v4.5/edit",
+            "pro": "fal-ai/nano-banana-pro/edit", "pro_text": "fal-ai/nano-banana-pro",
             # Stable Diffusion 3.5 Large: paints from words only (no reference pictures)
             "sd": "fal-ai/stable-diffusion-v35-large",
             "upscale": "fal-ai/seedvr/upscale/image",
@@ -393,32 +405,36 @@ DEFAULTS: dict[str, Any] = {
         },
         # An edit model asked without references uses its text-to-image twin.
         "text_roles": {"shot": "shot_text", "shot_alt": "shot_alt_text", "sheet": "reference", "sheet_alt": "reference",
-                       "thumbnail": "shot_alt_text", "hero": "hero_text", "flux": "flux_text",
+                       "thumbnail": "shot_alt_text", "hero": "hero_text", "flux": "flux_text", "seedream": "reference",
+                       "pro": "pro_text",
                        "nb21": "nb21_text"},
         # References sent to a model, longest side in pixels (FLUX.2 counts every input megapixel).
         "reference_px": {"flux": 1024},
         # Models that take no reference pictures: they are sent the words alone.
         "text_only_roles": ["sd"],
         "model_args": {
-            "reference": {"image_size": {"width": 2752, "height": 1548}, "num_images": 1},
-            "sheet": {"image_size": {"width": 2560, "height": 1440}, "num_images": 1},
-            "sheet_alt": {"image_size": {"width": 2560, "height": 1440}, "num_images": 1},
+            "reference": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
+            "sheet": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
+            "sheet_alt": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             # Pictures that go into the film are painted at 2K, a little larger than the 1440p frame,
             # so they stay sharp under a camera move. Seedream: a custom size (from 2560x1440 up). Nano
             # Banana 2 and Pro: "2K" (the default "1K" is 1376x768, which goes soft when enlarged).
-            "shot": {"image_size": {"width": 2752, "height": 1548}, "num_images": 1},
-            "shot_text": {"image_size": {"width": 2752, "height": 1548}, "num_images": 1},
+            "shot": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
+            "shot_text": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "shot_alt": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "shot_alt_text": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "hero": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "hero_text": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
-            "thumbnail": {"aspect_ratio": "16:9", "num_images": 1},
+            "thumbnail": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "voice": {"stability": 0.5},
             "vision": {"model": "google/gemini-2.5-flash"},
             "judge": {"model": "google/gemini-2.5-pro", "reasoning": True},  # this model refuses without it
             "flux": {"image_size": {"width": 2560, "height": 1440}, "output_format": "png", "safety_tolerance": "4"},
             "flux_text": {"image_size": {"width": 2560, "height": 1440}, "output_format": "png", "safety_tolerance": "4"},
             "upscale": {"upscale_mode": "target", "target_resolution": "2160p", "output_format": "png"},
+            "seedream": {"image_size": {"width": 2752, "height": 1548}, "num_images": 1},
+            "pro": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
+            "pro_text": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "nb21": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "nb21_text": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "sd": {"image_size": {"width": 1536, "height": 864}, "num_images": 1, "output_format": "png",
@@ -426,7 +442,7 @@ DEFAULTS: dict[str, Any] = {
                                       "bright, cheerful, deformed hands, extra fingers, split frame, collage"},
         },
         # A role whose settings cost more than the model's base price (Nano Banana 2 at 2K: 1.5x).
-        "model_units": {"shot_alt": 1.5, "shot_alt_text": 1.5},
+        "model_units": {},
         # Estimated USD per picture, per 1,000 characters of speech, or per second of audio.
         "prices": {
             "fal-ai/nano-banana-2": 0.08, "fal-ai/nano-banana-2/edit": 0.08,

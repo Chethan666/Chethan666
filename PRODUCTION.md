@@ -22,15 +22,15 @@ can before the next agent builds on it (✓ = checks; ↻ = fixes itself):
 | 1 | Casting | Who speaks: the host, the teller, each character; picks the voices | ✓ a speaker name must look like a name | the planner model (Bedrock) | words around each quote |
 | 2 | Voice | The performance director gives each sentence its delivery; the narrator reads each paragraph in one flowing take, a little quicker than recorded | ✓↻ the **listener** (Whisper, free) transcribes every take: a take that skipped or invented words is read again; good takes are cut at exact word times | ElevenLabs v3 on fal (+ the planner model) | Kokoro |
 | 3 | Storyboard | Cuts the timeline into beats (`beat_min_seconds`-`beat_max_seconds`) and stages each as one picture | ✓↻ each staged picture is matched to the line it quotes (never by its number alone); skipped beats are asked for again; then the **storyboard check** holds every picture description against its own line and the cast's fixed looks and rewrites the ones that don't match, before any picture is paid for | the planner model | the scene plan |
-| 4 | Art director | One house look; a design per character and per place the story returns to; a style frame (the main place), character sheets and location sheets | ✓↻ the **reference check**: the style frame and every sheet are held against their design by a vision model before any picture is painted from them; one that fails is painted once more, told what was wrong | Nano Banana 2 (+ the planner model) | Cloudflare FLUX, Pollinations |
-| 5 | Illustrator + critic | One picture per beat, painted at 2K from its place's sheet and its people's sheets; the scare shots by the strongest painter | ✓↻ each picture checked in code and by a vision model against its description and the narrated words; a refused picture goes to the next painter, which is told what was wrong; a refused paid picture is never replaced by a free painter's | Seedream 4.5 edit, then Nano Banana 2 edit | Cloudflare FLUX, Pollinations, a neighbour's picture |
+| 4 | Art director | One house look; a design per character and per place the story returns to; a style frame (the main place), character sheets and location sheets | ✓↻ the **reference check**: the style frame and every sheet are held against their design by a vision model before any picture is painted from them; one that fails is painted once more, told what was wrong | Nano Banana 2.1 (+ the planner model) | Cloudflare FLUX, Pollinations |
+| 5 | Illustrator + critic | One picture per beat, painted at 2K from its place's sheet and its people's sheets; the scare shots by the strongest painter | ✓↻ each picture checked in code and by a vision model against its description and the narrated words; a refused picture goes to the next painter, which is told what was wrong; a refused paid picture is never replaced by a free painter's | Nano Banana 2.1 edit at 2K | Cloudflare FLUX, Pollinations, a neighbour's picture |
 | 6 | Art review | All the pictures side by side with the narration: the same person and the same place look the same, the order tells the story, the scare lands | ✓↻ the worst `art_review_fixes` (2) are redrawn with its note (the critic checks the redraw) | vision model, ~$0.002 | |
 | 7 | Colorist | Measures every picture against the film's median brightness, contrast and colour cast | ✓↻ a picture outside the tolerance (one that would jump at the cut) is brought most of the way back; the rest are not touched | | |
 | 7b | Animation (off until a video model is set) | Chosen beats become clips made from their finished pictures | ✓ each clip checked in code (moves, not blank or bright) and by the vision model; a failed clip leaves its beat a still | an image-to-video model on fal | the still |
 | 8 | Edit plan | Cold open, title card, the story, end screen; captions | | | |
 | 9 | Sound | The sound director picks music, room tone, effects and stingers from the channel's sound library (or has them made, if `sound_library.generate_missing`) | ✓↻ the **mix check**: under speech the voice must stand `voice_over_bed_db` (12 dB) above everything else, or the bed is lowered | library (free) | synthesized drone and cues |
 | 10 | Edit | Every still becomes a shot at 1440p: a slow, steady camera move suited to its framing, rain, fog or a failing light where the storyboard saw them, fine film grain, a vignette, HD colours; exactly its frames, a dip to black between scenes, -14 LUFS | | | |
-| 11 | Packager | Thumbnails, chapters, metadata, contact sheet, 60 s preview | ✓↻ each thumbnail's words are read back by a vision model; misspelled or unreadable ones are repainted once | Nano Banana 2 edit | the key picture with lettering |
+| 11 | Packager | Thumbnails, chapters, metadata, contact sheet, 60 s preview | ✓↻ each thumbnail's words are read back by a vision model; misspelled or unreadable ones are repainted once | Nano Banana 2.1 edit | the key picture with lettering |
 | 12 | QA | Length, streams, files, fallbacks, a stretch of black picture, the colour label, loudness and true peak, and every gate's findings in one list | ✓ `pass`, or `check` with the reasons | | |
 
 By default only pictures and the narrator's voice are paid for: music and sounds come from the
@@ -90,12 +90,20 @@ picture matters (see "Cost and quality" below for the evidence):
 
 | Pictures | Chain | Price per try |
 |---|---|---|
-| Style frame | Seedream 4.5 text-to-image, then once more if refused | $0.04 |
-| Character and place sheets | Seedream 4.5 edit, again, then Seedream 5.0 Lite | $0.04 / $0.035 |
-| Ordinary beats | Seedream 4.5 edit; a second Seedream try only for a serious fault | $0.04 |
-| Key beats (`key_importance` 3+, at most `key_share` 25% of the story) | Seedream 4.5, then Nano Banana 2 edit at 2K as the corrector | $0.04 / $0.12 |
-| Scares (`scare_shots`, at most 4) | Nano Banana Pro edit at 2K, then Seedream 4.5 | $0.15 / $0.04 |
-| Thumbnail | Nano Banana 2 edit (clean lettering) | $0.08 |
+| Style frame | Nano Banana 2.1 at 2K, then once more if refused | $0.08 |
+| Character and place sheets, face portraits | Nano Banana 2.1 edit at 2K, up to twice more if refused | $0.08 |
+| Ordinary beats | Nano Banana 2.1 edit at 2K; a second try only for a serious fault | $0.08 |
+| Key beats (`key_importance` 3+, at most `key_share` 25% of the story) | Nano Banana 2.1, then once more as the corrector | $0.08 / $0.08 |
+| Scares (`scare_shots`, at most 4) | Nano Banana 2.1, then once more told what was refused | $0.08 |
+| Thumbnail | Nano Banana 2.1 edit (clean lettering) | $0.08 |
+
+Nano Banana 2.1 became the painter of everything (style frame, sheets, portraits, pictures,
+thumbnails) after the 5-way bake-off (run 109): Seedream 4.5 with Pro for
+scares, Nano Banana 2.1, Nano Banana Pro, FLUX.2 [pro] and Stable Diffusion 3.5 (from words only)
+on the same story and references. Nano Banana 2.1 matched Pro on faces, places and the moment
+(Pro keeps slightly more dramatic light) at about half its price; for a 60 s video it costs the
+same as the Seedream mix (about $1.70), for an 8-10 minute episode about $11-12 against $7-8.
+The Seedream setup stays in `bakeoff.setups` ("seedream") for a cheaper season.
 
 **Right first time.** A retry is a safety net, not the plan, so the money goes into the
 first try:
