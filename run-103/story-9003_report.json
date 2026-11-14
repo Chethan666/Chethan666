@@ -1,0 +1,285 @@
+{
+  "mode": "bakeoff",
+  "beats": 10,
+  "setups": {
+    "seedream_detail": {
+      "label": "Seedream 4.5 (today's setup) + 4K detail pass",
+      "usd": 1.188,
+      "seconds": 434,
+      "upscaled": 10,
+      "by_painter": {
+        "fal:hero": 2,
+        "fal:shot (corrected)": 2,
+        "fal:shot_alt (corrected)": 1,
+        "fal:shot": 4,
+        "fal:shot (doubted)": 1
+      },
+      "refusals": 5,
+      "doubted_beats": [
+        0
+      ],
+      "retry_usd": 0.24,
+      "painter_sizes": {
+        "fal:hero": "2752x1536",
+        "fal:shot": "2752x1552",
+        "fal:shot_alt": "2752x1536"
+      },
+      "rejected": [
+        "beat_009 (fal:shot): serious: The Storyteller is lowering a red lantern as described, but the small upstairs window behind him shows a red glow that is too large to be just a tiny red monitor light; it looks like a large red objec",
+        "beat_005 (fal:shot): serious: The picture shows the door ajar, but the narration states 'Her door was shut.' The picture should show Mara at a closed door.",
+        "beat_002 (fal:shot): serious: The picture shows Mara in bed, but her face and expression are different from the provided portrait, which is a serious contradiction. She is also not wearing the described grey oversized cardigan ove",
+        "beat_000 (fal:shot): serious: The image shows a baby monitor, which is not mentioned in the narration or the scene description. The picture should only show The Storyteller's hand gripping the lantern, with a distant house and win",
+        "beat_000 (fal:shot): serious: The Storyteller is clearly visible in the image, but the description says 'The storyteller is unseen'. The picture should show the lantern as the single source of light, with the Storyteller unseen, o"
+      ],
+      "judge": {
+        "same_faces": null,
+        "moment": null,
+        "cinematic": null,
+        "best_on": 0
+      }
+    },
+    "flux2": {
+      "label": "FLUX.2 pro, every picture",
+      "usd": 1.846,
+      "seconds": 160,
+      "upscaled": 0,
+      "by_painter": {
+        "fal:flux": 6,
+        "fal:flux (doubted)": 2,
+        "fal:flux (corrected)": 2
+      },
+      "refusals": 5,
+      "doubted_beats": [
+        5,
+        9
+      ],
+      "retry_usd": 0.42,
+      "painter_sizes": {
+        "fal:flux": "2560x1440"
+      },
+      "rejected": [
+        "beat_009 (fal:flux): serious: The image looks like a 3D render instead of a real film frame, and the storytelling action is not clear. The Storyteller should be lowering a red lantern, and a small upstairs window with a red monito",
+        "beat_005 (fal:flux): serious: The picture shows two Maras, one with her hand on a door and one standing further back, and the narrator's line says Mara ran and stood at the door with her hand on the handle. The picture should only",
+        "beat_005 (fal:flux): serious: The picture shows two women, not one, and one is touching a baby monitor on the wall, not standing at a closed door with her hand on the handle. The light is not flickering and the scene does not matc",
+        "beat_003 (fal:flux): serious: The picture shows Lily in bed, looking fearful and awake, but there is no baby monitor with a red light, and the star night-light is also missing. The action described should include these elements to",
+        "beat_000 (fal:flux): serious: The picture is missing the distant window glimmering like a single star atop a small, dark shape of a house. It shows only the lantern and the Storyteller's hand."
+      ],
+      "judge": {
+        "same_faces": null,
+        "moment": null,
+        "cinematic": null,
+        "best_on": 0
+      }
+    },
+    "pro": {
+      "label": "Nano Banana Pro, every picture",
+      "usd": 1.524,
+      "seconds": 154,
+      "upscaled": 0,
+      "by_painter": {
+        "fal:hero": 5,
+        "fal:hero (doubted)": 4,
+        "fal:hero (corrected)": 1
+      },
+      "refusals": 6,
+      "doubted_beats": [
+        1,
+        2,
+        4,
+        6
+      ],
+      "retry_usd": 0.3,
+      "painter_sizes": {
+        "fal:hero": "2752x1536"
+      },
+      "rejected": [
+        "beat_004 (fal:hero): serious: The picture shows Mara looking at the baby monitor, not a close-up on the monitor's speaker grille from her perspective as described. It should show a close-up of the speaker grille.",
+        "beat_004 (fal:hero): serious: The picture shows the baby monitor from a distance, not a close-up on the speaker grille from Mara's perspective, and Mara is not visible as described.",
+        "beat_005 (fal:hero): serious: The image shows a baby monitor on a table next to a door, but the description specifies that the only vivid colour is the baby monitor's small red light, implying the monitor itself should not be pres",
+        "beat_002 (fal:hero): serious: The picture shows a baby monitor with an illuminated screen, not one with red sound lights jumping erratically on a grille. It should show the red sound lights jumping on the grille, casting frantic r",
+        "beat_006 (fal:hero): serious: The night-light is on, but the description states it should be off. The baby monitor's red light is the only vivid colour allowed.",
+        "beat_001 (fal:hero): serious: Lily's duvet is patterned with stars on a dark background instead of a star-patterned duvet, and her pyjamas are a dark grey with stars, instead of soft buttercup yellow pyjamas with small stars. This"
+      ],
+      "judge": {
+        "same_faces": null,
+        "moment": null,
+        "cinematic": null,
+        "best_on": 0
+      }
+    }
+  },
+  "references_usd": 0.546,
+  "usd": 5.1,
+  "usd_by_task": {
+    "picture_detail_seedream_detail": 0.3,
+    "picture_flux": 1.82,
+    "picture_hero": 1.8,
+    "picture_reference": 0.04,
+    "picture_sheet": 0.48,
+    "picture_shot": 0.44,
+    "picture_shot_alt": 0.12,
+    "reference_check": 0.024,
+    "vision": 0.08
+  },
+  "fal_balance_ran_out": false,
+  "judge": {
+    "0": {},
+    "1": {},
+    "2": {},
+    "3": {},
+    "4": {},
+    "5": {},
+    "6": {},
+    "7": {},
+    "8": {},
+    "9": {}
+  },
+  "agents": {
+    "art": {
+      "style_frame": true,
+      "style_frame_by": "fal:reference",
+      "sheets": [
+        "Lily",
+        "Mara",
+        "The Storyteller"
+      ],
+      "portraits": [
+        "Lily",
+        "Mara",
+        "The Storyteller"
+      ],
+      "designs": {
+        "Mara": "a woman in her early thirties, exhausted, dark brown hair tied back loosely, a grey oversized cardigan over dark pyjamas, no jewellery; Caucasian, late twenties to early thirties, fine lines under tired eyes, close-fitting jeans in dark indigo. Anglo/European features, slim build. Gently receding chin is her feature. Cardigan is charcoal grey.",
+        "Lily": "a four-year-old girl with messy fair hair, pale yellow pyjamas with small stars; Caucasian, pale skin, slight build typical for age. Round face, a light scatter of freckles across nose is her feature. Hair is fine, straight, honey-blonde that reaches just past shoulders, usually loose. Her pyjamas are a soft buttercup yellow.",
+        "The Storyteller": "a tall, gaunt man of indeterminate age in a long, worn charcoal coat and a wide-brimmed hat, his face mostly in shadow except for pale, kind, tired eyes; he always carries an old iron lantern whose flame burns blood red"
+      },
+      "places": [
+        {
+          "name": "Lily's Bedroom",
+          "scenes": [
+            1,
+            2,
+            5,
+            6,
+            7
+          ],
+          "design": "A small, slightly worn child's bedroom in an older house. Walls are a muted, cold teal-grey with peeling floral borders. The floor is dark-stained wood. A simple wooden bed with a star-patterned duvet is against one wall. On a shelf above the headboard, a soft yellow star-shaped night-light plugs into an outlet. A simple bedside table holds the baby monitor. A single foggy window shows the outside weather. At night, the only light is the night-light's warm yellow glow and the monitor's red LED. Outside is foggy and grey.",
+          "sheet": true
+        },
+        {
+          "name": "Mara's Bedroom",
+          "scenes": [
+            3
+          ],
+          "design": "A modest, sparsely decorated adult bedroom. Walls are a similar cold, desaturated teal-grey as the rest of the house. The dominant furniture is a simple double bed with plain, muted bedding. A wooden bedside table stands next to it. The only object on the table is the baby monitor receiver. At night, the room is lit solely by the erratic red LED glow of the monitor's sound-activated lights, casting sharp red reflections on the dark wood surface.",
+          "sheet": true
+        },
+        {
+          "name": "The Upstairs Landing",
+          "scenes": [
+            4
+          ],
+          "design": "A narrow, shadowy second-floor hallway in an old house. The walls and ceiling are painted a flat, dirty white that reads as a cold grey in the low light. The floor is dark, scuffed hardwood. A single, bare, failing lightbulb hangs from the center of the ceiling, its filament flickering inconsistently, casting a sickly, dim amber light that barely reaches the corners. All doors leading off it are identical painted wood. At night, this failing bulb is the only light source.",
+          "sheet": true
+        }
+      ],
+      "reference_checks": [
+        {
+          "sheet": "Lily's Bedroom",
+          "kind": "location",
+          "ok": true,
+          "why": ""
+        },
+        {
+          "sheet": "The Upstairs Landing",
+          "kind": "location",
+          "ok": false,
+          "why": "The image contains the written word 'Lilys' on a door, which is not allowed. The sheet should not contain any written words or labels."
+        },
+        {
+          "sheet": "Mara's Bedroom",
+          "kind": "location",
+          "ok": false,
+          "why": "The walls have flowered wallpaper, but the design specifies cold, desaturated teal-grey walls without patterns."
+        },
+        {
+          "sheet": "Mara",
+          "kind": "character",
+          "ok": true,
+          "why": ""
+        },
+        {
+          "sheet": "The Upstairs Landing",
+          "kind": "location",
+          "ok": true,
+          "why": "The image perfectly matches the description of The Upstairs Landing: a narrow, shadowy second-floor hallway with dirty white walls, dark hardwood floor, identical doors, and a single, dim, flickering "
+        },
+        {
+          "sheet": "Mara's Bedroom",
+          "kind": "location",
+          "ok": true,
+          "why": "The image perfectly matches the description of Mara's bedroom, including the cold teal-grey walls, simple bed, wooden bedside table with the baby monitor receiver, and the red LED glow."
+        },
+        {
+          "sheet": "Lily",
+          "kind": "character",
+          "ok": true,
+          "why": ""
+        },
+        {
+          "sheet": "The Storyteller",
+          "kind": "character",
+          "ok": false,
+          "why": "The face of the man is clearly visible in one of the views, but the design states his face should be mostly in shadow. Also, the description states the face should show pale, kind, tired eyes, but the"
+        },
+        {
+          "sheet": "The Storyteller",
+          "kind": "character",
+          "ok": true,
+          "why": "The image shows a tall, gaunt man in a long, worn charcoal coat and a wide-brimmed hat. His face is mostly in shadow, but pale eyes are visible. He carries an old iron lantern with a blood-red flame, "
+        },
+        {
+          "sheet": "Lily",
+          "kind": "portrait",
+          "ok": true,
+          "why": ""
+        },
+        {
+          "sheet": "Mara",
+          "kind": "portrait",
+          "ok": true,
+          "why": "No reason"
+        },
+        {
+          "sheet": "The Storyteller",
+          "kind": "portrait",
+          "ok": true,
+          "why": ""
+        }
+      ],
+      "seconds": 255.5
+    },
+    "storyboard": {
+      "beats": 10,
+      "directed_by_model": 10,
+      "host_beats": 2,
+      "scares": 2,
+      "check": {
+        "checked": true,
+        "fixed": [
+          {
+            "beat": 4,
+            "problem": "Line says Mara is hearing the low, patient voice through the monitor. The picture shows Mara awake and terrified, reacting, but the line's focus is on the content of the voice itself being spoken, whi"
+          },
+          {
+            "beat": 8,
+            "problem": "Line describes the voice coming 'so close it touched the microphone,' implying the source is at the child's monitor, but the picture shows the threat in Mara's room, near her receiver, and she is hold"
+          }
+        ]
+      },
+      "average_seconds": 5.0,
+      "seconds": 51.5
+    }
+  },
+  "minutes": 18.9
+}

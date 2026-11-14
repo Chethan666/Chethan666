@@ -1,0 +1,91 @@
+[
+  {
+    "index": 0,
+    "text": "Some voices carry further than they should. The lantern is lit.",
+    "picture": "The lantern's red light glows fiercely, revealing swirling mist and The Storyteller's dirt-smudged hand gripping its handle. Beyond, a distant window glimmers like a single star atop a small, dark shape of a house. The storyteller is unseen, The lantern is the single, ominous source of light.",
+    "characters": [
+      "The Storyteller"
+    ],
+    "scare": false
+  },
+  {
+    "index": 1,
+    "text": "My daughter Lily is four. She sleeps with the baby monitor on.",
+    "picture": "Lily asleep in a small bedroom under a star-patterned duvet, a soft yellow star night-light glowing on a shelf. The baby monitor sits on her bedside table, its small red light a steady dot in the cozy gloom. Lily looks peaceful, asleep.",
+    "characters": [
+      "Lily"
+    ],
+    "scare": false
+  },
+  {
+    "index": 2,
+    "text": "Last night, at twelve past three, it crackled. Lily was whispering.",
+    "picture": "Close on the grille of the baby monitor receiver on Mara's bedside table. Its red sound lights are jumping erratically, casting frantic red glows on the wood. Out of focus behind it, Mara sleeps.",
+    "characters": [
+      "Mara"
+    ],
+    "scare": false
+  },
+  {
+    "index": 3,
+    "text": "\"I can't. Mummy will hear.\"",
+    "picture": "Lily in her bed, star night-light softly glowing. She is wide-awake, blanket clutched under her chin, looking towards her bedroom door in fear. Her lips are parted mid-whisper. The baby monitor's red light is a bright dot in the corner.",
+    "characters": [
+      "Lily"
+    ],
+    "scare": false
+  },
+  {
+    "index": 4,
+    "text": "Then another voice. Low. Patient. \"Mummy is asleep.\"",
+    "picture": "Close-up on the monitor's speaker grille from Mara's perspective. The red sound lights glow ominously, as if the low voice is emanating directly from it, invading the quiet of her dark bedroom.",
+    "characters": [
+      "Mara"
+    ],
+    "scare": true
+  },
+  {
+    "index": 5,
+    "text": "I ran. Her door was shut. Her night-light was off. I had left it on.",
+    "picture": "A dark upstairs landing lit by a single, failing bulb that flickers. Mara stands at Lily's closed door, her hand gripped tightly on the handle. No light escapes from under the door. Her posture is rigid with dread. The flickering bulb throws shaky shadows.",
+    "characters": [
+      "Mara"
+    ],
+    "scare": false
+  },
+  {
+    "index": 6,
+    "text": "Lily was asleep, facing the wall. Nobody else.",
+    "picture": "Wide shot from the dark bedroom doorway. Lily sleeps in bed, a small shape in pale yellow pajamas facing the wall. The night-light is off. Deep black corners are empty.",
+    "characters": [
+      "Lily"
+    ],
+    "scare": false
+  },
+  {
+    "index": 7,
+    "text": "I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again. Lily hadn't moved.",
+    "picture": "Medium shot from a low angle. Mara sits slumped against the wall on Lily's floor, the receiver in her lap. Grey pre-dawn light and fog glow at the window. Lily sleeps beside her, facing away.",
+    "characters": [
+      "Mara",
+      "Lily"
+    ],
+    "scare": false
+  },
+  {
+    "index": 8,
+    "text": "Then the voice came, so close it touched the microphone. \"Mummy's awake now.\"",
+    "picture": "Close-up on Lily's bedroom monitor on her bedside table. A long, thin shadow falls across it, and a blurred, distorted shape leans intimately close to the unit's microphone in the dark room.",
+    "characters": [],
+    "scare": true
+  },
+  {
+    "index": 9,
+    "text": "Lily is five now. She still won't sleep without the monitor. She says he likes to listen.",
+    "picture": "Wide shot of The Storyteller, a weary figure in a vast, dark hollow. He lowers a red lantern. Far behind him, a small upstairs window glows, a tiny red monitor light shining within.",
+    "characters": [
+      "The Storyteller"
+    ],
+    "scare": false
+  }
+]
