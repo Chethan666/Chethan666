@@ -1,0 +1,32 @@
+{
+  "candidates": [
+    {
+      "candidate": 1,
+      "sheet": "host_sheet_1.jpg",
+      "sheet_check": [
+        false,
+        "The character's face is shown clearly, but it should be mostly in shadow under the brim of his hat."
+      ],
+      "portrait": "host_portrait_1.jpg",
+      "portrait_check": [
+        false,
+        "The face is shown lit in full, but the design specifies the face should always be mostly in shadow under the brim, except for the eyes."
+      ]
+    },
+    {
+      "candidate": 2,
+      "sheet": "host_sheet_2.jpg",
+      "sheet_check": [
+        false,
+        "The face of the Storyteller is mostly visible, but the design states it should always be mostly in shadow under the brim of his hat."
+      ],
+      "portrait": "host_portrait_2.jpg",
+      "portrait_check": [
+        false,
+        "The face of the storyteller is shown lit in full, but the design states his face should always be mostly in shadow under the brim of his hat."
+      ]
+    }
+  ],
+  "usd": 0.61,
+  "next": "copy the chosen host_sheet_N.jpg and host_portrait_N.jpg to production/assets/host/sheet.jpg and portrait.jpg"
+}
