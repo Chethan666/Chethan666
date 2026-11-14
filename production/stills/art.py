@@ -277,9 +277,33 @@ class ArtDirectorAgent:
         for place in sets:
             place["sheet"] = dict(painted).get(place["name"])
         d["sheets"] = sheets
-        last = {c["sheet"]: c for c in checks}  # a sheet's last check is the one that stands
+
+        def portrait(c: dict[str, Any]) -> tuple[str, Path | None]:
+            """A large, sharp face painted from the person's own sheet: on the sheet the face is a
+            small part of one view, and a painter given only that drifts most in the face."""
+            out = board.work / "art" / f"face_{re.sub(r'[^a-z0-9]+', '_', c['name'].lower())}.png"
+            text = (f"{house} A close head-and-shoulders portrait of the person in the reference image, "
+                    f"{c['name']}: {c['design']}. Exactly the same person: identical face, age, skin, hair and "
+                    "clothes. The face fills the middle of the frame, sharp focus on the eyes, a neutral, tired "
+                    "expression, lit by one soft side light against a plain dark background. One single frame. "
+                    f"No text, no labels. {look['avoid']}").strip()
+            path, step = painter.paint(text, [sheets[c["name"]]], out, ["portrait", c["name"], c["design"]],
+                                       cfg["chains"]["sheet"], check=checked("portrait", c["name"], c["design"]))
+            if path is not None and out.stem in painter.doubted and not step.startswith("fal:"):
+                return c["name"], None
+            return c["name"], path
+
+        portraits: dict[str, Path] = {}
+        if cfg.get("portraits", True):
+            with ThreadPoolExecutor(max_workers=int(cfg.get("parallel", 4))) as pool:
+                for name, path in pool.map(portrait, [c for c in people if c["name"] in sheets]):
+                    if path is not None:
+                        portraits[name] = path
+        d["portraits"] = portraits
+        last = {(c["kind"], c["sheet"]): c for c in checks}  # a sheet's last check is the one that stands
         d["reference_issues"] = [f"{c['kind']} sheet of {c['sheet']}: {c['why']}" for c in last.values() if not c["ok"]]
         return {"style_frame": bool(got), "style_frame_by": source, "sheets": sorted(sheets),
+                "portraits": sorted(portraits),
                 "designs": {c["name"]: c["design"] for c in cast},
                 "places": [{"name": x["name"], "scenes": x["scenes"], "design": x["design"],
                             "sheet": x.get("sheet") is not None} for x in sets],
@@ -314,9 +338,10 @@ class IllustratorAgent:
 
     def prompt(self, beat: Shot, house: str, cast: dict[str, str], refs: list[str], style_frame: bool,
                look: dict[str, Any] | None = None, camera: str = "", place: dict[str, Any] | None = None,
-               lessons: str = "") -> str:
+               lessons: str = "", faces: set[str] | frozenset[str] = frozenset()) -> str:
         """`style_frame`: reference image 1 is there (the place's sheet when `place` has one, else
-        the style frame). `place`: the set this beat is in, {"name", "design", "sheet"}."""
+        the style frame). `place`: the set this beat is in, {"name", "design", "sheet"}. `faces`:
+        the people in `refs` sent as two images, a close portrait and then the sheet."""
         look = look or {}
         notes = []
         through = bool(camera) and beat.view != "film"  # seen through a security camera, a phone, an old photo
@@ -331,9 +356,17 @@ class IllustratorAgent:
         elif style_frame:
             notes.append("Reference image 1 shows the look only (lighting, colour grade, texture): copy its "
                          "look, not its content.")
-        for k, name in enumerate(refs, 2 if style_frame else 1):
-            notes.append(f"Reference image {k} is the character sheet of {name}: the same person, identical face, "
-                         "age, hair and clothes.")
+        k = 2 if style_frame else 1
+        for name in refs:
+            if name in faces:
+                notes.append(f"Reference image {k} is a close portrait of {name}: match this face exactly (eyes, "
+                             f"nose, mouth, jaw, skin, hairline). Reference image {k + 1} is the character sheet "
+                             f"of {name}: the same person's build, hair and clothes.")
+                k += 2
+            else:
+                notes.append(f"Reference image {k} is the character sheet of {name}: the same person, identical "
+                             "face, age, hair and clothes.")
+                k += 1
         # A person or place with a sheet attached needs only a few words to be found in it: the full
         # design is in the picture, and a shorter prompt is followed better (450 words in run 96).
         people = "; ".join(f"{n}: {short(cast[n]) if n in refs else cast[n]}" for n in beat.characters if n in cast)
@@ -368,6 +401,7 @@ class IllustratorAgent:
         beats: list[Shot] = d["beats"]
         painter: Painter = d["painter"]
         sheets: dict[str, Path] = d.get("sheets", {})
+        portraits: dict[str, Path] = d.get("portraits", {})
         style_frame: Path | None = d.get("style_frame")
         cast = {c["name"]: c.get("design", "") for c in d["cast"]}
         look = d.get("look") or house_look(cfg)
@@ -400,9 +434,12 @@ class IllustratorAgent:
             names = [n for n in beat.characters if n in sheets][:3]
             place = place_of.get(beat.scene) if beat.index not in host_beats else None  # the host has his own place
             first = (place or {}).get("sheet") or style_frame
-            refs = ([first] if first else []) + [sheets[n] for n in names]
+            refs = ([first] if first else []) + [p for n in names for p in
+                                                 ([portraits[n]] if n in portraits else []) + [sheets[n]]]
             camera = str(cameras.get(beat.view, "")) if use_cameras else ""
-            text = self.prompt(beat, d["house"], cast, names, bool(first), look, camera, place, warned)
+            text = self.prompt(beat, d["house"], cast, names, bool(first), look, camera, place, warned,
+                               {n for n in names if n in portraits})
+            faces = [(n, portraits[n]) for n in names if n in portraits] if cfg.get("face_check", True) else []
             if float(cfg.get("letterbox", 0) or 0) > 1.78:  # cinema bars will cover the top and bottom
                 text = text.replace("never split into panels.", "never split into panels. Composed for a wide "
                                     "cinema frame: heads and the subject in the middle band, nothing important "
@@ -413,7 +450,7 @@ class IllustratorAgent:
             path, source = painter.paint(text, refs, folder / f"beat_{beat.index:03d}{tag}.png",
                                          ["beat", beat.index, text], chains.get(tier(beat), chains["beat"]),
                                          check=self.check_text(beat, cast), accept_minor=tier(beat) == "beat",
-                                         capped=True, redraw=bool(fix))
+                                         capped=True, redraw=bool(fix), faces=faces)
             sources[beat.index] = source
             return beat.index, path  # clean: the colorist grades it, the edit adds grain and vignette
 

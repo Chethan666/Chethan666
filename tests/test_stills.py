@@ -94,6 +94,7 @@ class FakeFal:
 
     def __init__(self, folder, bright_shots=0, reject_vision=0, reject_sheets=False):
         self.calls = []
+        self.vision_images: list[int] = []
         self.reject_sheets = reject_sheets
         self.good = painted(folder / "good.png")
         self.bright = painted(folder / "bright.png", bright=True)
@@ -112,6 +113,10 @@ class FakeFal:
         self.calls.append((endpoint, {k: v for k, v in args.items() if not str(v).startswith("data:")
                                       and k != "image_urls"}))
         if "any-llm" in endpoint:
+            self.vision_images.append(len(args.get("image_urls") or []))
+            if "versions of the same picture" in args.get("prompt", ""):  # the bake-off's judge
+                return {"output": json.dumps({"scores": {k: {"same_faces": 8, "moment": 7, "cinematic": 9 - n}
+                                                         for n, k in enumerate("ABC")}, "best": "A", "why": "x"})}
             if self.reject_sheets and "character reference sheet" in args.get("prompt", ""):
                 return {"output": '{"ok": false, "reason": "three different people"}'}
             if self.reject_vision > 0:
@@ -210,6 +215,10 @@ class LookTests(unittest.TestCase):
         self.assertIn("plastic", text)  # what the realistic look avoids
         self.assertIn("film still", text)
         self.assertIn("always wears thin round glasses", IllustratorAgent.check_text(beat, cast))
+        # with a portrait, the face and the sheet are two references, in that order
+        both = IllustratorAgent().prompt(beat, "HOUSE.", cast, ["Dana"], True, house_look(cfg()), "", faces={"Dana"})
+        self.assertIn("Reference image 2 is a close portrait of Dana: match this face exactly", both)
+        self.assertIn("Reference image 3 is the character sheet of Dana", both)
 
 
 class PainterTests(unittest.TestCase):
@@ -287,6 +296,37 @@ class TeamTests(unittest.TestCase):
         summary = pipeline.produce(story(first_person), root / "out", voice.SilentVoice(), router, cfg(**over), made)
         return summary, root / "out", made
 
+    def test_the_bake_off_paints_every_beat_with_each_setup_from_the_same_references(self):
+        from production import voice
+        from production.stills import bakeoff
+
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        fal = FakeFal(root)
+        summary = bakeoff.run(story(first_person=True), root / "out", voice.SilentVoice(), Router(), cfg(max_usd=7.0), fal)
+        out = root / "out"
+        self.assertEqual(list(summary["setups"]), ["seedream_detail", "flux2", "pro"])
+        beats = summary["beats"]
+        for name in ("seedream_detail", "flux2", "pro"):
+            self.assertEqual(len(list((out / name).glob("beat_*.jpg"))), beats, name)
+            self.assertEqual(summary["setups"][name]["judge"]["same_faces"], 8.0)
+        self.assertEqual(len(list(out.glob("compare_beat_*.jpg"))), beats)
+        self.assertEqual(len(list(out.glob("detail_beat_*.jpg"))), beats)
+        with Image.open(next(out.glob("compare_beat_*.jpg"))) as im:
+            self.assertEqual(im.size, (1280, 3 * (720 + 44)))  # three setups, one above the other
+        self.assertTrue((out / "faces.jpg").exists())  # the portraits every setup painted from
+        endpoints = [e for e, _ in fal.calls]
+        self.assertIn("fal-ai/flux-2-pro/edit", endpoints)
+        self.assertIn("fal-ai/nano-banana-pro/edit", endpoints)
+        self.assertEqual(summary["setups"]["seedream_detail"]["upscaled"], beats)  # the 4K detail pass
+        self.assertEqual(endpoints.count("fal-ai/seedvr/upscale/image"), beats)
+        self.assertFalse(any("elevenlabs" in e for e in endpoints))  # no paid voice in a bake-off
+        self.assertIn(2, fal.vision_images)  # a picture is checked against Dana's portrait
+        self.assertIn(4, fal.vision_images)  # the judge: the portrait and the three versions
+        self.assertEqual(summary["agents"]["art"]["portraits"], ["Dana", "The Storyteller"])
+        self.assertLessEqual(summary["usd"], 7.0)
+        self.assertFalse((out / "work").exists())
+
     def test_a_story_becomes_a_packaged_stills_video(self):
         from story_factory.config import DEFAULTS
         lib = dict(DEFAULTS["stills"]["sound_library"], enabled=False, generate_missing=True)
@@ -346,7 +386,8 @@ class TeamTests(unittest.TestCase):
         self.assertFalse(any("stick figure" in p for p in prompts))
         hero_prompts = [a.get("prompt", "") for e, a in fal.calls if "nano-banana-pro" in e]
         self.assertTrue(any("security camera" in p for p in prompts + hero_prompts))  # beat 3 is seen on a camera
-        self.assertTrue(all("identical face" in p for p in prompts if "character sheet of Dana" in p))
+        self.assertTrue(all("close portrait of Dana: match this face exactly" in p
+                            for p in prompts if "character sheet of Dana" in p))
         # the bus is designed once and every picture set in it is painted from its sheet
         places = summary["agents"]["art"]["places"]
         self.assertEqual([(x["name"], x["scenes"], x["sheet"]) for x in places], [("the night bus", [1, 2, 3], True)])
@@ -362,7 +403,9 @@ class TeamTests(unittest.TestCase):
         frame = [a["prompt"] for e, a in fal.calls if e == "fal-ai/bytedance/seedream/v4.5/text-to-image"]
         self.assertIn("A wide establishing view of the night bus: Outside: a cream", frame[0])
         checked = summary["agents"]["art"]["reference_checks"]
-        self.assertEqual(sorted(c["sheet"] for c in checked), ["Dana", "The Storyteller", "the night bus"])
+        self.assertEqual(sorted(c["sheet"] for c in checked if c["kind"] != "portrait"),
+                         ["Dana", "The Storyteller", "the night bus"])
+        self.assertEqual(sorted(c["sheet"] for c in checked if c["kind"] == "portrait"), ["Dana", "The Storyteller"])
         self.assertTrue(all(c["ok"] for c in checked))
         self.assertFalse(any(i.startswith("reference:") for i in summary["qa"]["issues"]))
         self.assertEqual(summary["agents"]["illustrator"]["look"], "cinematic")

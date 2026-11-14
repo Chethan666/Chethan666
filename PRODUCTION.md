@@ -294,6 +294,21 @@ The balanced estimate is worked out from the two runs' pass rates; the first run
 show the real figure. Every other cost is small: the narration about $0.10 a minute, the vision
 checks about $0.002 each, the sound library free.
 
+**Faces.** Each character's sheet shows them three times, so each face on it is small. The art
+director also paints a large close portrait of every character from their own sheet
+(`portraits`, about $0.04 each); every picture is painted from portrait and sheet, and the
+checker sees the portraits and refuses a picture whose person has a different face
+(`face_check`).
+
+**Picture bake-off.** To choose painters, run mode video-test with overrides
+`script=one_minute.json bakeoff=all`. No video is made: the references are made once, then every
+beat is painted by each setup in `stills.bakeoff.setups` (today's Seedream setup with a 4K
+detail pass, FLUX.2 [pro] for every picture, Nano Banana Pro for every picture). The review
+images show each beat by every setup one above the other (`compare_beat_NN`), the middle of
+each at the size a viewer sees it (`detail_beat_NN`), and the portraits (`faces`); `report.json`
+has each setup's cost and refusals and a judge's blind scores (same faces, the moment,
+cinematic). Capped at `bakeoff.max_usd` ($7; about $4-5 expected).
+
 ## Review, then publish
 
 Nothing goes to YouTube until a person has watched it:

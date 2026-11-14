@@ -298,6 +298,9 @@ DEFAULTS: dict[str, Any] = {
         # of max_usd; past it, every picture keeps its best try. `lessons`: the faults the critic refused
         # most often in earlier videos are named in every picture prompt (counted in the story database).
         "retry_share": 0.15, "lessons": True,
+        # Each character also gets a large face portrait painted from their sheet; pictures are painted
+        # from portrait + sheet, and the checker compares every face with its portrait.
+        "portraits": True, "face_check": True,
         # The animation stage (production/stills/motion.py): chosen beats become clips made from their
         # finished pictures, checked like pictures; everything else stays a still. Off until an
         # image-to-video model is set in `models.clip`. beats: "scares", "key" (scares and key
@@ -331,6 +334,20 @@ DEFAULTS: dict[str, Any] = {
             "scare": ["fal:hero", "fal:shot", "cloudflare", "pollinations"],
             "thumbnail": ["fal:thumbnail"],
         },
+        # The picture bake-off (`produce --bakeoff`, workflow overrides `bakeoff=...`): the same
+        # references, then every beat painted by each setup, side by side, with a judge's scores.
+        "bakeoff": {
+            "max_usd": 7.0, "retry_share": 0.06,
+            "setups": {
+                "seedream_detail": {"label": "Seedream 4.5 (today's setup) + 4K detail pass", "detail": True},
+                "flux2": {"label": "FLUX.2 pro, every picture",
+                          "chains": {"beat": ["fal:flux", "fal:flux"], "key": ["fal:flux", "fal:flux"],
+                                     "scare": ["fal:flux", "fal:flux"]}},
+                "pro": {"label": "Nano Banana Pro, every picture",
+                        "chains": {"beat": ["fal:hero", "fal:hero"], "key": ["fal:hero", "fal:hero"],
+                                   "scare": ["fal:hero", "fal:hero"]}},
+            },
+        },
         "references": True,  # a style frame, character sheets and location sheets keep look, people and places the same
         "pollinations": True, "pollinations_gap_seconds": 16,
         "cloudflare_model": "@cf/black-forest-labs/flux-1-schnell", "cloudflare_steps": 4,  # 4 keeps ~170 pictures a day free
@@ -351,13 +368,19 @@ DEFAULTS: dict[str, Any] = {
             # ElevenLabs instead: "fal-ai/elevenlabs/music" ($0.80 a minute, whole minutes).
             "music": "fal-ai/ace-step-1.5",
             "vision": "fal-ai/any-llm/vision",                   # the critic's eye
+            # For the picture bake-off (and a later switch): FLUX.2 [pro] with references, and a
+            # detail pass that upscales a finished picture to 4K.
+            "flux": "fal-ai/flux-2-pro/edit", "flux_text": "fal-ai/flux-2-pro",
+            "upscale": "fal-ai/seedvr/upscale/image",
             # Image-to-video models for the motion stage (off while empty): e.g. a Kling, Seedance or
             # Wan image-to-video endpoint on fal.ai, with its price per second in `prices`.
             "clip": "", "clip_alt": "",
         },
         # An edit model asked without references uses its text-to-image twin.
         "text_roles": {"shot": "shot_text", "shot_alt": "shot_alt_text", "sheet": "reference", "sheet_alt": "reference",
-                       "thumbnail": "shot_alt_text", "hero": "hero_text"},
+                       "thumbnail": "shot_alt_text", "hero": "hero_text", "flux": "flux_text"},
+        # References sent to a model, longest side in pixels (FLUX.2 counts every input megapixel).
+        "reference_px": {"flux": 1024},
         "model_args": {
             "reference": {"image_size": {"width": 2752, "height": 1548}, "num_images": 1},
             "sheet": {"image_size": {"width": 2560, "height": 1440}, "num_images": 1},
@@ -374,6 +397,10 @@ DEFAULTS: dict[str, Any] = {
             "thumbnail": {"aspect_ratio": "16:9", "num_images": 1},
             "voice": {"stability": 0.5},
             "vision": {"model": "google/gemini-2.5-flash"},
+            "judge": {"model": "google/gemini-2.5-pro"},
+            "flux": {"image_size": {"width": 2560, "height": 1440}, "output_format": "png", "safety_tolerance": "4"},
+            "flux_text": {"image_size": {"width": 2560, "height": 1440}, "output_format": "png", "safety_tolerance": "4"},
+            "upscale": {"upscale_mode": "target", "target_resolution": "2160p", "output_format": "png"},
         },
         # A role whose settings cost more than the model's base price (Nano Banana 2 at 2K: 1.5x).
         "model_units": {"shot_alt": 1.5, "shot_alt_text": 1.5},
@@ -386,6 +413,9 @@ DEFAULTS: dict[str, Any] = {
             "fal-ai/elevenlabs/tts/eleven-v3": 0.10, "fal-ai/elevenlabs/sound-effects/v2": 0.002,
             # ElevenLabs music on fal: $0.80 a minute, billed in whole minutes (the score rounds up).
             "fal-ai/elevenlabs/music": 0.80 / 60, "fal-ai/ace-step-1.5": 0.0003, "fal-ai/any-llm/vision": 0.002,
+            # estimates, high side: FLUX.2 [pro] bills by megapixel in and out (a 2560x1440 picture
+            # from up to 7 references at 1024 px); the SeedVR detail pass to 4K
+            "fal-ai/flux-2-pro/edit": 0.14, "fal-ai/flux-2-pro": 0.08, "fal-ai/seedvr/upscale/image": 0.03,
         },
         # Voices. The host reads the intro and outro; a first-person story's teller gets a voice
         # matched to them; characters get distinct voices by kind. Kokoro names are the free fallback.

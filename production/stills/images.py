@@ -125,6 +125,14 @@ class Critic:
         self.wrong = wrong or "it does not match the house style at all"
         self.lock = threading.Lock()
         self.log: list[str] = []
+        self.faces: dict[Path, str] = {}
+
+    def _face(self, portrait: Path) -> str:
+        """A portrait as the checker is sent it, made once (pictures are checked in parallel)."""
+        with self.lock:
+            if portrait not in self.faces:
+                self.faces[portrait] = data_uri(_small(portrait, 384))
+            return self.faces[portrait]
 
     def check(self, image: Path, picture: str) -> tuple[bool, str]:
         ok, why = still_check(image)
@@ -132,7 +140,9 @@ class Critic:
             return ok, why
         return self.look(image, picture)
 
-    def look(self, image: Path, picture: str) -> tuple[bool, str]:
+    def look(self, image: Path, picture: str, faces: list[tuple[str, Path]] | None = None) -> tuple[bool, str]:
+        """`faces`: (name, close portrait) of the people who should be in it, sent after the picture
+        so the checker can compare each face with its portrait."""
         studio = self.studio
         if studio is None or "vision" not in studio.models:
             return True, "no vision model"
@@ -147,7 +157,11 @@ class Critic:
                   "a collage or a character sheet; a person has clearly broken anatomy (extra limbs or fingers, "
                   "a melted or doubled face); a named person clearly contradicts their description (wrong hair "
                   "colour, glasses missing or added, different clothes, a different age); or it shows something "
-                  "unrelated to the moment. Do NOT fail it for small differences: a slightly different shade of "
+                  "unrelated to the moment" + (
+                      "; or a named person has clearly a different face from their portrait (images 2 on are "
+                      "close portraits of " + ", ".join(n for n, _ in faces) + ": a different person, not "
+                      "just another angle, expression or light) - that is serious" if faces else "") +
+                  ". Do NOT fail it for small differences: a slightly different shade of "
                   "a colour, a person a little nearer or further than described, more or less shadow on them, the "
                   "direction someone looks or faces, a slightly different pose, a missing small prop or background "
                   "detail. When you fail it, say in one sentence what is wrong "
@@ -160,7 +174,8 @@ class Critic:
                   '{"ok": true or false, "serious": true or false, "reason": "short reason"}')
         try:
             result = studio.fal.run(model, dict(studio.args.get("vision", {}), prompt=prompt,
-                                                system_prompt=CRITIC_SYSTEM, image_urls=[data_uri(_small(image))]))
+                                                system_prompt=CRITIC_SYSTEM, image_urls=[data_uri(_small(image))] +
+                                                [self._face(p) for _, p in faces or [] if p.exists()]))
         except MediaError as exc:
             studio.budget.settle(usd, "vision", model, ok=False)
             log.warning("Vision check unavailable: %s", str(exc)[:200])
@@ -203,7 +218,7 @@ class Painter:
         self.retries_stopped = 0
         self.rejections: list[str] = []
         self.lock = threading.Lock()
-        self._refs: dict[tuple[str, int, int], str] = {}
+        self._refs: dict[tuple[str, int, int, int], str] = {}
 
     def _count(self, key: str) -> None:
         with self.lock:
@@ -218,17 +233,17 @@ class Painter:
             return bool(self.cfg.get("pollinations", True))
         return False
 
-    def reference(self, path: Path) -> str:
-        """A reference picture as the models are sent it: a JPEG at most 2048 px wide. The
+    def reference(self, path: Path, px: int = 2048) -> str:
+        """A reference picture as the models are sent it: a JPEG at most `px` wide. The
         full-size PNG is ten times the upload (four of them: 30 MB a request) for no gain."""
         stat = path.stat()
-        key = (str(path), stat.st_mtime_ns, stat.st_size)
+        key = (str(path), stat.st_mtime_ns, stat.st_size, px)
         with self.lock:
             if key in self._refs:
                 return self._refs[key]
         with Image.open(path) as im:
             im = im.convert("RGB")
-            im.thumbnail((2048, 2048), Image.LANCZOS)
+            im.thumbnail((px, px), Image.LANCZOS)
             data = io.BytesIO()
             im.save(data, "JPEG", quality=92)
         uri = "data:image/jpeg;base64," + base64.b64encode(data.getvalue()).decode()
@@ -238,7 +253,8 @@ class Painter:
 
     def paint(self, prompt: str, refs: list[Path], out: Path, key: Any, chain: list[str],
               check: str | Callable[[Path], tuple[bool, str]] | None = None,
-              accept_minor: bool = False, capped: bool = False, redraw: bool = False) -> tuple[Path | None, str]:
+              accept_minor: bool = False, capped: bool = False, redraw: bool = False,
+              faces: list[tuple[str, Path]] | None = None) -> tuple[Path | None, str]:
         """The first picture in the chain that passes its check. `check` is what the picture
         should show (the critic looks at it), or a check of its own for a reference sheet
         (picture -> passed, reason); None takes the first picture made.
@@ -306,7 +322,8 @@ class Painter:
                 ok, reason = still_check(candidate)
                 if ok:
                     doubted = (candidate, step)
-                    ok, reason = self.critic.look(candidate, check)
+                    ok, reason = (self.critic.look(candidate, check, faces) if faces
+                                  else self.critic.look(candidate, check))
             if ok:
                 candidate.replace(out)
                 self._count(step + " (corrected)" if why else step)
@@ -351,7 +368,8 @@ class Painter:
         if step.startswith("fal:"):
             role = step[4:]
             if refs:
-                args = {"prompt": prompt, "image_urls": [self.reference(p) for p in refs if p.exists()]}
+                px = int((self.cfg.get("reference_px") or {}).get(role, 2048))
+                args = {"prompt": prompt, "image_urls": [self.reference(p, px) for p in refs if p.exists()]}
             else:  # an edit model needs a reference: use the role's text-to-image twin
                 role = self.cfg.get("text_roles", {}).get(role, role)
                 if role not in self.studio.models:

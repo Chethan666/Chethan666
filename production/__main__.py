@@ -4,6 +4,8 @@
     python -m production --config config.aws-open.toml produce --story 12 # a chosen story, status unchanged
     python -m production --config config.aws-open.toml produce --script production/samples/one_minute.json
     python -m production --config config.aws-open.toml check              # what each paid model expects (no spend)
+    python -m production --config config.aws-open.toml produce --script production/samples/one_minute.json \
+        --bakeoff all                                                      # pictures only, by each setup
 """
 
 from __future__ import annotations
@@ -52,6 +54,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="no planner model calls (storyboard, casting and sound from the scene plan)")
     p.add_argument("--keep-work", action="store_true", help="keep the work folder (pictures, segments)")
     p.add_argument("--max-usd", type=float, help="spending cap for this video (default stills.max_usd)")
+    p.add_argument("--bakeoff", metavar="SETUPS", help="no video: paint every picture with each setup in "
+                   "stills.bakeoff.setups (comma-separated, or 'all') from the same references, side by side")
     lib = sub.add_parser("library", help="the sound library: build it from free sources, sync, or show it")
     lib.add_argument("action", choices=("build", "sync", "show"))
     lib.add_argument("--sources", default="sounds/sources.json")
@@ -77,6 +81,9 @@ def main(argv: list[str] | None = None) -> int:
     video_cfg = cfg.get("video", {})
 
     script_settings: dict = {}
+    if args.command == "produce" and args.bakeoff and not (args.script or args.story):
+        print("A bake-off needs --script or --story (it never takes a story from the queue)", file=sys.stderr)
+        return 1
     if args.script:
         story = json.loads(Path(args.script).read_text())
         script_settings = story.pop("stills", {}) or {}
@@ -114,7 +121,14 @@ def main(argv: list[str] | None = None) -> int:
         if os.environ.get("FAL_KEY"):
             from production.media import Fal
             fal = Fal()
-        summary = stills.produce(story, out_dir, narrator, router, stills_cfg, fal, conn, args.keep_work)
+        if args.bakeoff:
+            from .stills import bakeoff
+            stills_cfg["max_usd"] = float(args.max_usd if args.max_usd is not None
+                                          else stills_cfg.get("bakeoff", {}).get("max_usd", 7.0))
+            chosen = None if args.bakeoff == "all" else [x.strip() for x in args.bakeoff.split(",") if x.strip()]
+            summary = bakeoff.run(story, out_dir, narrator, router, stills_cfg, fal, conn, chosen)
+        else:
+            summary = stills.produce(story, out_dir, narrator, router, stills_cfg, fal, conn, args.keep_work)
     except Exception as exc:  # report, and hand a claimed story back to the queue
         log.exception("Production failed")
         info = {"error": str(exc)[:500], "run": os.environ.get("GITHUB_RUN_ID")}
@@ -126,7 +140,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     summary.update(run=os.environ.get("GITHUB_RUN_ID"), run_number=os.environ.get("GITHUB_RUN_NUMBER"),
                    narrator_fallback=args.voice)
-    if not args.script:
+    if not args.script and not args.bakeoff:
         db.update_story(conn, story["id"], production=summary, **({"status": "produced"} if claimed else {}))
     print(json.dumps(summary, indent=2, default=str))
     return 0

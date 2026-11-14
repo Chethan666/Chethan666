@@ -6,7 +6,8 @@
 #   mode=recheck: runs the legend recognition test on approved retellings that never had it
 # Pipeline 1 is the story factory and pipeline 2 turns its stories into videos.
 #   mode=video-test: pipeline 2 makes a ~35 s video from the script in production/samples/test_story.json
-#     (overrides "script=one_minute.json" picks another script in production/samples, e.g. the 60 s test)
+#     (overrides "script=one_minute.json" picks another script in production/samples, e.g. the 60 s test;
+#      add "bakeoff=all" for the picture bake-off: no video, every picture painted by each setup, side by side)
 #               (no story database needed), capped at $1.50
 #   mode=video-approve / video-reject: after watching a video (story_id), approve it for publishing or not
 #               (video-reject takes the reason in `overrides`)
@@ -187,13 +188,16 @@ jobs:
           if [ -n "$STORY_ID" ]; then ARGS+=(--story "$STORY_ID"); fi
           SETS=()
           SCRIPT=production/samples/test_story.json
+          BAKEOFF=()
           for kv in $OVERRIDES; do
             case "$kv" in
               script=*) SCRIPT="production/samples/${kv#script=}" ;;  # video-test: another sample script
+              bakeoff=*) BAKEOFF=(--bakeoff "${kv#bakeoff=}") ;;  # pictures only, by each setup (e.g. bakeoff=all)
               *) SETS+=(--set "$kv") ;;
             esac
           done
           if [ "$MODE" = video-test ]; then ARGS=(--script "$SCRIPT"); fi
+          ARGS+=("${BAKEOFF[@]}")
           python -m production --config "$CONFIG" "${SETS[@]}" produce "${ARGS[@]}" 2>&1 | tee video-summary.txt
           status=${PIPESTATUS[0]}
           { echo '## Video'; echo '```'; tail -c 60000 video-summary.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
