@@ -346,8 +346,8 @@ DEFAULTS: dict[str, Any] = {
             "enabled": True,
             "models": {"google/nano-banana-2.1/edit": "gemini-nano-banana-2.1",
                        "google/nano-banana-2.1": "gemini-nano-banana-2.1",
-                       "fal-ai/any-llm/vision": "gemini-2.5-flash"},
-            "prices": {"gemini-nano-banana-2.1": 0.055, "gemini-2.5-flash": 0.001},
+                       "fal-ai/any-llm/vision": "gemini-3.6-flash"},  # run 111: 2.5 Flash is retired
+            "prices": {"gemini-nano-banana-2.1": 0.055, "gemini-3.6-flash": 0.001},
         },
         # The picture bake-off (`produce --bakeoff`, workflow overrides `bakeoff=...`): the same
         # references, then every beat painted by each setup, side by side, with a judge's scores.

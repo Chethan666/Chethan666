@@ -164,7 +164,7 @@ class ProvidersTests(unittest.TestCase):
 
         cfg, fallback = use_vertex(DEFAULTS["stills"])
         self.assertEqual(cfg["models"]["shot"], "vertex:gemini-nano-banana-2.1")
-        self.assertEqual(cfg["models"]["vision"], "vertex:gemini-2.5-flash")
+        self.assertEqual(cfg["models"]["vision"], "vertex:gemini-3.6-flash")
         self.assertEqual(sorted(fallback["vertex:gemini-nano-banana-2.1"]),
                          ["google/nano-banana-2.1", "google/nano-banana-2.1/edit"])
         self.assertEqual(cfg["prices"]["vertex:gemini-nano-banana-2.1"], 0.055)

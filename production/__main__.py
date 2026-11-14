@@ -290,7 +290,7 @@ def check_vertex(stills: dict) -> int:
     print("Google: key set")
     failed = 0
     models = sorted(set((stills.get("vertex") or {}).get("models", {}).values()))
-    for model in models:
+    for model in models if not isinstance(client, vertex.VertexKey) else ():  # an API key cannot read it
         try:
             info = client.model_info(model)
             print(f"  vertex:{model}  found: {str(info.get('name', ''))[:120]} "
