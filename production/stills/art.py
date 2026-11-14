@@ -31,6 +31,7 @@ from ..look import W, H
 from ..shots import Shot
 from .board import Board
 from .checks import sheet_ok
+from . import lessons
 from .images import Critic, Painter, house_look
 from .storyboard import HOST
 
@@ -300,12 +301,20 @@ def placeholder(out: Path, seed: int) -> Path:
     return out
 
 
+def short(text: str, words: int = 14) -> str:
+    """The first words of a design: enough to find the person or place in their sheet."""
+    first = text.split(";")[0].split(". ")[0].strip()
+    parts = first.split()
+    return " ".join(parts[:words]).rstrip(",") + ("..." if len(parts) > words else "")
+
+
 class IllustratorAgent:
     name = "illustrator"
     critical = True
 
     def prompt(self, beat: Shot, house: str, cast: dict[str, str], refs: list[str], style_frame: bool,
-               look: dict[str, Any] | None = None, camera: str = "", place: dict[str, Any] | None = None) -> str:
+               look: dict[str, Any] | None = None, camera: str = "", place: dict[str, Any] | None = None,
+               lessons: str = "") -> str:
         """`style_frame`: reference image 1 is there (the place's sheet when `place` has one, else
         the style frame). `place`: the set this beat is in, {"name", "design", "sheet"}."""
         look = look or {}
@@ -323,23 +332,28 @@ class IllustratorAgent:
             notes.append("Reference image 1 shows the look only (lighting, colour grade, texture): copy its "
                          "look, not its content.")
         for k, name in enumerate(refs, 2 if style_frame else 1):
-            notes.append(f"Reference image {k} is the character sheet of {name}: {name} must be the same person, "
-                         "with an identical face, age, hair, clothes and accessories (glasses only if the sheet "
-                         "has them).")
-        people = "; ".join(f"{n}: {cast[n]}" for n in beat.characters if n in cast)
+            notes.append(f"Reference image {k} is the character sheet of {name}: the same person, identical face, "
+                         "age, hair and clothes.")
+        # A person or place with a sheet attached needs only a few words to be found in it: the full
+        # design is in the picture, and a shorter prompt is followed better (450 words in run 96).
+        people = "; ".join(f"{n}: {short(cast[n]) if n in refs else cast[n]}" for n in beat.characters if n in cast)
         empty = "" if beat.characters else " No people in this picture."
         picture = STICK.sub(lambda m: '' if m.group(0).lower() in ('chalk', 'single-line', 'single line')
                             else 'person', beat.picture)
         lens = f" {camera}." if camera else ""
         avoid = f" {look['avoid']}" if look.get("avoid") else ""
-        where = f" Place: {place['name']}: {place['design']}" if place and place.get("design") else ""
+        where = ""
+        if place and place.get("design"):
+            where = f" Place: {place['name']}: {short(place['design'], 24) if place.get('sheet') else place['design']}"
         # The shot comes first: what a model reads first it follows best, and run 94's refusals were
         # nearly all pictures that ignored their description (it sat behind 190 words of style).
         # Then what is fixed (place, people), what each reference is for, the look, and what to avoid.
-        return (f"One single 16:9 {look.get('noun', 'frame')}.{lens} {FRAMING.get(beat.framing, beat.framing)}. "
+        warned = f" Avoid what went wrong before: {lessons}." if lessons else ""
+        return (f"One single 16:9 {look.get('noun', 'frame')}, one frame, never split into panels.{lens} "
+                f"{FRAMING.get(beat.framing, beat.framing)}. "
                 f"{picture}{empty}{where}{(' Characters: ' + people + '.') if people else ''} "
                 f"{' '.join(notes)} The look: {house} No text, letters, captions, timestamps, borders or "
-                f"panels.{avoid}").replace("  ", " ")
+                f"panels.{warned}{avoid}").replace("  ", " ")
 
     @staticmethod
     def check_text(beat: Shot, cast: dict[str, str]) -> str:
@@ -379,19 +393,22 @@ class IllustratorAgent:
         def tier(beat: Shot) -> str:
             return "scare" if beat.index in strongest else "key" if beat.index in key_beats else "beat"
 
+        warned = lessons.load(board.conn) if cfg.get("lessons", True) else ""
+
         def one(beat: Shot, fix: str = "") -> tuple[int, Path | None]:
             names = [n for n in beat.characters if n in sheets][:3]
             place = place_of.get(beat.scene) if beat.index not in host_beats else None  # the host has his own place
             first = (place or {}).get("sheet") or style_frame
             refs = ([first] if first else []) + [sheets[n] for n in names]
             camera = str(cameras.get(beat.view, "")) if use_cameras else ""
-            text = self.prompt(beat, d["house"], cast, names, bool(first), look, camera, place)
+            text = self.prompt(beat, d["house"], cast, names, bool(first), look, camera, place, warned)
             if fix:  # the art review's note on the first version leads, so it is not lost at the end
                 text = f"Correct this from the previous attempt: {fix[:300].rstrip('. ')}. {text}"
             tag = f"_fix{abs(hash(fix)) % 10_000}" if fix else ""
             path, source = painter.paint(text, refs, folder / f"beat_{beat.index:03d}{tag}.png",
                                          ["beat", beat.index, text], chains.get(tier(beat), chains["beat"]),
-                                         check=self.check_text(beat, cast), accept_minor=tier(beat) == "beat")
+                                         check=self.check_text(beat, cast), accept_minor=tier(beat) == "beat",
+                                         capped=True, redraw=bool(fix))
             sources[beat.index] = source
             return beat.index, path  # clean: the colorist grades it, the edit adds grain and vignette
 
@@ -415,7 +432,10 @@ class IllustratorAgent:
                 pictures[b.index] = placeholder(folder / f"beat_{b.index:03d}.png", b.index)
                 placeholders += 1
         d["pictures"] = pictures
-        return {"look": look.get("name"), "cameras": {b.index: b.view for b in beats if b.view != "film"},
+        refused = [r.split("): ", 1)[1] for r in painter.rejections if r.startswith("beat_") and "): " in r]
+        learned = lessons.record(board.conn, refused) if cfg.get("lessons", True) else {}
+        return {"look": look.get("name"), "warned": warned, "faults_seen": learned,
+                "retry_usd": round(painter.retry_spent, 3), "retries_stopped": painter.retries_stopped, "cameras": {b.index: b.view for b in beats if b.view != "film"},
                 "pictures": len(beats) - borrowed - placeholders, "borrowed_neighbour": borrowed,
                 "placeholders": placeholders, "scare_shots": sorted(strongest), "key_beats": sorted(key_beats),
                 "by_painter": dict(painter.counts),

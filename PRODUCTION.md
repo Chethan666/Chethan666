@@ -96,6 +96,21 @@ picture matters (see "Cost and quality" below for the evidence):
 | Scares (`scare_shots`, at most 4) | Nano Banana Pro edit at 2K, then Seedream 4.5 | $0.15 / $0.04 |
 | Thumbnail | Nano Banana 2 edit (clean lettering) | $0.08 |
 
+**Right first time.** A retry is a safety net, not the plan, so the money goes into the
+first try:
+- the storyboard describes one clear moment per picture in at most 40 words: who, where,
+  doing what, with what feeling, the light. No exact positions of hands or props, no costume
+  details (the sheets fix those), no states a camera cannot show at once;
+- the prompt opens with "one single frame, never split into panels" and the shot itself; a
+  person or place whose sheet is attached is named in a few words, since the sheet shows the
+  rest (run 96's prompts were about 450 words);
+- the faults the critic refuses most often are counted in the story database across videos
+  (split frames, daylight, a calm face, the wrong clothes, extra people, writing, the wrong
+  action) and the most frequent are named in every new prompt (`lessons`);
+- retries and art-review redraws may spend at most `retry_share` (15%) of the video's cap;
+  past it, every picture keeps its best try. The report shows `retry_usd`,
+  `retries_stopped`, `warned` and `faults_seen`.
+
 The critic rejects a picture where a named person clearly contradicts their design, a cartoon
 or plastic-skinned picture, broken hands or faces, written text, or a different action than
 the narrated words, and says whether the fault is **serious** (a viewer would notice it in the

@@ -291,6 +291,10 @@ DEFAULTS: dict[str, Any] = {
         "scare_shots": 4,
         # Key beats: at least this important (1-5, from the storyboard), at most this share of the beats.
         "key_importance": 4, "key_share": 0.25,
+        # The first try is meant to be right: retries and art-review redraws may spend at most this share
+        # of max_usd; past it, every picture keeps its best try. `lessons`: the faults the critic refused
+        # most often in earlier videos are named in every picture prompt (counted in the story database).
+        "retry_share": 0.15, "lessons": True,
         "beat_min_seconds": 5.0, "beat_max_seconds": 11.0,
         "scene_dip_seconds": 0.35,
         # Painters tried in order until the critic passes a picture; each is told what the critic

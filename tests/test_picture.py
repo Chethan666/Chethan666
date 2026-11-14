@@ -537,6 +537,82 @@ class ReferenceCheck(unittest.TestCase):
             self.assertEqual(sheet_ok(None, image, "location", "the night bus", "x"), (True, "not checked"))
 
 
+class FirstTry(unittest.TestCase):
+    def test_a_person_with_a_sheet_needs_only_a_few_words(self):
+        from production.stills.art import IllustratorAgent, short
+
+        design = ("a woman in her early thirties, exhausted, dark brown hair tied back loosely; white skin, an oval "
+                  "face with a small scar on the chin, a grey cardigan over dark pyjamas, never wears glasses")
+        b = beat(4, scene=1, framing="close", characters=["Mara"], picture="Mara stares at the monitor, terrified.")
+        place = {"name": "Mara's bedroom", "design": "A master bedroom with floral wallpaper and a dark wooden "
+                 "bed. The only light is the monitor's red glow. Heavy curtains.", "sheet": Path("x")}
+        with_sheet = IllustratorAgent().prompt(b, "LOOK.", {"Mara": design}, ["Mara"], True, {}, "", place,
+                                               "one single frame, never split into two or more panels")
+        without = IllustratorAgent().prompt(b, "LOOK.", {"Mara": design}, [], True, {}, "", dict(place, sheet=None))
+        self.assertIn("Mara: a woman in her early thirties, exhausted, dark brown hair tied back loosely", with_sheet)
+        self.assertNotIn("scar on the chin", with_sheet)  # the sheet shows it
+        self.assertIn("scar on the chin", without)  # no sheet: the words are all there is
+        self.assertNotIn("Heavy curtains", with_sheet)
+        self.assertTrue(with_sheet.startswith("One single 16:9 frame, one frame, never split into panels."))
+        self.assertIn("Avoid what went wrong before: one single frame", with_sheet)
+        self.assertEqual(short("a tall man in a long coat", 3), "a tall man...")
+
+    def test_refusals_are_counted_across_videos_and_warn_the_next(self):
+        import sqlite3
+
+        from production.stills import lessons
+
+        conn = sqlite3.connect(":memory:")
+        self.addCleanup(conn.close)
+        self.assertEqual(lessons.load(conn), "")
+        lessons.record(conn, ["The image is a diptych, split into two frames", "too bright for night",
+                              "Mara is wearing blue jeans instead of pyjamas"])
+        self.assertEqual(lessons.load(conn), "")  # once is chance
+        counted = lessons.record(conn, ["a split screen with two panels", "It shows daylight through the window"])
+        self.assertEqual(counted, {"split": 1, "daylight": 1})
+        warned = lessons.load(conn)
+        self.assertIn("never split", warned)
+        self.assertIn("no daylight", warned)
+        self.assertNotIn("clothes", warned)
+        self.assertEqual(lessons.load(None), "")
+
+
+@unittest.skipUnless(HAVE, "video libraries or ffmpeg not installed")
+class RetryAllowance(unittest.TestCase):
+    def test_retries_stop_when_their_share_of_the_cap_is_spent(self):
+        from production.paid import Budget
+        from production.stills.images import Painter
+        from tests.test_stills import painted
+
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        asked = []
+
+        class Critic:
+            def look(self, image, picture):
+                return False, "a split screen"  # serious, every time
+
+        class P(Painter):
+            def available(self, step):
+                return True
+
+            def _one(self, step, prompt, refs, raw, key, retry=0):
+                asked.append(step)
+                return painted(raw, seed=len(asked))
+
+        studio = SimpleNamespace(budget=Budget(1.0, {"m": 0.04}), models={"shot": "m"})
+        p = P(studio, {"retry_share": 0.1}, root, Critic())  # retries may spend $0.10: two of them
+        for k in range(3):
+            p.paint("x", [], root / f"b{k}.png", f"k{k}", ["fal:shot", "fal:shot"], check="x", capped=True)
+        self.assertEqual(asked.count("fal:shot"), 3 + 2)  # three first tries, only two retries
+        self.assertEqual(p.retries_stopped, 1)
+        self.assertAlmostEqual(p.retry_spent, 0.08)
+        self.assertTrue(all((root / f"b{k}.png").exists() for k in range(3)))  # each keeps its best try
+        # an art-review redraw counts as a retry from its first call
+        self.assertEqual(p.paint("x", [], root / "r.png", "kr", ["fal:shot"], check="x", capped=True,
+                                 redraw=True), (None, "none"))
+
+
 @unittest.skipUnless(HAVE, "video libraries or ffmpeg not installed")
 class FinishedPicture(unittest.TestCase):
     def test_a_stretch_of_black_is_reported(self):

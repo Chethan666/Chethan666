@@ -178,6 +178,12 @@ class Painter:
         self.counts: dict[str, int] = {}
         self.sizes: dict[str, str] = {}  # the size each painter's pictures really come back at
         self.doubted: set[str] = set()  # pictures used although no check passed them
+        # Retries and redraws may spend at most `retry_share` of the video's cap: the first try is
+        # meant to be right, a retry is the safety net. Past it, a picture keeps its best try.
+        cap = float(getattr(getattr(studio, "budget", None), "cap", 0.0) or 0.0)
+        self.retry_cap = float(cfg.get("retry_share", 0.15)) * cap if cap else float("inf")
+        self.retry_spent = 0.0
+        self.retries_stopped = 0
         self.rejections: list[str] = []
         self.lock = threading.Lock()
         self._refs: dict[tuple[str, int, int], str] = {}
@@ -215,14 +221,15 @@ class Painter:
 
     def paint(self, prompt: str, refs: list[Path], out: Path, key: Any, chain: list[str],
               check: str | Callable[[Path], tuple[bool, str]] | None = None,
-              accept_minor: bool = False) -> tuple[Path | None, str]:
+              accept_minor: bool = False, capped: bool = False, redraw: bool = False) -> tuple[Path | None, str]:
         """The first picture in the chain that passes its check. `check` is what the picture
         should show (the critic looks at it), or a check of its own for a reference sheet
         (picture -> passed, reason); None takes the first picture made.
 
         Each painter after a refusal is told what was wrong; a chain may name the same painter
         twice for that. With `accept_minor` (an ordinary beat), a picture refused only for a detail
-        is kept at once: no money is spent correcting what a viewer would not notice. If none
+        is kept at once: no money is spent correcting what a viewer would not notice. With `capped`,
+        retries (and a `redraw` from the start) stop once the retry allowance is spent. If none
         passes, the picture kept (and counted as doubted) is the first one
         whose fault was not serious, so the strongest painter's picture wins over a correction that
         broke something worse (run 96: a reveal refused for the way she looked lost to a split
@@ -239,14 +246,26 @@ class Painter:
             fault = why[len(MINOR):] if why.startswith(MINOR) else why
             text = f"Correct this from the previous attempt: {fault[:300].rstrip('. ')}. {prompt}" if why else prompt
             raw = self.work / f"raw_{out.stem}_{k}.png"
+            extra = capped and paid and (bool(why) or redraw)  # money spent beyond a first try
+            price = self._price(step)
+            if extra:
+                with self.lock:
+                    if self.retry_spent + price > self.retry_cap + 1e-9:
+                        self.retries_stopped += 1
+                        log.info("%s: retry allowance spent; keeping the best try so far", out.stem)
+                        break
+                    self.retry_spent += price  # held now, so parallel workers cannot overspend
             try:
                 made = self._one(step, text, refs, raw, key, retry=k if why else 0)
             except OverBudget:
+                self._refund(extra, price)
                 continue
             except (MediaError, OSError, ValueError) as exc:
+                self._refund(extra, price)
                 log.warning("%s: %s failed: %s", out.stem, step, str(exc)[:200])
                 continue
             if made is None:
+                self._refund(extra, price)
                 continue
             candidate = self.work / f"fit_{out.stem}_{k}.png"
             try:
@@ -296,6 +315,18 @@ class Painter:
             self.doubted.add(out.stem)
             return out, keep[1]
         return None, "none"
+
+    def _price(self, step: str) -> float:
+        if not step.startswith("fal:") or self.studio is None or step[4:] not in self.studio.models:
+            return 0.0
+        role = step[4:]
+        units = float((self.cfg.get("model_units") or {}).get(role, 1.0))
+        return float(self.studio.budget.price(self.studio.models[role], units))
+
+    def _refund(self, held: bool, price: float) -> None:
+        if held:
+            with self.lock:
+                self.retry_spent -= price
 
     def _one(self, step: str, prompt: str, refs: list[Path], raw: Path, key: Any, retry: int = 0) -> Path | None:
         """One picture from one painter. `retry`: the corrected try's place in the chain, so the
