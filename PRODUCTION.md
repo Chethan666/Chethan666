@@ -30,7 +30,7 @@ can before the next agent builds on it (✓ = checks; ↻ = fixes itself):
 | 8 | Edit plan | Cold open, title card, the story, end screen; captions | | | |
 | 9 | Sound | The sound director picks music, room tone, effects and stingers from the channel's sound library (or has them made, if `sound_library.generate_missing`) | ✓↻ the **mix check**: under speech the voice must stand `voice_over_bed_db` (12 dB) above everything else, or the bed is lowered | library (free) | synthesized drone and cues |
 | 10 | Edit | Every still becomes a shot at 1440p: a slow, steady camera move suited to its framing, rain, fog or a failing light where the storyboard saw them, fine film grain, a vignette, HD colours; exactly its frames, a dip to black between scenes, -14 LUFS | | | |
-| 11 | Packager | Thumbnails, Shorts, chapters, metadata, contact sheet, 60 s preview | ✓↻ each thumbnail's words are read back by a vision model; misspelled or unreadable ones are repainted once | Nano Banana 2 edit | the key picture with lettering |
+| 11 | Packager | Thumbnails, chapters, metadata, contact sheet, 60 s preview | ✓↻ each thumbnail's words are read back by a vision model; misspelled or unreadable ones are repainted once | Nano Banana 2 edit | the key picture with lettering |
 | 12 | QA | Length, streams, files, fallbacks, a stretch of black picture, the colour label, loudness and true peak, and every gate's findings in one list | ✓ `pass`, or `check` with the reasons | | |
 
 By default only pictures and the narrator's voice are paid for: music and sounds come from the
@@ -174,8 +174,6 @@ Rain and fog are textures made once per video and laid over the moving picture, 
 frame; flicker is a brightness curve. A shot's bitrate is capped at 24 Mbit/s, since rain
 changes every pixel of every frame.
 
-Shorts keep the film's 24 frames a second, so its camera moves stay smooth in them.
-
 **Sound library.** Music, room tones, effects and stings come first from the channel's own
 library (`production/library.py`), published as the GitHub release `sound-library`: a catalogue
 (`library.json`, one entry per sound with its kind, moods, intensity, tags, length, license,
@@ -211,7 +209,7 @@ references $0.5, voices about $1, checks a few cents, and music and effects abou
 sound library; generating all of it instead costs about $7-8 more, mostly music), capped by
 `stills.max_usd` (default $10). Free without any key, at lower quality.
 
-**Outputs:** `video.mp4` (1440p), `thumbnail_1-3.jpg`, `short_1-2.mp4`, `captions.srt`,
+**Outputs:** `video.mp4` (1440p), `thumbnail_1-3.jpg`, `captions.srt`,
 `metadata.json`, `beats.json`, `contact_sheet.jpg`, `preview_60s.mp4`, `narration.wav`,
 `report.json` (every agent's report, the spend by step, and QA's verdict). Review, approve and
 publish work exactly as below.
@@ -306,8 +304,8 @@ Nothing goes to YouTube until a person has watched it:
    in `overrides`).
 3. Run **mode = video-publish** with the story's number. It uploads the video as **private**
    with its title, description and chapters, tags, captions, first thumbnail and the comment
-   question, and the Shorts (private too, each linking to the full video). Put a time in
-   `overrides` (e.g. `2026-11-20T17:00:00Z`) to schedule them instead. In YouTube Studio: pin
+   question. No Shorts are cut from the video. Put a time in
+   `overrides` (e.g. `2026-11-20T17:00:00Z`) to schedule it instead. In YouTube Studio: pin
    the comment, add the end-screen elements over the last 20 s, and start a Test & Compare
    with the other two thumbnails.
 4. **mode = video-stats** reads every published video's views, likes, comments and average

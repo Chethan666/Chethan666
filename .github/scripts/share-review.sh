@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pushes small review images of a run (contact sheet, thumbnails, frames from the
-# video every 20 s, four full-size frames, Shorts) and its reports to the review-media branch, under run-<number>/,
+# video every 20 s, four full-size frames) and its reports to the review-media branch, under run-<number>/,
 # so they can be looked at without downloading the whole artifact. No audio, no full video.
 set -euo pipefail
 src=out
@@ -22,10 +22,6 @@ find "$src" -type f -name 'video.mp4' | while read -r v; do
     ffmpeg -nostdin -hide_banner -loglevel error -y -ss "$(( ${length:-0} * part / 100 ))" -i "$v" -frames:v 1 -q:v 2 \
       "$dest/${dir}_frame_${part}.jpg" || true
   done
-done
-find "$src" -type f -name 'short_*.mp4' | while read -r v; do
-  name=$(echo "${v#$src/}" | tr '/' '_')
-  ffmpeg -nostdin -hide_banner -loglevel error -y -ss 5 -i "$v" -frames:v 1 -vf scale=360:-2 "$dest/${name%.*}.jpg" || true
 done
 find "$src" -type f \( -name 'report.json' -o -name 'beats.json' -o -name 'metadata.json' \) \
   ! -path '*/work/*' | while read -r f; do cp "$f" "$dest/$(echo "${f#$src/}" | tr '/' '_')"; done

@@ -326,11 +326,7 @@ class TeamTests(unittest.TestCase):
                               capture_output=True, text=True).stdout.strip()
         self.assertEqual(tags, "bt709,24/1")
         self.assertEqual(summary["agents"]["illustrator"]["painter_sizes"]["fal:shot"], "640x360")
-        for short in out.glob("short_*.mp4"):  # Shorts keep the film's frame rate, so its moves stay smooth
-            rate = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
-                                   "stream=r_frame_rate", "-of", "csv=p=0", str(short)],
-                                  capture_output=True, text=True).stdout.strip()
-            self.assertEqual(rate, "24/1")
+        self.assertEqual(list(out.glob("short_*.mp4")), [])  # no Shorts are cut from the video
 
     def test_a_first_person_story_has_a_host_a_teller_and_a_character_voice(self):
         summary, out, fal = self.make(FakeFal, Router(), first_person=True)

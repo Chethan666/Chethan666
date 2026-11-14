@@ -283,7 +283,7 @@ THUMB_ANGLES = (
 
 
 class PackagerAgent:
-    """Thumbnails to test, Shorts, chapters, the upload details and the review kit."""
+    """Thumbnails to test, chapters, the upload details and the review kit."""
 
     name = "packager"
     critical = False
@@ -336,9 +336,6 @@ class PackagerAgent:
         beats: list[Shot] = d["beats"]
         self.checks: list[dict[str, Any]] = []
         thumbs = self.thumbnails(board)
-        windows = package.short_windows(beats, d["scenes"], d["offset"], int(cfg.get("shorts", 2)), 25.0,
-                                        float(cfg.get("short_max_seconds", 55.0)))
-        shorts = package.shorts(d["video"], windows, d["cues"], str(d["titles"][0]), board.out, board.work)
         package.contact_sheet(beats, d["pictures"], board.out / "contact_sheet.jpg", moving=set(d.get("clips") or {}))
         package.preview(d["video"], board.out / "preview_60s.mp4")
         chapters = shotlist.chapters(board.router, d["scenes"], beats, d["offset"])
@@ -355,8 +352,7 @@ class PackagerAgent:
             "end_screen_line": d["end_line"], "credit": story.get("description_credit", ""), "made_for_kids": False,
             "duration_seconds": round(d["total"], 1), "chapters": [[round(t, 1), n] for t, n in chapters],
             "sound_credits": d.get("credits", []), "sounds_used": d.get("sounds_used", []),
-            "thumbnails": [p.name for p in thumbs], "shorts": [p.name for p in shorts],
-            "shorts_windows": [[round(a, 1), round(b, 1)] for a, b in windows],
+            "thumbnails": [p.name for p in thumbs],
             "end_screen_starts": round(d["offset"] + d["story_seconds"], 1),
             # YouTube's "altered or synthetic content" label is for realistic made-up people and events:
             # on for the cinematic look, off for illustrations; stills.synthetic_media true/false overrides.
@@ -365,7 +361,7 @@ class PackagerAgent:
         }
         (board.out / "metadata.json").write_text(json.dumps(metadata, indent=2, ensure_ascii=False))
         (board.out / "beats.json").write_text(shotlist.save(beats))
-        return {"thumbnails": len(thumbs), "shorts": len(shorts), "chapters": len(chapters),
+        return {"thumbnails": len(thumbs), "chapters": len(chapters),
                 "thumbnail_checks": self.checks}
 
 

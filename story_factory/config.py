@@ -418,7 +418,7 @@ DEFAULTS: dict[str, Any] = {
         },
         "parallel": 4, "render_workers": 3, "max_effects": 30,
         "cold_open": True, "title_seconds": 3.0, "end_screen_seconds": 20.0,
-        "burn_captions": False, "shorts": 2, "short_max_seconds": 55.0, "thumbnails": 3,
+        "burn_captions": False, "thumbnails": 3,
         # The channel's sound library (production/library.py; built by the sound-library workflow
         # from Kevin MacLeod, OpenGameArt CC0, the Free Music Archive, Sonniss packs and ACE-Step).
         # The sound director picks from it first; only what it lacks is generated, and saved back.

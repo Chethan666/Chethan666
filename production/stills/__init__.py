@@ -19,7 +19,7 @@ that can go wrong; see PRODUCTION.md):
     edit_plan    cold open, title card, the story, end screen; captions
     sound        score, room tone, effects and stingers from the sound library; the mix check
     edit         every still a shot: a camera move, atmosphere, grain, vignette, HD colours
-    packager     thumbnails, Shorts, chapters, metadata, contact sheet, 60 s preview
+    packager     thumbnails, chapters, metadata, contact sheet, 60 s preview
     qa           checks the finished files before a person reviews them
 
 One spending cap covers the whole video and every paid step has a free fallback.

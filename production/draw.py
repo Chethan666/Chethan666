@@ -1,4 +1,4 @@
-"""Lettering for cards, Shorts and the fallback thumbnail: the channel's two colours and its font."""
+"""Lettering for cards and the fallback thumbnail: the channel's two colours and its font."""
 
 from __future__ import annotations
 
