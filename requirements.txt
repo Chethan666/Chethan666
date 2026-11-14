@@ -4,3 +4,4 @@ openai>=3.42
 numpy>=2.0
 pillow>=11.0
 soundfile>=0.12
+google-auth>=2.30  # Vertex AI sign-in with a service account key

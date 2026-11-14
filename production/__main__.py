@@ -76,13 +76,14 @@ def main(argv: list[str] | None = None) -> int:
     cfg = apply_overrides(load_config(args.config), args.set)
     if args.command == "check":
         stills = cfg.get("stills", {})
-        return check(stills.get("models", {}), stills.get("model_args", {}))
+        found = check(stills.get("models", {}), stills.get("model_args", {}))
+        return check_vertex(stills) or found
     if args.command == "library":
         return library(args, cfg)
     if args.command == "host":
-        from production.media import Fal
         from .stills import host
-        report = host.make(cfg.get("stills", {}), Fal(), Path(args.out), args.candidates, args.max_usd)
+        stills, client = media_client(cfg.get("stills", {}))
+        report = host.make(stills, client, Path(args.out), args.candidates, args.max_usd)
         print(json.dumps(report, indent=2))
         return 0 if any("portrait" in c for c in report["candidates"]) else 1
     conn = db.connect(cfg["database"])
@@ -127,10 +128,7 @@ def main(argv: list[str] | None = None) -> int:
         stills_cfg["max_usd"] = args.max_usd
     try:
         from .stills import pipeline as stills
-        fal = None
-        if os.environ.get("FAL_KEY"):
-            from production.media import Fal
-            fal = Fal()
+        stills_cfg, fal = media_client(stills_cfg)
         if args.bakeoff:
             from .stills import bakeoff
             stills_cfg["max_usd"] = float(args.max_usd if args.max_usd is not None
@@ -253,6 +251,53 @@ def library(args: argparse.Namespace, cfg: dict) -> int:
     summary = library_build.build(Path(args.sources), out, existing, only, fal, args.max_usd)
     print(json.dumps(summary, indent=2))
     return 0
+
+
+def media_client(stills: dict) -> tuple[dict, object | None]:
+    """The stills config and the client for paid media: fal (FAL_KEY), with the Nano Banana 2.1
+    roles and the checker on Google Cloud Vertex AI when GCP_SERVICE_ACCOUNT_JSON is set."""
+    from production import vertex
+    from production.media import Fal, MediaError
+
+    fal = Fal() if os.environ.get("FAL_KEY") else None
+    if vertex.available() and (stills.get("vertex") or {}).get("enabled", True):
+        try:
+            client = vertex.Vertex()
+        except MediaError as exc:
+            log.warning("Vertex AI not used: %s", exc)
+            return stills, fal
+        moved, fallback = vertex.use_vertex(stills)
+        print(f"Paid pictures on Vertex AI (project {client.project}, {client.location}): "
+              f"{sorted(set(fallback))}; fal as the fallback: {'yes' if fal else 'no'}", flush=True)
+        return moved, vertex.Providers(fal, client, fallback)
+    return stills, fal
+
+
+def check_vertex(stills: dict) -> int:
+    """Vertex AI: the key signs in and each model is in the catalogue (free; nothing is generated)."""
+    from production import vertex
+    from production.media import MediaError
+
+    if not vertex.available():
+        print("GCP_SERVICE_ACCOUNT_JSON: not set (pictures stay on fal)")
+        return 0
+    try:
+        client = vertex.Vertex()
+        client.token()
+    except MediaError as exc:
+        print(f"Vertex AI: {exc}")
+        return 1
+    print(f"Vertex AI: signed in; project {client.project}, location {client.location}")
+    failed = 0
+    for model in sorted(set((stills.get("vertex") or {}).get("models", {}).values())):
+        try:
+            info = client.model_info(model)
+            print(f"  vertex:{model}  found: {str(info.get('name', ''))[:120]} "
+                  f"{str(info.get('launchStage', '') or info.get('versionState', ''))}")
+        except MediaError as exc:
+            failed += 1
+            print(f"  vertex:{model}  NOT AVAILABLE: {str(exc)[:300]}")
+    return 1 if failed else 0
 
 
 def check(models: dict, model_args: dict | None = None) -> int:

@@ -339,6 +339,16 @@ DEFAULTS: dict[str, Any] = {
             "scare": ["fal:shot", "fal:hero", "cloudflare", "pollinations"],
             "thumbnail": ["fal:thumbnail"],
         },
+        # Google Cloud Vertex AI (production/vertex.py): with the secret GCP_SERVICE_ACCOUNT_JSON set,
+        # these fal models are called on Vertex instead, paid from Google Cloud (about $0.05 a 2K
+        # picture against $0.08 on fal); a Vertex failure goes back to the fal model.
+        "vertex": {
+            "enabled": True,
+            "models": {"google/nano-banana-2.1/edit": "gemini-nano-banana-2.1",
+                       "google/nano-banana-2.1": "gemini-nano-banana-2.1",
+                       "fal-ai/any-llm/vision": "gemini-2.5-flash"},
+            "prices": {"gemini-nano-banana-2.1": 0.055, "gemini-2.5-flash": 0.001},
+        },
         # The picture bake-off (`produce --bakeoff`, workflow overrides `bakeoff=...`): the same
         # references, then every beat painted by each setup, side by side, with a judge's scores.
         "bakeoff": {
