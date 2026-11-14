@@ -262,12 +262,12 @@ def media_client(stills: dict) -> tuple[dict, object | None]:
     fal = Fal() if os.environ.get("FAL_KEY") else None
     if vertex.available() and (stills.get("vertex") or {}).get("enabled", True):
         try:
-            client = vertex.Vertex()
+            client = vertex.client()
         except MediaError as exc:
             log.warning("Vertex AI not used: %s", exc)
             return stills, fal
         moved, fallback = vertex.use_vertex(stills)
-        print(f"Paid pictures on Vertex AI (project {client.project}, {client.location}): "
+        print(f"Paid pictures on Google ({client.project}, {client.location}): "
               f"{sorted(set(fallback))}; fal as the fallback: {'yes' if fal else 'no'}", flush=True)
         return moved, vertex.Providers(fal, client, fallback)
     return stills, fal
@@ -279,24 +279,34 @@ def check_vertex(stills: dict) -> int:
     from production.media import MediaError
 
     if not vertex.available():
-        print("GCP_SERVICE_ACCOUNT_JSON: not set (pictures stay on fal)")
+        print("GEMINI_PLATFORM_API_KEY / GCP_SERVICE_ACCOUNT_JSON: not set (pictures stay on fal)")
         return 0
     try:
-        client = vertex.Vertex()
+        client = vertex.client()
         client.token()
     except MediaError as exc:
         print(f"Vertex AI: {exc}")
         return 1
-    print(f"Vertex AI: signed in; project {client.project}, location {client.location}")
+    print(f"Google: signed in; {client.project}, location {client.location}")
     failed = 0
-    for model in sorted(set((stills.get("vertex") or {}).get("models", {}).values())):
+    models = sorted(set((stills.get("vertex") or {}).get("models", {}).values()))
+    for model in models:
         try:
             info = client.model_info(model)
             print(f"  vertex:{model}  found: {str(info.get('name', ''))[:120]} "
                   f"{str(info.get('launchStage', '') or info.get('versionState', ''))}")
         except MediaError as exc:
+            print(f"  vertex:{model}  catalogue lookup failed: {str(exc)[:300]}")
+    # One tiny real call (a few words from the checker model, a fraction of a cent) proves the key,
+    # the API and the billing; the picture model is proven by the first picture of a run.
+    text = next((m for m in models if "image" not in m and "banana" not in m), "")
+    if text:
+        try:
+            got = client.run(f"vertex:{text}", {"prompt": "Reply with the single word OK.", "max_tokens": 5})
+            print(f"  vertex:{text}  answered: {got.get('output', '')[:40]!r}")
+        except MediaError as exc:
             failed += 1
-            print(f"  vertex:{model}  NOT AVAILABLE: {str(exc)[:300]}")
+            print(f"  vertex:{text}  CALL FAILED: {str(exc)[:400]}")
     return 1 if failed else 0
 
 

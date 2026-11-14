@@ -1,9 +1,9 @@
 """Google Cloud Vertex AI: Nano Banana 2.1 pictures and Gemini checks, paid from Google Cloud.
 
-Plain HTTPS calls to Vertex AI's generateContent, signed in with a service account key kept
-only in the environment (GitHub secret GCP_SERVICE_ACCOUNT_JSON: the key file's JSON). The
-project is the key's own unless GCP_PROJECT says otherwise; the location is `global` unless
-GCP_LOCATION says otherwise.
+Plain HTTPS calls to Vertex AI's generateContent, signed in with a Google Cloud API key
+(GitHub secret GEMINI_PLATFORM_API_KEY) or a service account key (GCP_SERVICE_ACCOUNT_JSON: the
+key file's JSON), kept only in the environment. The location is `global` unless GCP_LOCATION
+says otherwise; GCP_PROJECT names the project when the key alone does not.
 
 Models are named in the config as "vertex:<model id>" (e.g. "vertex:gemini-nano-banana-2.1").
 `use_vertex()` moves the configured roles from fal to Vertex when a key is present; the
@@ -45,8 +45,21 @@ SAFETY = [{"category": c, "threshold": "BLOCK_ONLY_HIGH"} for c in (
     "HARM_CATEGORY_DANGEROUS_CONTENT")]
 
 
+KEY_ENV = "GEMINI_PLATFORM_API_KEY"  # a Google Cloud API key for Vertex AI (not an AI Studio key)
+
+
 def available() -> bool:
-    return bool(os.environ.get("GCP_SERVICE_ACCOUNT_JSON") or os.environ.get("GCP_ACCESS_TOKEN"))
+    return bool(os.environ.get(KEY_ENV) or os.environ.get("GCP_SERVICE_ACCOUNT_JSON")
+                or os.environ.get("GCP_ACCESS_TOKEN"))
+
+
+def client() -> "Vertex":
+    """Vertex AI signed in with the Google Cloud API key (GEMINI_PLATFORM_API_KEY) when it is set,
+    else with a service account key: the same models, requests and answers, billed to the Google
+    Cloud project the key belongs to."""
+    if os.environ.get(KEY_ENV):
+        return VertexKey()
+    return Vertex()
 
 
 def _data(uri: str) -> tuple[str, str]:
@@ -107,6 +120,9 @@ class Vertex:
             self._expiry = now + float(got.get("expires_in", 3600))
             return self._token
 
+    def _headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self.token()}", "Content-Type": "application/json"}
+
     def url(self, model: str, method: str = "generateContent") -> str:
         return (f"https://{self.host}/v1/projects/{self.project}/locations/{self.location}"
                 f"/publishers/google/models/{model}:{method}")
@@ -116,9 +132,7 @@ class Vertex:
     def _post(self, model: str, body: dict[str, Any]) -> dict[str, Any]:
         for k in range(len(self.WAITS) + 1):
             try:
-                return self.http(self.url(model), method="POST", body=body, timeout=300,
-                                 headers={"Authorization": f"Bearer {self.token()}",
-                                          "Content-Type": "application/json"})
+                return self.http(self.url(model), method="POST", body=body, timeout=300, headers=self._headers())
             except MediaError as exc:
                 text = str(exc)
                 busy = any(w in text for w in ("HTTP 429", "HTTP 503", "RESOURCE_EXHAUSTED", "UNAVAILABLE"))
@@ -210,6 +224,37 @@ class Vertex:
         """The model's record in Vertex's catalogue (free): proves the key, the API and the model."""
         return self.http(f"https://{self.host}/v1/publishers/google/models/{model}", timeout=60,
                          headers={"Authorization": f"Bearer {self.token()}"})
+
+
+class VertexKey(Vertex):
+    """Vertex AI with a Google Cloud API key (sent as the x-goog-api-key header, never in the URL):
+    no service account. Without GCP_PROJECT the project-less address is used, which Vertex AI
+    resolves from the key; with it, the project's own address."""
+
+    def __init__(self, key: str | None = None, project: str | None = None, location: str | None = None,
+                 http: Callable[..., Any] | None = None):
+        self.key = key or os.environ.get(KEY_ENV, "")
+        if not self.key:
+            raise MediaError(f"Vertex AI: set {KEY_ENV} (a Google Cloud API key) as a secret")
+        self.project = project or os.environ.get("GCP_PROJECT", "")
+        self.location = location or os.environ.get("GCP_LOCATION") or "global"
+        self.http = http or _request
+        self.lock = threading.Lock()
+
+    def token(self) -> str:
+        return ""
+
+    def _headers(self) -> dict[str, str]:
+        return {"x-goog-api-key": self.key, "Content-Type": "application/json"}
+
+    def url(self, model: str, method: str = "generateContent") -> str:
+        if self.project:
+            return super().url(model, method)
+        return f"https://{self.host}/v1/publishers/google/models/{model}:{method}"
+
+    def model_info(self, model: str) -> dict[str, Any]:
+        return self.http(f"https://{self.host}/v1/publishers/google/models/{model}", timeout=60,
+                         headers={"x-goog-api-key": self.key})
 
 
 class Providers:

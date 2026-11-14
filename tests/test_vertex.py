@@ -75,6 +75,38 @@ class VertexTests(unittest.TestCase):
                                               "locations/us-central1/"))
 
 
+class VertexKeyTests(unittest.TestCase):
+    def test_a_google_cloud_api_key_signs_in_by_header_without_a_project(self):
+        from production.vertex import VertexKey
+
+        calls = []
+
+        def http(url, method="GET", headers=None, body=None, timeout=0, raw=False):
+            calls.append((url, headers))
+            return answer_picture()
+
+        v = VertexKey(key="k123", project="", http=http)
+        v.run("vertex:gemini-nano-banana-2.1", {"prompt": "x"})
+        url, headers = calls[0]
+        self.assertEqual(url, "https://aiplatform.googleapis.com/v1/publishers/google/models/"
+                              "gemini-nano-banana-2.1:generateContent")
+        self.assertEqual(headers["x-goog-api-key"], "k123")
+        self.assertNotIn("k123", url)  # never in the address (it would show in logs)
+        self.assertNotIn("Authorization", headers)
+        with_project = VertexKey(key="k", project="proj", http=http)
+        self.assertIn("/projects/proj/locations/global/", with_project.url("m"))
+
+    def test_the_api_key_is_preferred_to_a_service_account(self):
+        import os
+        from unittest import mock
+
+        from production import vertex
+
+        with mock.patch.dict(os.environ, {"GEMINI_PLATFORM_API_KEY": "k", "GCP_PROJECT": ""}, clear=False):
+            self.assertTrue(vertex.available())
+            self.assertIsInstance(vertex.client(), vertex.VertexKey)
+
+
 class ProvidersTests(unittest.TestCase):
     class Fal:
         def __init__(self):

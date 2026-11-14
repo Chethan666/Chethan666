@@ -348,16 +348,22 @@ want anyway.
 
 | Job | Service | Key (GitHub secret) | Cost |
 |---|---|---|---|
-| Every picture (Nano Banana 2.1) and the picture checks (Gemini) | Google Cloud **Vertex AI** | `GCP_SERVICE_ACCOUNT_JSON` | about $0.05 a 2K picture; free while Google Cloud credits last |
+| Every picture (Nano Banana 2.1) and the picture checks (Gemini) | Google Cloud **Vertex AI** | `GEMINI_PLATFORM_API_KEY` (a Google Cloud API key), or `GCP_SERVICE_ACCOUNT_JSON` | about $0.05 a 2K picture; free while Google Cloud credits last |
 | Narration (ElevenLabs v3) and missing sound effects (ElevenLabs Sound Effects) | **fal.ai** | `FAL_KEY` | about $0.10 per 1,000 characters (~$0.90 an episode); effects a few cents |
 | Music | the channel's sound library | none | free (`sound_library.generate_kinds` is `["sfx"]`: music is never generated) |
 | If Vertex fails (not a refused picture) | the same request to Nano Banana 2.1 on fal | `FAL_KEY` | $0.08 a picture, only then |
 
-Without `GCP_SERVICE_ACCOUNT_JSON` every picture is painted on fal as before. ElevenLabs is used
+Without either key every picture is painted on fal as before. ElevenLabs is used
 through fal rather than its own API: pay as you go at about half the per-character price of
 ElevenLabs' monthly plans at this channel's volume.
 
 ### Setting up Google Cloud (Vertex AI)
+
+The simplest way is a **Google Cloud API key** (not an AI Studio key): in the Google Cloud
+console, APIs & Services, Credentials, Create credentials, API key, restricted to the Vertex AI
+API, in the project with the billing account (and free-trial credits). Save it as the repository
+secret `GEMINI_PLATFORM_API_KEY`; mode video-check then signs in and asks the checker model for
+one word. If a service account is preferred instead:
 
 1. In the Google Cloud console (console.cloud.google.com), choose or create a project and note its
    **project ID**. Make sure the project uses the billing account with the free-trial credits.
