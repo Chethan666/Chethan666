@@ -304,7 +304,8 @@ class TeamTests(unittest.TestCase):
         root = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, root, ignore_errors=True)
         fal = FakeFal(root)
-        summary = bakeoff.run(story(first_person=True), root / "out", voice.SilentVoice(), Router(), cfg(max_usd=7.0), fal)
+        summary = bakeoff.run(story(first_person=True), root / "out", voice.SilentVoice(), Router(), cfg(max_usd=7.0),
+                              fal, names=["seedream_detail", "flux2", "pro"])
         out = root / "out"
         self.assertEqual(list(summary["setups"]), ["seedream_detail", "flux2", "pro"])
         beats = summary["beats"]
@@ -327,6 +328,22 @@ class TeamTests(unittest.TestCase):
         self.assertEqual(summary["agents"]["art"]["portraits"], ["Dana", "The Storyteller"])
         self.assertLessEqual(summary["usd"], 7.0)
         self.assertFalse((out / "work").exists())
+
+    def test_the_bake_off_runs_nano_banana_2_1_beside_todays_mix(self):
+        from production import voice
+        from production.stills import bakeoff
+
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        fal = FakeFal(root)
+        summary = bakeoff.run(story(first_person=True), root / "out", voice.SilentVoice(), Router(), cfg(max_usd=7.0),
+                              fal, names=["mix", "nb21"])
+        endpoints = [e for e, _ in fal.calls]
+        self.assertIn("google/nano-banana-2.1/edit", endpoints)
+        self.assertNotIn("fal-ai/seedvr/upscale/image", endpoints)  # today's mix has no detail pass
+        self.assertEqual(summary["setups"]["nb21"]["by_painter"].get("fal:nb21"), summary["beats"])
+        nb21 = [a for e, a in fal.calls if e == "google/nano-banana-2.1/edit"]
+        self.assertEqual((nb21[0]["resolution"], nb21[0]["aspect_ratio"]), ("2K", "16:9"))
 
     def test_the_host_references_are_painted_once_and_then_used_by_every_video(self):
         from production import voice

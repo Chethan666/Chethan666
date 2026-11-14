@@ -476,7 +476,9 @@ class PainterRules(unittest.TestCase):
         self.assertEqual(detail, MINOR + "the duvet is blue")
         self.assertFalse(serious(detail))
         self.assertEqual(face, SEVERE + "her face is calm")
-        self.assertTrue(serious(face))  # the critic called it serious, whatever the words
+        self.assertTrue(serious(face))  # the critic called it serious, and a calm face is a serious kind
+        self.assertFalse(serious(SEVERE + "the close-up is framed a little wider"))  # run 106: not serious
+        self.assertTrue(serious(SEVERE + "contradicts the line: her door is open"))
         self.assertTrue(serious(panels))  # no word from the critic: judged from the reason
         self.assertEqual(plain(face), "her face is calm")
         self.assertEqual(plain(detail), "the duvet is blue")
@@ -702,7 +704,8 @@ class Ages(unittest.TestCase):
         self.assertIsNone(child_age("a 35-year-old bus driver"))
         lock = age_lock(4)  # run 103: a four-year-old was painted as a child of eight
         self.assertIn("Exactly 4 years old", lock)
-        self.assertIn("toddler", lock)
+        self.assertIn("a small child's proportions", lock)
+        self.assertIn("never animated, cartoonish or doll-like", lock)  # run 106: Lily turned doll-like
         self.assertIn("never a teenager", age_lock(10))
 
     def test_the_host_is_lit_from_below_and_never_wears_a_cowboy_hat(self):

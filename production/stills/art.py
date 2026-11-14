@@ -65,9 +65,11 @@ def age_lock(age: int) -> str:
     """Words that hold a child at their age: image models paint a four-year-old as about eight
     (run 103: Lily, four, looked eight or nine in two painters out of three)."""
     if age <= 6:
-        return (f"Exactly {age} years old, a small child, never older: toddler-like proportions with a large head "
-                "for the body, round full cheeks, a small button nose, short arms and legs, small chubby hands, "
-                "as tall as a kitchen table")
+        # a real child: run 106's age words alone turned Lily doll-like in two of her five pictures
+        return (f"Exactly {age} years old, a small child, never older: a real photographed child, never "
+                "animated, cartoonish or doll-like, with natural skin texture; a small child's proportions, a "
+                "large head for the body, round cheeks, short arms and legs, small hands, as tall as a "
+                "kitchen table")
     return f"Exactly {age} years old, a child, never a teenager: a child's face and proportions"
 
 
@@ -482,9 +484,13 @@ class IllustratorAgent:
     def check_text(beat: Shot, cast: dict[str, str]) -> str:
         """What the critic compares the picture with: the moment, and each named person's design."""
         people = "; ".join(f"{n}: {cast[n]}" for n in beat.characters if cast.get(n))
-        return (beat.picture + (f" People in it: {people}" if people else "")
-                + f" | The narrator says over it: \"{beat.text[:200]}\" - fail the picture if it shows a "
-                "different action, pose or place than these words.")
+        # The description decides what is in the frame; the narration only rules out a contradiction.
+        # Run 106: a close shot of the monitor alone was refused because "Mummy is asleep" names her.
+        return (beat.picture + (f" People in it: {people}" if people else " No people need to be in it.")
+                + f" | The narrator says over it: \"{beat.text[:200]}\" - the description above decides what is "
+                "in the frame (a close shot of an object alone is right when it asks for one); fail the "
+                "picture only if it contradicts these words (a different action, a different place, the "
+                "opposite of what they say).")
 
     def run(self, board: Board) -> dict[str, Any]:
         cfg, d = board.cfg, board.data

@@ -91,7 +91,10 @@ SERIOUS = ("panel", "split", "collage", "two different", "side by side", "text",
            "unrelated", "does not show", "doesn't show",
            # the wrong action, or the opposite of what the line says
            "instead of", "rather than", "not sleeping", "not lying", "not standing", "not sitting",
-           "contradict", "opposite")
+           "contradict", "opposite",
+           # another person, or a face unlike the portrait; a calm face where the line is terror
+           "different person", "another person", "different face", "not match the portrait", "calm",
+           "animated", "doll", "cgi", "render")
 
 
 MINOR = "minor: "
@@ -99,13 +102,13 @@ SEVERE = "serious: "
 
 
 def serious(reason: str) -> bool:
-    """A refusal for a fault that ruins a picture, rather than a detail of the description: the
-    critic's own judgement when it gave one, else the words of its reason."""
-    if reason.startswith(SEVERE):
-        return True
+    """A refusal for a fault that ruins a picture, rather than a detail of the description. The
+    critic's "detail" stands; its "serious" stands only for a fault of a serious kind (SERIOUS):
+    in run 106 it called nearly everything serious (a close-up framed a little wider, hair worn
+    down), spent the whole retry allowance and still kept 8 of 12 pictures unpassed."""
     if reason.startswith(MINOR):
         return False
-    text = reason.lower()
+    text = plain(reason).lower()
     return any(s in text for s in SERIOUS)
 
 
@@ -165,12 +168,15 @@ class Critic:
                   "a colour, a person a little nearer or further than described, more or less shadow on them, the "
                   "direction someone looks or faces, a slightly different pose, a missing small prop or background "
                   "detail. When you fail it, say in one sentence what is wrong "
-                  "and what the picture should show instead, and whether it is serious: true when a viewer "
-                  "would notice it in the five seconds the picture is on screen (the wrong person, place or "
-                  "action, anything that contradicts what the line says happens (someone asleep shown awake, "
-                  "a shut door shown open, a light the line says is off shown on), a calm face where the line "
-                  "is terror, split frames, text, broken anatomy, the wrong look); false for a detail of the description (a prop's state or position, the exact framing, "
-                  "which hand holds what, a small costume detail). Reply exactly as JSON: "
+                  "and what the picture should show instead, and whether it is serious. Serious is ONLY: a "
+                  "different person, or a face unlike their portrait; the picture contradicts what the line says "
+                  "happens (someone asleep shown awake, a shut door shown open, a light the line says is off "
+                  "shown on - then begin the reason with 'contradicts the line:'); a calm face where the line is "
+                  "terror; split frames or text; broken anatomy; a cartoon, 3D-render or doll-like look; a "
+                  "bright, cheerful picture. Everything else is NOT serious: the exact framing (a close-up "
+                  "framed wider), a pose, where someone looks, hair worn up or down, a prop's state or "
+                  "position, which hand holds what, a costume detail, something extra in the background. "
+                  "Reply exactly as JSON: "
                   '{"ok": true or false, "serious": true or false, "reason": "short reason"}')
         try:
             result = studio.fal.run(model, dict(studio.args.get("vision", {}), prompt=prompt,
