@@ -1,0 +1,44 @@
+{
+  "story_id": 9003,
+  "title": "The Baby Monitor",
+  "other_titles": [
+    "Mummy's Awake Now"
+  ],
+  "description": "At 3:12 the baby monitor picked up two voices. A Hollow Lines test story.\n\nMusic and sound:\n\"Measured Paces\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"The Dread\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"Anxiety\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"Horror Hit\" by vividreality (OpenGameArt.org, https://opengameart.org/content/horror-hit), licensed CC-BY-3.0",
+  "tags": [
+    "horror",
+    "scary story",
+    "baby monitor",
+    "creepy",
+    "short horror"
+  ],
+  "pinned_comment": "Would you have stayed in that room?",
+  "end_screen_line": "The monitor is still on.",
+  "credit": "",
+  "made_for_kids": false,
+  "duration_seconds": 66.2,
+  "chapters": [],
+  "sound_credits": [
+    "\"Measured Paces\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"The Dread\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"Anxiety\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"Horror Hit\" by vividreality (OpenGameArt.org, https://opengameart.org/content/horror-hit), licensed CC-BY-3.0"
+  ],
+  "sounds_used": [
+    "music-measured-paces-10bb0bc5",
+    "music-the-dread-ee7456ee",
+    "music-anxiety-4d9d7851",
+    "sting-horror-hit-dd612c9d",
+    "sfx-i-see-you-voice-98f7aec0",
+    "sfx-ghost-monster-voice-moaning-grow-264b16e8",
+    "ambience-sci-fi-ambience-sfx-cfb9c522",
+    "ambience-sci-fi-ambience-sfx-cfb9c522",
+    "ambience-sci-fi-ambience-sfx-cfb9c522",
+    "ambience-sci-fi-ambience-sfx-cfb9c522"
+  ],
+  "thumbnails": [
+    "thumbnail_1.jpg"
+  ],
+  "end_screen_starts": 62.2,
+  "synthetic_media": true
+}

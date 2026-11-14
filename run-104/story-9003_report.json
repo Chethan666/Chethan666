@@ -1,0 +1,513 @@
+{
+  "mode": "stills",
+  "video": "/home/runner/work/Horror/Horror/out/story-9003/video.mp4",
+  "seconds": 66.2,
+  "story_seconds": 60.2,
+  "beats": 11,
+  "point_of_view": "first",
+  "voices": {
+    "engine": "elevenlabs",
+    "host": "Brian",
+    "teller": "Callum",
+    "teller_kind": "man",
+    "characters": {
+      "Lily": "Laura",
+      "Mara": "Alice",
+      "low_voice_(entity/man)_via_monitor": "George",
+      "low_voice_(entity/man)_via_monitor_man": "Daniel"
+    }
+  },
+  "usd": 2.0,
+  "usd_by_task": {
+    "art_review": 0.0,
+    "picture_hero": 0.3,
+    "picture_reference": 0.04,
+    "picture_sheet": 0.52,
+    "picture_sheet_alt": 0.11,
+    "picture_shot": 0.56,
+    "picture_shot_alt": 0.24,
+    "picture_thumbnail": 0.08,
+    "reference_check": 0.03,
+    "thumbnail_check": 0.0,
+    "vision": 0.04,
+    "voice": 0.08
+  },
+  "fal_balance_ran_out": false,
+  "qa": {
+    "status": "check",
+    "issues": [
+      "the scare picture (beat 4) passed no check: look at it",
+      "reference: location sheet of Mara's Bedroom: The image shows a single bed, but the description specifies a dark wood-framed double bed.",
+      "reference: character sheet of The Storyteller: The face of the man is shown clearly in the third panel, but the design states his face is always mostly in shadow under the brim except for pale, kind, tired eyes.",
+      "reference: portrait sheet of The Storyteller: The image is not one single close portrait of one person; it shows three different views of the person, with one of them being a close-up."
+    ],
+    "video_seconds": 66.2,
+    "loudness_lufs": -15.3,
+    "true_peak_dbtp": -1.5,
+    "seconds": 8.2
+  },
+  "agents": {
+    "script_check": {
+      "words": 122,
+      "estimated_seconds": 43.6,
+      "target_seconds": 52.0,
+      "scenes": 9,
+      "issues": [],
+      "seconds": 0.0
+    },
+    "casting": {
+      "point_of_view": "first",
+      "teller": "man",
+      "why": "The story's narrator is Mara, the tired mother described in the story bible, who is the 'I' in the opening. Therefore, a 'woman' voice is the correct fit.",
+      "engine": "elevenlabs",
+      "host_voice": "Brian",
+      "teller_voice": "Callum",
+      "quoted_lines": 3,
+      "character_voices": {
+        "Lily": "Laura",
+        "Mara": "Alice",
+        "low_voice_(entity/man)_via_monitor": "George",
+        "low_voice_(entity/man)_via_monitor_man": "Daniel"
+      },
+      "seconds": 7.4
+    },
+    "voice": {
+      "seconds_of_speech": 60.2,
+      "chunks": 26,
+      "speakers": [
+        "Lily",
+        "host",
+        "low_voice_(entity/man)_via_monitor_man",
+        "narrator"
+      ],
+      "lines_read_by_kokoro": 0,
+      "words_per_minute": 122,
+      "performance": {
+        "directed": true,
+        "sentences": 17,
+        "plain": 5,
+        "tags": {
+          "[fearfully]": 2,
+          "[hesitantly]": 2,
+          "[nervously]": 2,
+          "[ominously]": 1,
+          "[quietly]": 2,
+          "[urgently]": 1,
+          "[whispers]": 2
+        },
+        "unknown_tags": []
+      },
+      "listener": {
+        "model": "base.en",
+        "takes": 13,
+        "reread": 0,
+        "worst_match": 0.82
+      },
+      "seconds": 37.7
+    },
+    "storyboard": {
+      "beats": 11,
+      "directed_by_model": 11,
+      "host_beats": 2,
+      "scares": 2,
+      "check": {
+        "checked": true,
+        "fixed": [
+          {
+            "beat": 7,
+            "problem": "The line focuses on Mara's internal state and holding the monitor, but the picture emphasizes fog at the window, which the line does not mention."
+          }
+        ]
+      },
+      "average_seconds": 5.5,
+      "seconds": 26.0
+    },
+    "art": {
+      "style_frame": true,
+      "style_frame_by": "fal:reference",
+      "sheets": [
+        "Lily",
+        "Mara",
+        "The Storyteller"
+      ],
+      "portraits": [
+        "Lily",
+        "Mara",
+        "The Storyteller"
+      ],
+      "designs": {
+        "Mara": "a woman in her early thirties, exhausted, dark brown hair tied back loosely, a grey oversized cardigan over dark pyjamas, no jewellery; Caucasian, early 30s, pale olive skin. Slim, with a slightly oval face, a strong nose. Dark brown hair worn in a low, loose ponytail. The cardigan's sleeves are slightly too long; her pyjama bottoms are deep charcoal. Always has faint, natural dark circles under her eyes. Never wears jewellery or glasses.",
+        "Lily": "Exactly 4 years old, a small child, never older: toddler-like proportions with a large head for the body, round full cheeks, a small button nose, short arms and legs, small chubby hands, as tall as a kitchen table. a four-year-old girl with messy fair hair, pale yellow pyjamas with small stars; Caucasian, age 4, pale, freckled skin. Small, slight build. Round face with sharp blue eyes. Hair is shoulder-length, fine, and a light ash-blonde, worn messily loose. The pyjamas' stars are white on a muted, pale butter-yellow fabric. Never wears accessories; her socks are grey.",
+        "The Storyteller": "a tall, gaunt man of indeterminate age in a long, worn charcoal greatcoat and a shapeless old black felt hat with a wide, drooping brim (never a cowboy hat), his face always mostly in shadow under the brim except for pale, kind, tired eyes; he always carries an old iron lantern whose flame burns blood red"
+      },
+      "places": [
+        {
+          "name": "Lily's Bedroom",
+          "scenes": [
+            1,
+            5,
+            6,
+            7
+          ],
+          "design": "A small, sparsely decorated child's bedroom in a modest, older house. Walls are painted a tired light blue, now greyed in the shadows. A single shelf holds a star-shaped night-light (emits a cool, dim white) and some toys. The star-patterned duvet covers a simple wooden bed. A small wooden bedside table sits to the right of the bed. A sodium-vapor streetlight casts an occasional, faint amber-orange glow through the thin curtains at the single window.",
+          "sheet": true
+        },
+        {
+          "name": "Mara's Bedroom",
+          "scenes": [
+            2,
+            3
+          ],
+          "design": "An adult bedroom, austere and dark. Furniture is minimal: a dark wood-framed double bed and a matching, simple bedside table. The walls are a muted, cold grey. At night, the only illumination comes from the small red lights of electronic devices\u2014primarily the baby monitor receiver\u2014and minimal faint ambient light from a window facing another part of the house on a moonless night.",
+          "sheet": true
+        },
+        {
+          "name": "Upstairs Landing",
+          "scenes": [
+            4
+          ],
+          "design": "A narrow, second-floor hallway with worn beige carpet and plain off-white walls showing hairline cracks. An aging, bare single-bulb ceiling fixture hangs at its center, its failing bulb flickering a weak, sickly yellow-white light. Doors to the bedrooms line one side, all painted the same faded white. The air is stagnant.",
+          "sheet": true
+        }
+      ],
+      "reference_checks": [
+        {
+          "sheet": "Lily's Bedroom",
+          "kind": "location",
+          "ok": true,
+          "why": "None"
+        },
+        {
+          "sheet": "Mara's Bedroom",
+          "kind": "location",
+          "ok": false,
+          "why": "The bed in the image is a single bed, not a double bed, and the bedding has a cheerful star pattern instead of being austere."
+        },
+        {
+          "sheet": "Upstairs Landing",
+          "kind": "location",
+          "ok": true,
+          "why": ""
+        },
+        {
+          "sheet": "Mara",
+          "kind": "character",
+          "ok": true,
+          "why": "None"
+        },
+        {
+          "sheet": "Mara's Bedroom",
+          "kind": "location",
+          "ok": false,
+          "why": "The image shows a warm glow from the window curtains and the room has a blue tint, not the specified muted, cold grey."
+        },
+        {
+          "sheet": "Lily",
+          "kind": "character",
+          "ok": false,
+          "why": "The reference sheet shows Lily with brown eyes, but the design specifies sharp blue eyes. "
+        },
+        {
+          "sheet": "The Storyteller",
+          "kind": "character",
+          "ok": false,
+          "why": "The face of the Storyteller is mostly visible, but the design states it should always be mostly in shadow under the brim, except for pale, kind, tired eyes."
+        },
+        {
+          "sheet": "Lily",
+          "kind": "character",
+          "ok": true,
+          "why": "The image accurately depicts Lily as described in the prompt, with consistent age, features, and attire across all views."
+        },
+        {
+          "sheet": "Mara's Bedroom",
+          "kind": "location",
+          "ok": false,
+          "why": "The image shows a single bed, but the description specifies a dark wood-framed double bed."
+        },
+        {
+          "sheet": "The Storyteller",
+          "kind": "character",
+          "ok": false,
+          "why": "The face of the Storyteller is mostly visible, but the design states his face should always be mostly in shadow under the brim of his hat."
+        },
+        {
+          "sheet": "The Storyteller",
+          "kind": "character",
+          "ok": false,
+          "why": "The face of the man is shown clearly in the third panel, but the design states his face is always mostly in shadow under the brim except for pale, kind, tired eyes."
+        },
+        {
+          "sheet": "Lily",
+          "kind": "portrait",
+          "ok": true,
+          "why": "The image accurately depicts a four-year-old girl with messy fair hair, pale yellow pyjamas with white stars, pale skin, sharp blue eyes, and a round face, matching the description. The muted lighting"
+        },
+        {
+          "sheet": "The Storyteller",
+          "kind": "portrait",
+          "ok": false,
+          "why": "The face of the Storyteller is shown too lit in full, instead of being mostly in shadow under the brim of his hat."
+        },
+        {
+          "sheet": "Mara",
+          "kind": "portrait",
+          "ok": true,
+          "why": "The image matches the description of Mara, an exhausted woman in her early thirties, with the specified hair, clothing, and facial features. The overall mood is dark and subdued, aligning with a horro"
+        },
+        {
+          "sheet": "The Storyteller",
+          "kind": "portrait",
+          "ok": false,
+          "why": "The man's face is clearly lit in full, but the design states his face should always be mostly in shadow under the brim."
+        },
+        {
+          "sheet": "The Storyteller",
+          "kind": "portrait",
+          "ok": false,
+          "why": "The image is not one single close portrait of one person; it shows three different views of the person, with one of them being a close-up."
+        }
+      ],
+      "seconds": 368.5
+    },
+    "illustrator": {
+      "look": "cinematic",
+      "warned": "the exact action the line describes",
+      "faults_seen": {
+        "clothes": 1,
+        "action": 2,
+        "face": 2
+      },
+      "retry_usd": 0.36,
+      "retries_stopped": 0,
+      "cameras": {},
+      "pictures": 11,
+      "borrowed_neighbour": 0,
+      "placeholders": 0,
+      "scare_shots": [
+        4,
+        9
+      ],
+      "key_beats": [
+        2,
+        3,
+        5
+      ],
+      "by_painter": {
+        "fal:reference": 1,
+        "fal:sheet": 5,
+        "fal:sheet (corrected)": 1,
+        "fal:sheet (doubted)": 3,
+        "fal:hero": 1,
+        "fal:shot_alt (corrected)": 2,
+        "fal:shot (doubted)": 3,
+        "fal:shot": 5
+      },
+      "doubted_beats": [
+        4,
+        8,
+        10
+      ],
+      "painter_sizes": {
+        "fal:reference": "2752x1552",
+        "fal:sheet": "2560x1440",
+        "fal:sheet_alt": "2560x1440",
+        "fal:hero": "2752x1536",
+        "fal:shot": "2752x1552",
+        "fal:shot_alt": "2752x1536"
+      },
+      "rejected": [
+        "place_mara_s_bedroom (fal:sheet): The bed in the image is a single bed, not a double bed, and the bedding has a cheerful star pattern instead of being austere.",
+        "place_mara_s_bedroom (fal:sheet): The image shows a warm glow from the window curtains and the room has a blue tint, not the specified muted, cold grey.",
+        "sheet_lily (fal:sheet): The reference sheet shows Lily with brown eyes, but the design specifies sharp blue eyes. ",
+        "sheet_the_storyteller (fal:sheet): The face of the Storyteller is mostly visible, but the design states it should always be mostly in shadow under the brim, except for pale, kind, tired eyes.",
+        "place_mara_s_bedroom (fal:sheet_alt): The image shows a single bed, but the description specifies a dark wood-framed double bed.",
+        "sheet_the_storyteller (fal:sheet): The face of the Storyteller is mostly visible, but the design states his face should always be mostly in shadow under the brim of his hat.",
+        "sheet_the_storyteller (fal:sheet_alt): The face of the man is shown clearly in the third panel, but the design states his face is always mostly in shadow under the brim except for pale, kind, tired eyes.",
+        "face_the_storyteller (fal:sheet): The face of the Storyteller is shown too lit in full, instead of being mostly in shadow under the brim of his hat.",
+        "face_the_storyteller (fal:sheet): The man's face is clearly lit in full, but the design states his face should always be mostly in shadow under the brim.",
+        "face_the_storyteller (fal:sheet_alt): The image is not one single close portrait of one person; it shows three different views of the person, with one of them being a close-up.",
+        "beat_004 (fal:hero): serious: Mara is not wearing the described grey oversized cardigan over dark pyjamas, but a dark pyjama top. The picture should show Mara wearing a grey oversized cardigan.",
+        "beat_005 (fal:shot): serious: The picture shows Mara's night-light on, but the narration states that it was off. The picture should show Mara's night-light off.",
+        "beat_004 (fal:shot): serious: Mara's face does not show pure dread as described; her expression is more one of concentration or concern. The picture should show her with wide eyes and an expression of terror.",
+        "beat_003 (fal:shot): serious: The picture shows Mara awake and sitting up, but the description and narration state she is asleep in bed. The picture should show Mara asleep.",
+        "beat_008 (fal:shot): serious: The picture shows Mara holding the baby monitor, but the description asks for a close-up on Mara's lap, focusing on the receiver with her hand resting tensely on it, with Lily's blurred shape sleeping",
+        "beat_010 (fal:shot): serious: The Storyteller's lantern has a demonic face in it instead of a red flame, and his expression is not grim as described. The picture should show the Storyteller with a grim expression, lowering his red",
+        "beat_008 (fal:shot): serious: The picture does not show a close-up on Mara's lap, focusing on the baby monitor receiver; instead, it shows Mara's upper body and face with the baby monitor in her hand, with Lily visible in the back",
+        "beat_010 (fal:shot): serious: The Storyteller's lantern is red-caged and has a face on it, but the description specifies an old iron lantern whose flame burns blood red, not a decorative cage. This is a serious deviation from the "
+      ],
+      "seconds": 266.0
+    },
+    "art_review": {
+      "reviewed": true,
+      "score": 6,
+      "flagged": [
+        {
+          "picture": 1,
+          "problem": "Lily's bedroom should be sparsely decorated. There's a bedside table and a chest of drawers which is too much. The night light is also on in this picture, but the story implies it was off."
+        },
+        {
+          "picture": 2,
+          "problem": "The baby monitor has a digital readout saying 'babysitting' which looks too cheerful for horror. It should simply be a blank screen with a crackle sound or a simple waveform. The screen is also too br"
+        },
+        {
+          "picture": 3,
+          "problem": "Mara is in dark pyjamas, not grey and white striped clothing. The baby monitor is also too visible and bright for a dark, austere room. The bed covers are also too white and bright."
+        },
+        {
+          "picture": 4,
+          "problem": "Mara is in dark pyjamas, not grey and white striped clothing. She is also not in her own bedroom, but in Lily's. The story implies she hears the monitor from her own room and runs to Lily's. The baby "
+        },
+        {
+          "picture": 5,
+          "problem": "Mara's cardigan is grey, not white. The door to Lily's room should be shut, not open with Mara in the doorway."
+        },
+        {
+          "picture": 6,
+          "problem": "Lily's night-light should be off, not on and emitting a strong glow. Also, the room should be darker to reflect it being off. The camera is also looking in, not out."
+        },
+        {
+          "picture": 7,
+          "problem": "Mara's cardigan is grey, not white. The night-light should be off, not on. Her pyjamas are also not dark as described, but a lighter colour. The baby monitor should be in her lap, not on the floor nex"
+        },
+        {
+          "picture": 8,
+          "problem": "Lily is not facing the wall, but sleeping on her back. Mara's cardigan is grey, not white. Her pyjamas are not dark. The night-light should be off, not on."
+        },
+        {
+          "picture": 9,
+          "problem": "Mara's cardigan is grey, not white. Her pyjamas are not dark. The night-light should be off, not on. The 'threat' in the background is too clearly defined and humanoid, it should be a vague shadow or "
+        },
+        {
+          "picture": 10,
+          "problem": "The host is in a cave-like setting, not a misty place. The 'house' in the background is too clearly defined and not a 'shadow or shape'. The baby monitor is also too visible on the house."
+        }
+      ],
+      "redrawn": [
+        {
+          "picture": 1,
+          "problem": "Lily's bedroom should be sparsely decorated. There's a bedside table and a chest of drawers which is too much. The night light is also on in this picture, but the story implies it was off."
+        }
+      ],
+      "strongest_picture": 9,
+      "seconds": 123.7
+    },
+    "colorist": {
+      "graded": 1,
+      "pictures": 11,
+      "film_brightness": 36.3,
+      "printed_down": 0.0,
+      "film_contrast": 30.5,
+      "changes": {
+        "10": {
+          "brightness": 1.9
+        }
+      },
+      "seconds": 3.6
+    },
+    "motion": {
+      "enabled": false,
+      "seconds": 0.0
+    },
+    "edit_plan": {
+      "cold_open_beats": [],
+      "cold_open_seconds": 0.0,
+      "total_seconds": 66.2,
+      "seconds": 0.0
+    },
+    "sound": {
+      "music": [
+        "dread",
+        "terror",
+        "unease"
+      ],
+      "ambience": 4,
+      "effects": 2,
+      "synthesized": [],
+      "library": {
+        "library_sounds": 279,
+        "needs": 13,
+        "decided_by_model": 9,
+        "from_library": 10,
+        "made_new": 0,
+        "left_out": 3,
+        "from_library_by_kind": {
+          "music": 3,
+          "ambience": 4,
+          "sfx": 2,
+          "sting": 1
+        },
+        "picks": {
+          "music_unease": "music-measured-paces-10bb0bc5",
+          "music_dread": "music-the-dread-ee7456ee",
+          "music_terror": "music-anxiety-4d9d7851",
+          "sting": "sting-horror-hit-dd612c9d",
+          "fx_004": "sfx-i-see-you-voice-98f7aec0",
+          "fx_009": "sfx-ghost-monster-voice-moaning-grow-264b16e8",
+          "room_b9d1c7a39a8e47b3": "ambience-sci-fi-ambience-sfx-cfb9c522",
+          "room_4cc20b250f1309d5": "ambience-sci-fi-ambience-sfx-cfb9c522",
+          "room_48c321019053676d": "ambience-sci-fi-ambience-sfx-cfb9c522",
+          "room_183a72bbe79863a1": "ambience-sci-fi-ambience-sfx-cfb9c522"
+        },
+        "made": {},
+        "library": true,
+        "fetched": 10,
+        "credits": 4
+      },
+      "generated": 0,
+      "saved_for_library": 0,
+      "mix": {
+        "checked": true,
+        "voice_over_bed_db": 10.6,
+        "after_db": 12.0,
+        "bed_lowered_db": 1.4
+      },
+      "seconds": 20.0
+    },
+    "edit": {
+      "segments": 13,
+      "size": "2560x1440",
+      "motion": "drift",
+      "moves": {
+        "push_in": 4,
+        "pan_right": 3,
+        "pan_left": 2,
+        "push_in_fast": 2,
+        "pull_out": 1,
+        "none": 1
+      },
+      "atmosphere": {
+        "fog": 1,
+        "flicker": 1
+      },
+      "seconds": 140.3
+    },
+    "packager": {
+      "thumbnails": 1,
+      "chapters": 0,
+      "thumbnail_checks": [
+        {
+          "thumbnail": 1,
+          "ok": true,
+          "why": "none"
+        }
+      ],
+      "seconds": 23.2
+    },
+    "qa": {
+      "status": "check",
+      "issues": [
+        "the scare picture (beat 4) passed no check: look at it",
+        "reference: location sheet of Mara's Bedroom: The image shows a single bed, but the description specifies a dark wood-framed double bed.",
+        "reference: character sheet of The Storyteller: The face of the man is shown clearly in the third panel, but the design states his face is always mostly in shadow under the brim except for pale, kind, tired eyes.",
+        "reference: portrait sheet of The Storyteller: The image is not one single close portrait of one person; it shows three different views of the person, with one of them being a close-up."
+      ],
+      "video_seconds": 66.2,
+      "loudness_lufs": -15.3,
+      "true_peak_dbtp": -1.5,
+      "seconds": 8.2
+    }
+  },
+  "review": "pending",
+  "render_minutes": 17.1
+}
