@@ -37,14 +37,15 @@ from .storyboard import HOST
 
 log = logging.getLogger(__name__)
 
-HOST_DESIGN = ("a tall, gaunt man of indeterminate age in a long, worn charcoal greatcoat and a shapeless old black "
-               "felt hat with a wide, drooping brim (never a cowboy hat), his face always mostly in shadow under "
-               "the brim except for pale, kind, tired eyes; he always carries a plain old iron railway lantern with "
-               "glass panes (no faces, masks or carvings on it) whose flame burns blood red")
-# How the host is shown in his sheet and portrait: a face seen in full there is copied into every picture
-# (run 103: his portrait showed his whole face, and a cowboy).
-HOST_FACE = ("His face stays mostly in shadow under the drooping brim: only his pale, tired eyes and the line of "
-             "his jaw catch the lantern's red light. Never a cowboy hat, never his whole face lit.")
+HOST_DESIGN = ("a tall, gaunt man of indeterminate age with a long, lined, hollow-cheeked face, sunken tired eyes "
+               "and grey stubble, in a long, worn charcoal greatcoat and a battered black felt hat with a wide "
+               "brim (never a cowboy hat); his face is lit red from below by his lantern, the brim's shadow over "
+               "his brow; he always carries a plain old iron railway lantern with glass panes (no faces, masks "
+               "or carvings on it) whose flame burns blood red")
+# How the host is lit: no painter would hide his face entirely (run 104: six refused sheets), so his
+# look is the one his fixed references show (production/assets/host, chosen from run 105).
+HOST_FACE = ("His face is lit only from below by the lantern's red glow, the hat brim's shadow over his brow "
+             "and eyes. Never a cowboy hat.")
 NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9,
            "ten": 10, "eleven": 11, "twelve": 12}
 AGE = re.compile(r"\b(\d{1,2}|" + "|".join(NUMBERS) + r")[- ](?:year|yr)s?[- ]old\b|\baged? (\d{1,2})\b", re.I)

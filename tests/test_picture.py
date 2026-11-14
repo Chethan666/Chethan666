@@ -705,12 +705,12 @@ class Ages(unittest.TestCase):
         self.assertIn("toddler", lock)
         self.assertIn("never a teenager", age_lock(10))
 
-    def test_the_host_keeps_his_face_in_shadow_and_never_wears_a_cowboy_hat(self):
+    def test_the_host_is_lit_from_below_and_never_wears_a_cowboy_hat(self):
         from production.stills.art import HOST_DESIGN, HOST_FACE
 
         self.assertIn("never a cowboy hat", HOST_DESIGN)
-        self.assertIn("mostly in shadow", HOST_FACE)
-        self.assertIn("never his whole face lit", HOST_FACE)
+        self.assertIn("lit only from below by the lantern's red glow", HOST_FACE)
+        self.assertIn("Never a cowboy hat", HOST_FACE)
 
     def test_the_sheet_check_refuses_a_child_of_the_wrong_age(self):
         from production.stills import checks
