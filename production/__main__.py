@@ -287,7 +287,7 @@ def check_vertex(stills: dict) -> int:
     except MediaError as exc:
         print(f"Vertex AI: {exc}")
         return 1
-    print(f"Google: signed in; {client.project}, location {client.location}")
+    print("Google: key set")
     failed = 0
     models = sorted(set((stills.get("vertex") or {}).get("models", {}).values()))
     for model in models:
@@ -297,16 +297,29 @@ def check_vertex(stills: dict) -> int:
                   f"{str(info.get('launchStage', '') or info.get('versionState', ''))}")
         except MediaError as exc:
             print(f"  vertex:{model}  catalogue lookup failed: {str(exc)[:300]}")
-    # One tiny real call (a few words from the checker model, a fraction of a cent) proves the key,
-    # the API and the billing; the picture model is proven by the first picture of a run.
+    # Two tiny real calls prove the key, the API, the billing and each model: a word from the
+    # checker (a fraction of a cent) and one small picture (about $0.03).
     text = next((m for m in models if "image" not in m and "banana" not in m), "")
     if text:
         try:
             got = client.run(f"vertex:{text}", {"prompt": "Reply with the single word OK.", "max_tokens": 5})
-            print(f"  vertex:{text}  answered: {got.get('output', '')[:40]!r}")
+            print(f"  checker: {getattr(client, '_text_model', text)} answered {got.get('output', '')[:40]!r}")
         except MediaError as exc:
             failed += 1
-            print(f"  vertex:{text}  CALL FAILED: {str(exc)[:400]}")
+            print(f"  checker {text}: CALL FAILED: {str(exc)[:400]}")
+    picture = next((m for m in models if "banana" in m or "image" in m), "")
+    if picture:
+        try:
+            import base64
+            got = client.run(f"vertex:{picture}", {"prompt": "A dark, empty room at night, one red light. "
+                                                             "A film still.", "aspect_ratio": "16:9",
+                                                   "resolution": "1K"})
+            size = len(base64.b64decode(got["images"][0]["url"].split(",", 1)[1]))
+            print(f"  pictures: {picture} painted a test picture ({size // 1024} KB)")
+        except MediaError as exc:
+            failed += 1
+            print(f"  pictures {picture}: CALL FAILED: {str(exc)[:400]}")
+    print(f"  project: {'found' if client.project else 'not found'}, location {client.location}")
     return 1 if failed else 0
 
 

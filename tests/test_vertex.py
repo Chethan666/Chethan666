@@ -76,25 +76,54 @@ class VertexTests(unittest.TestCase):
 
 
 class VertexKeyTests(unittest.TestCase):
-    def test_a_google_cloud_api_key_signs_in_by_header_without_a_project(self):
+    def test_a_google_cloud_api_key_signs_in_by_header_and_finds_its_project(self):
         from production.vertex import VertexKey
 
         calls = []
 
         def http(url, method="GET", headers=None, body=None, timeout=0, raw=False):
             calls.append((url, headers))
+            if "no-such-model" in url:  # the free probe: Google names the key's project in its error
+                raise MediaError("POST x: HTTP 404: Publisher model `projects/525/locations/us-central1/"
+                                 "publishers/google/models/no-such-model` was not found")
             return answer_picture()
 
         v = VertexKey(key="k123", project="", http=http)
         v.run("vertex:gemini-nano-banana-2.1", {"prompt": "x"})
-        url, headers = calls[0]
-        self.assertEqual(url, "https://aiplatform.googleapis.com/v1/publishers/google/models/"
-                              "gemini-nano-banana-2.1:generateContent")
+        v.run("vertex:gemini-nano-banana-2.1", {"prompt": "y"})
+        self.assertEqual(len([u for u, _ in calls if "no-such-model" in u]), 1)  # asked once
+        url, headers = calls[1]
+        self.assertEqual(url, "https://aiplatform.googleapis.com/v1/projects/525/locations/global/publishers/"
+                              "google/models/gemini-nano-banana-2.1:generateContent")
         self.assertEqual(headers["x-goog-api-key"], "k123")
         self.assertNotIn("k123", url)  # never in the address (it would show in logs)
         self.assertNotIn("Authorization", headers)
-        with_project = VertexKey(key="k", project="proj", http=http)
-        self.assertIn("/projects/proj/locations/global/", with_project.url("m"))
+
+        def silent(url, method="GET", headers=None, body=None, timeout=0, raw=False):
+            if "no-such-model" in url:
+                raise MediaError("HTTP 404: not found")
+            return answer_picture()
+        nameless = VertexKey(key="k", project="", http=silent)  # no project learnt: the plain address
+        self.assertEqual(nameless.url("m"), "https://aiplatform.googleapis.com/v1/publishers/google/models/m:"
+                                            "generateContent")
+
+    def test_a_retired_checker_model_gives_way_to_a_newer_one(self):
+        from production.vertex import VertexKey
+
+        asked = []
+
+        def http(url, method="GET", headers=None, body=None, timeout=0, raw=False):
+            model = url.rsplit("/", 1)[1].split(":")[0]
+            asked.append(model)
+            if model != "gemini-3.5-flash":
+                raise MediaError(f"HTTP 404: Publisher model {model} was not found")
+            return {"candidates": [{"content": {"parts": [{"text": "OK"}]}}]}
+
+        v = VertexKey(key="k", project="p", http=http)
+        self.assertEqual(v.run("vertex:gemini-2.5-flash", {"prompt": "x"}), {"output": "OK"})
+        v.run("vertex:gemini-2.5-flash", {"prompt": "again"})
+        self.assertEqual(asked[-1], "gemini-3.5-flash")  # remembered: straight to the one that answers
+        self.assertEqual(asked.count("gemini-2.5-flash"), 1)
 
     def test_the_api_key_is_preferred_to_a_service_account(self):
         import os

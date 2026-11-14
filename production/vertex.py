@@ -27,6 +27,7 @@ import copy
 import json
 import logging
 import os
+import re
 import threading
 import time
 import urllib.parse
@@ -206,7 +207,27 @@ class Vertex:
                              f"(finish: {finish or 'none'}{', blocked: ' + blocked if blocked else ''})")
         raise last or MediaError(f"vertex {model}: no picture")
 
+    # Checker models, newest first: a model Google has retired answers "not found" (run 110:
+    # gemini-2.5-flash), and the next is tried; the first that answers is kept for the run.
+    TEXT_MODELS = ("gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash", "gemini-3-flash",
+                   "gemini-flash-latest", "gemini-2.5-flash")
+
     def text(self, model: str, args: dict[str, Any]) -> dict[str, Any]:
+        tried = getattr(self, "_text_model", "") or model
+        order = [tried] + [m for m in self.TEXT_MODELS if m != tried]
+        last: MediaError | None = None
+        for name in order:
+            try:
+                got = self._text(name, args)
+                self._text_model = name
+                return got
+            except MediaError as exc:
+                if "HTTP 404" not in str(exc):
+                    raise
+                last = exc
+        raise last or MediaError(f"vertex {model}: no checker model answered")
+
+    def _text(self, model: str, args: dict[str, Any]) -> dict[str, Any]:
         body: dict[str, Any] = {"contents": [{"role": "user", "parts": self._parts(args)}],
                                 "generationConfig": {"maxOutputTokens": int(args.get("max_tokens") or 2048),
                                                      "temperature": float(args.get("temperature") or 0.2)},
@@ -247,14 +268,31 @@ class VertexKey(Vertex):
     def _headers(self) -> dict[str, str]:
         return {"x-goog-api-key": self.key, "Content-Type": "application/json"}
 
+    def discover(self) -> str:
+        """The key's project number, learnt for free: the project-less address answers a request
+        for a model that does not exist with "projects/<number>/..." in its error. Kept out of the
+        repository; the global location is then used (the project-less address means us-central1)."""
+        with self.lock:
+            if self.project or getattr(self, "_discovered", False):
+                return self.project
+            self._discovered = True  # asked once
+            try:
+                self.http(f"https://{self.host}/v1/publishers/google/models/no-such-model:generateContent",
+                          method="POST", body={"contents": [{"role": "user", "parts": [{"text": "x"}]}]},
+                          timeout=60, headers=self._headers())
+            except MediaError as exc:
+                found = re.search(r"projects/([\w-]+)/locations", str(exc))
+                if found:
+                    self.project = found.group(1)
+            return self.project
+
     def url(self, model: str, method: str = "generateContent") -> str:
-        if self.project:
+        if self.project or self.discover():
             return super().url(model, method)
         return f"https://{self.host}/v1/publishers/google/models/{model}:{method}"
 
     def model_info(self, model: str) -> dict[str, Any]:
-        return self.http(f"https://{self.host}/v1/publishers/google/models/{model}", timeout=60,
-                         headers={"x-goog-api-key": self.key})
+        raise MediaError("the model catalogue needs a service account (API keys cannot read it)")
 
 
 class Providers:
