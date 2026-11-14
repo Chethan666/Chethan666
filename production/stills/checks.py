@@ -192,13 +192,16 @@ SHEET_SYSTEM = ("You check reference sheets for a horror film told in still pict
 def sheet_ok(studio: Any, image: Path, kind: str, name: str, design: str) -> tuple[bool, str]:
     """Does a reference sheet show what its design says? `kind`: "character", "portrait" (a
     close portrait painted from the character's sheet) or "location"."""
+    age = ("; a child who clearly looks older or younger than the age the design gives (a four-year-old "
+           "painted as a child of eight is wrong)")
     if kind == "portrait":
         rules = ("it is not one single close portrait of one person; the person clearly contradicts the design (a "
-                 "different age or sex, hair, or clothes); other people are in it")
+                 "different age or sex, hair, or clothes; a face that the design keeps in shadow is shown lit in "
+                 f"full){age}; other people are in it")
     elif kind == "character":
         rules = ("the views do not show one and the same person; the person clearly contradicts the design (a "
-                 "different age or sex, hair, or clothes; a face that the design keeps hidden is shown); other "
-                 "people are in it")
+                 "different age or sex, hair, or clothes; a face that the design keeps hidden is shown)"
+                 f"{age}; other people are in it")
     else:
         rules = ("it clearly contradicts the design (a different kind of vehicle, building or room, or other main "
                  "colours); its views show two different places; people are in it")

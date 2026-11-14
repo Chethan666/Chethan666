@@ -691,5 +691,46 @@ class FinishedPicture(unittest.TestCase):
         self.assertIn("bt709", issues[0])
 
 
+
+class Ages(unittest.TestCase):
+    def test_a_child_is_held_at_their_age_and_an_adult_is_left_alone(self):
+        from production.stills.art import age_lock, child_age
+
+        self.assertEqual(child_age("a four-year-old girl with messy fair hair"), 4)
+        self.assertEqual(child_age("Lily, aged 7"), 7)
+        self.assertIsNone(child_age("a woman in her early thirties"))
+        self.assertIsNone(child_age("a 35-year-old bus driver"))
+        lock = age_lock(4)  # run 103: a four-year-old was painted as a child of eight
+        self.assertIn("Exactly 4 years old", lock)
+        self.assertIn("toddler", lock)
+        self.assertIn("never a teenager", age_lock(10))
+
+    def test_the_host_keeps_his_face_in_shadow_and_never_wears_a_cowboy_hat(self):
+        from production.stills.art import HOST_DESIGN, HOST_FACE
+
+        self.assertIn("never a cowboy hat", HOST_DESIGN)
+        self.assertIn("mostly in shadow", HOST_FACE)
+        self.assertIn("never his whole face lit", HOST_FACE)
+
+    def test_the_sheet_check_refuses_a_child_of_the_wrong_age(self):
+        from production.stills import checks
+
+        asked = []
+
+        def ask(studio, prompt, image, task, system, width=0):
+            asked.append(prompt)
+            return {"ok": True}
+
+        original = checks.ask_vision
+        checks.ask_vision = ask
+        try:
+            checks.sheet_ok(object(), Path("x.png"), "portrait", "Lily", "Exactly 4 years old")
+            checks.sheet_ok(object(), Path("x.png"), "character", "Lily", "Exactly 4 years old")
+        finally:
+            checks.ask_vision = original
+        self.assertTrue(all("looks older or younger than the age" in p for p in asked))
+        self.assertIn("in shadow is shown lit in full", asked[0])
+
+
 if __name__ == "__main__":
     unittest.main()

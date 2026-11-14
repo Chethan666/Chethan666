@@ -37,9 +37,38 @@ from .storyboard import HOST
 
 log = logging.getLogger(__name__)
 
-HOST_DESIGN = ("a tall, gaunt man of indeterminate age in a long, worn charcoal coat and a wide-brimmed hat, his "
-               "face mostly in shadow except for pale, kind, tired eyes; he always carries an old iron lantern "
-               "whose flame burns blood red")
+HOST_DESIGN = ("a tall, gaunt man of indeterminate age in a long, worn charcoal greatcoat and a shapeless old black "
+               "felt hat with a wide, drooping brim (never a cowboy hat), his face always mostly in shadow under "
+               "the brim except for pale, kind, tired eyes; he always carries an old iron lantern whose flame "
+               "burns blood red")
+# How the host is shown in his sheet and portrait: a face seen in full there is copied into every picture
+# (run 103: his portrait showed his whole face, and a cowboy).
+HOST_FACE = ("His face stays mostly in shadow under the drooping brim: only his pale, tired eyes and the line of "
+             "his jaw catch the lantern's red light. Never a cowboy hat, never his whole face lit.")
+NUMBERS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9,
+           "ten": 10, "eleven": 11, "twelve": 12}
+AGE = re.compile(r"\b(\d{1,2}|" + "|".join(NUMBERS) + r")[- ](?:year|yr)s?[- ]old\b|\baged? (\d{1,2})\b", re.I)
+
+
+def child_age(text: str) -> int | None:
+    """A child's age from a design ("a four-year-old girl", "aged 7"), or None for an adult."""
+    m = AGE.search(text or "")
+    if not m:
+        return None
+    word = (m.group(1) or m.group(2) or "").lower()
+    age = NUMBERS.get(word) or (int(word) if word.isdigit() else None)
+    return age if age is not None and age <= 12 else None
+
+
+def age_lock(age: int) -> str:
+    """Words that hold a child at their age: image models paint a four-year-old as about eight
+    (run 103: Lily, four, looked eight or nine in two painters out of three)."""
+    if age <= 6:
+        return (f"Exactly {age} years old, a small child, never older: toddler-like proportions with a large head "
+                "for the body, round full cheeks, a small button nose, short arms and legs, small chubby hands, "
+                "as tall as a kitchen table")
+    return f"Exactly {age} years old, a child, never a teenager: a child's face and proportions"
+
 DESIGN_SCHEMA = {"type": "object", "required": ["characters"], "properties": {"characters": {"type": "array", "items": {
     "type": "object", "required": ["name", "design"],
     "properties": {"name": {"type": "string"}, "design": {"type": "string"}}}}}}
@@ -181,6 +210,9 @@ class ArtDirectorAgent:
         looks = designs(board.router, cast, style, look["people"])
         for c in cast:
             c["design"] = looks.get(str(c["name"]), c.get("look", ""))
+            age = child_age(c["design"])
+            if age is not None:  # the age leads, so it is read first and kept in every picture
+                c["design"] = f"{age_lock(age)}. {c['design']}"
         if any(b.characters == [HOST] for b in d["beats"]) or any(
                 HOST in b.characters for b in d["beats"]):
             cast.append({"name": HOST, "design": HOST_DESIGN})
@@ -256,7 +288,8 @@ class ArtDirectorAgent:
             # A photoreal face can drift toward a famous one; the channel's people are nobody's likeness.
             unknown = ("An unknown, ordinary person: the face resembles no actor, celebrity or public figure. "
                        if look.get("synthetic_media") else "")
-            text = (f"{house} {match}A character reference sheet of one person, {c['name']}: {c['design']}. {unknown}"
+            host = f" {HOST_FACE}" if c["name"] == HOST else ""
+            text = (f"{house} {match}A character reference sheet of one person, {c['name']}: {c['design']}.{host} {unknown}"
                     "The same person three times side by side on a plain dark background, lit by one soft "
                     "side light: full body from the front, full body in three-quarter view, and a "
                     "head-and-shoulders close-up with a neutral, tired expression. Identical face, hair, "
@@ -287,6 +320,11 @@ class ArtDirectorAgent:
                     "clothes. The face fills the middle of the frame, sharp focus on the eyes, a neutral, tired "
                     "expression, lit by one soft side light against a plain dark background. One single frame. "
                     f"No text, no labels. {look['avoid']}").strip()
+            if c["name"] == HOST:  # the host's face is never shown in full, so neither is his portrait
+                text = (f"{house} A close head-and-shoulders portrait of the man in the reference image, {c['name']}: "
+                        f"{c['design']}. Exactly the same man, hat and coat. {HOST_FACE} Lit only by his lantern's "
+                        f"red glow from below, against a plain dark background. One single frame. No text, no "
+                        f"labels. {look['avoid']}").strip()
             path, step = painter.paint(text, [sheets[c["name"]]], out, ["portrait", c["name"], c["design"]],
                                        cfg["chains"]["sheet"], check=checked("portrait", c["name"], c["design"]))
             if path is not None and out.stem in painter.doubted and not step.startswith("fal:"):
