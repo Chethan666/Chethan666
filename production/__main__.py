@@ -207,7 +207,12 @@ ALTERNATES = [  # listed alongside the configured models, to compare
     # Nano Banana 2.1 (October 2026): its name on fal, to confirm
     "fal-ai/nano-banana-2.1", "fal-ai/nano-banana-2.1/edit", "google/nano-banana-2.1", "google/nano-banana-2.1/edit",
     "fal-ai/gemini-3.1-flash-image", "fal-ai/gemini-3.1-flash-image/edit",
-    "fal-ai/flux-3/edit", "fal-ai/flux-3-pro/edit", "fal-ai/flux-2-pro/edit",
+    "fal-ai/flux-3/edit", "fal-ai/flux-3-pro/edit",
+    # Stable Diffusion: which versions fal offers, and whether any take reference pictures
+    "fal-ai/stable-diffusion-v35-large", "fal-ai/stable-diffusion-v35-large/image-to-image",
+    "fal-ai/stable-diffusion-v35-medium", "fal-ai/stable-diffusion-v35-large/turbo", "fal-ai/ip-adapter-face-id",
+    "fal-ai/fast-sdxl", "fal-ai/lora", "fal-ai/stable-diffusion-v3-medium", "fal-ai/sd35-large/ip-adapter",
+    "fal-ai/stable-diffusion-v35-large/ip-adapter",
 ]
 
 
