@@ -1,0 +1,93 @@
+[
+  {
+    "index": 0,
+    "text": "Some voices carry further than they should. The lantern is lit.",
+    "picture": "The Storyteller stands in deep mist, his boots in shadow, holding a red lantern low. Far behind him, a single upstairs window of a lonely house glows yellow. An eerie, watchful stillness.",
+    "characters": [
+      "The Storyteller"
+    ],
+    "scare": false
+  },
+  {
+    "index": 1,
+    "text": "My daughter Lily is four. She sleeps with the baby monitor on.",
+    "picture": "A wide view of Lily's small, calm bedroom. Lily is asleep under a star-patterned duvet. A soft star night-light glows. The baby monitor sits on the bedside table, its small red light a tiny dot.",
+    "characters": [
+      "Lily"
+    ],
+    "scare": false
+  },
+  {
+    "index": 2,
+    "text": "Last night, at twelve past three, it crackled. Lily was whispering.",
+    "picture": "A tight focus on Mara\u2019s face in bed, awake and listening, eyes wide. The baby monitor receiver beside her glows with red sound-level lights. Her expression is frozen mid-breath.",
+    "characters": [
+      "Mara"
+    ],
+    "scare": false
+  },
+  {
+    "index": 3,
+    "text": "\"I can't. Mummy will hear.\"",
+    "picture": "A close-up of Lily asleep in bed, her lips barely moving in a whisper. Her eyes are shut. The soft star night\u2011light glows on her face, her expression troubled.",
+    "characters": [
+      "Lily"
+    ],
+    "scare": false
+  },
+  {
+    "index": 4,
+    "text": "Then another voice. Low. Patient. \"Mummy is asleep.\"",
+    "picture": "Lily\u2019s dark room. Lily sleeps facing the wall. The baby monitor transmitter sits on her nightstand, a single red light pulsing faintly. Deep shadows fill the corner.",
+    "characters": [
+      "Lily"
+    ],
+    "scare": true
+  },
+  {
+    "index": 5,
+    "text": "I ran. Her door was shut. Her night-light was off. I had left it on.",
+    "picture": "A wide, high-angle view of a dark upstairs landing lit by one failing bulb. Mara stands at Lily's closed bedroom door, her hand on the handle. No light escapes from under the door. Deep shadows pool.",
+    "characters": [
+      "Mara"
+    ],
+    "scare": false
+  },
+  {
+    "index": 6,
+    "text": "Lily was asleep, facing the wall. Nobody else.",
+    "picture": "Through the open doorway, Lily's bedroom in darkness. A small mound in bed, Lily asleep facing the wall in her starry pyjamas. Her night-light is dead. Deep, empty shadows fill the corners of the room. The grey pre-dawn light from one window barely touches the floor.",
+    "characters": [
+      "Lily"
+    ],
+    "scare": false
+  },
+  {
+    "index": 7,
+    "text": "I sat on her floor until dawn, the monitor in my lap. At twenty to five, it crackled again. Lily hadn't moved.",
+    "picture": "Mara sits exhausted against the wall on Lily's floor, the baby monitor receiver in her lap. A weak grey dawn light silhouettes a foggy window behind her. Lily sleeps unmoving in her bed beside Mara. A small red light glows in the darkness of the receiver.",
+    "characters": [
+      "Mara",
+      "Lily"
+    ],
+    "scare": false
+  },
+  {
+    "index": 8,
+    "text": "Then the voice came, so close it touched the microphone. \"Mummy's awake now.\"",
+    "picture": "A tight shot of Mara frozen on the floor, face a mask of terror, staring down at the receiver in her lap. Its red light glows brightly in the dark room.",
+    "characters": [
+      "Mara"
+    ],
+    "scare": true
+  },
+  {
+    "index": 9,
+    "text": "Lily is five now. She still won't sleep without the monitor. She says he likes to listen.",
+    "picture": "The Storyteller stands in the hollow, his expression eerie and knowing as he lowers his red lantern. Far behind him, on the silhouette of their house, a single small upstairs window glows faintly. Inside that window, a tiny, distinct red light winks from the darkness.",
+    "characters": [
+      "The Storyteller"
+    ],
+    "scare": false
+  }
+]

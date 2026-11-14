@@ -1,0 +1,341 @@
+{
+  "mode": "bakeoff",
+  "beats": 10,
+  "setups": {
+    "mix": {
+      "label": "Today's mix: Seedream 4.5, Nano Banana Pro for scares",
+      "usd": 1.128,
+      "seconds": 304,
+      "upscaled": 0,
+      "by_painter": {
+        "fal:hero": 1,
+        "fal:shot (doubted)": 1,
+        "fal:hero (doubted)": 1,
+        "fal:shot_alt (doubted)": 1,
+        "fal:shot": 3,
+        "fal:shot (corrected)": 2,
+        "fal:shot_alt (corrected)": 1
+      },
+      "refusals": 9,
+      "doubted_beats": [
+        2,
+        5,
+        8
+      ],
+      "retry_usd": 0.48,
+      "painter_sizes": {
+        "fal:hero": "2752x1536",
+        "fal:shot": "2752x1552",
+        "fal:shot_alt": "2752x1536"
+      },
+      "rejected": [
+        "beat_008 (fal:hero): minor: The picture shows Mara holding the receiver, but the description says it's in her lap. This is not a serious error, as the main elements and mood are correct.",
+        "beat_002 (fal:shot): minor: Mara's hair is not tied back as described; it is loose. This is a minor detail.",
+        "beat_002 (fal:shot_alt): minor: Mara's hair is not tied back as described. The image should show her with her hair tied back loosely.",
+        "beat_005 (fal:shot): serious: contradicts the line: the image shows a night-light that is on and has a vivid red light, but the narrator states 'Her night-light was off. I had left it on.' The night-light should be off and dark.",
+        "beat_008 (fal:shot): minor: The picture shows a night light on, but the description states the night-light should be off and dark. Also Mara's face is one of sadness or exhaustion, not terror as described.",
+        "beat_005 (fal:shot_alt): minor: The framing is an eye-level mid-shot, not a wide, high-angle view. The prompt asked for a wide, high-angle view of the landing.",
+        "beat_007 (fal:shot): serious: contradicts the line: Lily is shown awake, but the line says 'Lily hadn't moved.' and implies she is asleep. The picture should show Lily sleeping.",
+        "beat_001 (fal:shot): serious: The picture contradicts the house style: it is bright and cheerful rather than dark, with a clear view of the room and Lily's face, rather than deep shadows swallowing the edges of the frame and low-k",
+        "beat_000 (fal:shot): minor: The Storyteller's face is not lit red from below by the lantern, and the brim's shadow is not over his brow. The face of The Storyteller is clearly visible which does not align with the description. T"
+      ],
+      "judge": {
+        "same_faces": null,
+        "moment": null,
+        "cinematic": null,
+        "best_on": 0
+      }
+    },
+    "nb21": {
+      "label": "Nano Banana 2.1, every picture",
+      "usd": 1.144,
+      "seconds": 194,
+      "upscaled": 0,
+      "by_painter": {
+        "fal:nb21": 5,
+        "fal:nb21 (doubted)": 4,
+        "fal:nb21 (minor fault kept)": 1
+      },
+      "refusals": 9,
+      "doubted_beats": [
+        0,
+        5,
+        6,
+        8
+      ],
+      "retry_usd": 0.32,
+      "painter_sizes": {
+        "fal:nb21": "2752x1536"
+      },
+      "rejected": [
+        "beat_008 (fal:nb21): minor: The picture shows Mara on the floor, but it is not a tight shot of her, and her face is not a mask of terror. It is a wider shot, and her expression is more one of concern than terror.",
+        "beat_005 (fal:nb21): minor: The framing is a medium shot, but the prompt asked for a wide, high-angle view.",
+        "beat_008 (fal:nb21): minor: The shot is not tight enough on Mara, and the red light of the receiver is not glowing brightly in the dark room as described.",
+        "beat_005 (fal:nb21): serious: contradicts the line: the picture shows Mara holding a baby monitor with a red light on, but the line states 'Her night-light was off. I had left it on.' The picture should show the night-light off an",
+        "beat_007 (fal:nb21, kept): minor: The baby monitor receiver in Mara's lap does not have a small red light glowing in the darkness. The light of the monitor is off and dark.",
+        "beat_006 (fal:nb21): serious: The picture contradicts the line: The night-light is on and emitting a red glow, but the description states 'Her night-light is dead' and 'The night-light is off and dark'.",
+        "beat_000 (fal:nb21): serious: The Storyteller's face does not match the portrait; his face is not gaunt, lined, hollow-cheeked with sunken tired eyes, and his expression is neutral rather than unsettling. The picture should show a",
+        "beat_006 (fal:nb21): serious: The night-light in the image is on and glowing white, but the description states that 'Her night-light is dead' and 'The night-light is off and dark'. This contradicts the line.",
+        "beat_000 (fal:nb21): minor: The Storyteller's face is not lit red from below by his lantern, and the brim's shadow is not over his brow. The picture should show his face lit red from below by the lantern, with the brim's shadow "
+      ],
+      "judge": {
+        "same_faces": null,
+        "moment": null,
+        "cinematic": null,
+        "best_on": 0
+      }
+    },
+    "pro": {
+      "label": "Nano Banana Pro, every picture",
+      "usd": 1.672,
+      "seconds": 170,
+      "upscaled": 0,
+      "by_painter": {
+        "fal:hero": 5,
+        "fal:hero (doubted)": 4,
+        "fal:hero (minor fault kept)": 1
+      },
+      "refusals": 8,
+      "doubted_beats": [
+        2,
+        5,
+        6,
+        8
+      ],
+      "retry_usd": 0.45,
+      "painter_sizes": {
+        "fal:hero": "2752x1536"
+      },
+      "rejected": [
+        "beat_008 (fal:hero): minor: The picture shows Mara holding the receiver, but the description says it's in her lap. The picture should show Mara staring down at the receiver in her lap.",
+        "beat_002 (fal:hero): minor: The focus is not tight on Mara's face; it's a wider shot showing more of the room and the bed. It should be a tight focus on her face.",
+        "beat_008 (fal:hero): minor: The picture is not a tight shot of Mara. It is a wider shot showing more of the room.",
+        "beat_005 (fal:hero): minor: The picture shows a medium-wide shot down a long corridor. It should be a wide, high-angle view of a dark upstairs landing.",
+        "beat_005 (fal:hero): minor: The image is a medium shot of Mara in a hallway, not a wide, high-angle view of an upstairs landing as requested. The image also shows a red light on a table in the background, which is not the baby m",
+        "beat_002 (fal:hero): minor: The picture shows Mara sitting up in bed, but the description asks for a tight focus on her face in bed, implying she should be lying down or in a closer shot of her face.",
+        "beat_007 (fal:hero, kept): minor: The night-light is on and bright, but the description says it is off and dark.",
+        "beat_006 (fal:hero): serious: The night-light in the image is glowing red, but the description states 'Her night-light is dead. The night-light is off and dark.' This contradicts the line."
+      ],
+      "judge": {
+        "same_faces": null,
+        "moment": null,
+        "cinematic": null,
+        "best_on": 0
+      }
+    },
+    "flux2": {
+      "label": "FLUX.2 pro, every picture",
+      "usd": 1.27,
+      "seconds": 126,
+      "upscaled": 0,
+      "by_painter": {
+        "fal:flux": 5,
+        "fal:flux (doubted)": 1,
+        "fal:flux (corrected)": 1
+      },
+      "refusals": 3,
+      "doubted_beats": [
+        5
+      ],
+      "retry_usd": 0.28,
+      "painter_sizes": {
+        "fal:flux": "2560x1440"
+      },
+      "rejected": [
+        "beat_005 (fal:flux): serious: The picture shows Mara's face clearly contradicting her portrait: her face shape is different, her eyes are smaller and her eyebrows are arched instead of straight. The picture should show Mara lookin",
+        "beat_007 (fal:flux): serious: The picture is split into two panels, which is against the house style. It should be a single, anamorphic 16:9 composition.",
+        "beat_005 (fal:flux): serious: The night-light is on and red, but the line says 'Her night-light was off'. The picture should show the night-light off and dark."
+      ],
+      "judge": {
+        "same_faces": null,
+        "moment": null,
+        "cinematic": null,
+        "best_on": 0
+      }
+    },
+    "sd35": {
+      "label": "Stable Diffusion 3.5 Large, from words only (it takes no references)",
+      "usd": 0.0,
+      "seconds": 8,
+      "upscaled": 0,
+      "by_painter": {},
+      "refusals": 0,
+      "doubted_beats": [],
+      "retry_usd": 0.0,
+      "painter_sizes": {},
+      "rejected": [],
+      "judge": {
+        "same_faces": null,
+        "moment": null,
+        "cinematic": null,
+        "best_on": 0
+      }
+    }
+  },
+  "references_usd": 0.415,
+  "usd": 5.63,
+  "usd_by_task": {
+    "picture_flux": 1.26,
+    "picture_hero": 1.95,
+    "picture_nb21": 1.12,
+    "picture_reference": 0.04,
+    "picture_sheet": 0.32,
+    "picture_sheet_alt": 0.035,
+    "picture_shot": 0.44,
+    "picture_shot_alt": 0.36,
+    "reference_check": 0.018,
+    "vision": 0.086
+  },
+  "fal_balance_ran_out": true,
+  "judge": {
+    "0": {},
+    "1": {},
+    "2": {},
+    "3": {},
+    "4": {},
+    "5": {},
+    "6": {},
+    "7": {},
+    "8": {},
+    "9": {}
+  },
+  "agents": {
+    "art": {
+      "style_frame": true,
+      "style_frame_by": "fal:reference",
+      "sheets": [
+        "Lily",
+        "Mara",
+        "The Storyteller"
+      ],
+      "portraits": [
+        "Lily",
+        "Mara",
+        "The Storyteller"
+      ],
+      "host_references": true,
+      "designs": {
+        "Mara": "a woman in her early thirties, exhausted, dark brown hair tied back loosely, a grey oversized cardigan over dark pyjamas, no jewellery; Caucasian, early 30s as noted. Slim build. Heart-shaped face with prominent, tired eyes. Dark brown freckles are visible on nose and cheeks. Always wears no makeup. Her hair is long, kept in a low, loose ponytail. Cardigan is charcoal grey.",
+        "Lily": "Exactly 4 years old, a small child, never older: a real photographed child, never animated, cartoonish or doll-like, with natural skin texture; a small child's proportions, a large head for the body, round cheeks, short arms and legs, small hands, as tall as a kitchen table. a four-year-old girl with messy fair hair, pale yellow pyjamas with small stars; Caucasian, aged 4 as noted. Petite build. Round face with large, wide-set blue eyes. Very fair, almost translucent skin. Her fine, straight hair is waist-length blond and often falls across her face. Pyjama sleeves and trousers are pale lemon-yellow.",
+        "The Storyteller": "a tall, gaunt man of indeterminate age with a long, lined, hollow-cheeked face, sunken tired eyes and grey stubble, in a long, worn charcoal greatcoat and a battered black felt hat with a wide brim (never a cowboy hat); his face is lit red from below by his lantern, the brim's shadow over his brow; he always carries a plain old iron railway lantern with glass panes (no faces, masks or carvings on it) whose flame burns blood red"
+      },
+      "places": [
+        {
+          "name": "Lily's Bedroom",
+          "scenes": [
+            1,
+            3,
+            5,
+            6,
+            7
+          ],
+          "design": "A small child\u2019s bedroom in a modest, older house. Walls are painted a faded, warm grey-beige. Main features are a low single bed with a star-patterned duvet against the wall, a simple wooden nightstand to its left, and a fogged window opposite. Light sources are exclusively a soft, yellow, star-shaped night-light on the nightstand and the single, pulsing red LED of a baby monitor transmitter. At night, the room is dominated by deep, inky shadows in the corners, especially between the bed and the wall. Grey pre-dawn light filters weakly through the fogged window.",
+          "sheet": true
+        },
+        {
+          "name": "Mara's Bedroom",
+          "scenes": [
+            2
+          ],
+          "design": "An adult's dim, sparsely decorated bedroom. The dominant feature is a double bed with a dark, plain duvet. The walls are a cold teal-grey. A simple wooden bedside table stands to one side of the bed. The only light source is the cluster of red LED 'sound level' indicators on a baby monitor receiver placed on this table. The room is otherwise engulfed in near-total darkness, with no other ambient lighting.",
+          "sheet": true
+        },
+        {
+          "name": "The Upstairs Landing",
+          "scenes": [
+            4
+          ],
+          "design": "A narrow, second-floor hallway in an older house. The walls and carpet are muted, dirty shades of grey and brown. A single, bare, failing incandescent bulb in a ceiling fixture provides the only light, casting a sickly, intermittent amber glow. The light flickers erratically. Deep shadows pool at both ends of the landing and around the closed doors. The air feels still and thick.",
+          "sheet": true
+        }
+      ],
+      "reference_checks": [
+        {
+          "sheet": "Mara's Bedroom",
+          "kind": "location",
+          "ok": true,
+          "why": "The image accurately depicts Mara's dim, sparsely decorated bedroom with a bed, bedside table, baby monitor with red LEDs, and cold teal-grey walls. The room is engulfed in near-total darkness, consis"
+        },
+        {
+          "sheet": "The Upstairs Landing",
+          "kind": "location",
+          "ok": true,
+          "why": "None"
+        },
+        {
+          "sheet": "Lily's Bedroom",
+          "kind": "location",
+          "ok": true,
+          "why": ""
+        },
+        {
+          "sheet": "Mara",
+          "kind": "character",
+          "ok": true,
+          "why": "All details match the description perfectly."
+        },
+        {
+          "sheet": "Lily",
+          "kind": "character",
+          "ok": false,
+          "why": "The character is clearly animated, cartoonish or doll-like, but should be a real photographed child."
+        },
+        {
+          "sheet": "Lily",
+          "kind": "character",
+          "ok": false,
+          "why": "The reference sheet shows an animated or doll-like character, not a real photographed child with natural skin texture as requested."
+        },
+        {
+          "sheet": "Lily",
+          "kind": "character",
+          "ok": true,
+          "why": "None"
+        },
+        {
+          "sheet": "Mara",
+          "kind": "portrait",
+          "ok": true,
+          "why": "None"
+        },
+        {
+          "sheet": "Lily",
+          "kind": "portrait",
+          "ok": true,
+          "why": "None"
+        }
+      ],
+      "seconds": 267.6
+    },
+    "storyboard": {
+      "beats": 10,
+      "directed_by_model": 10,
+      "host_beats": 2,
+      "scares": 2,
+      "check": {
+        "checked": true,
+        "fixed": [
+          {
+            "beat": 2,
+            "problem": "The picture shows only the monitor and asleep Mara, not Mara hearing the line spoken at that moment. Narration is present tense, so the active voice and whisper occur now."
+          },
+          {
+            "beat": 3,
+            "problem": "The picture shows Mara in her bed, but the line is Lily/Mara (no one else) whispering 'I can't. Mummy will hear.' Picture should show child whispering, with faint glow of night-light."
+          },
+          {
+            "beat": 4,
+            "problem": "The picture shows Mara reacting to the monitor, but the line describes the voice speaking 'Mummy is asleep', so picture must show Lily\u2019s room where the voice originates."
+          },
+          {
+            "beat": 8,
+            "problem": "Picture includes a tall shadow emerging behind Mara, suggesting the threat is visible. The line only describes a voice close to microphone in darkness, no visible form stated."
+          }
+        ]
+      },
+      "average_seconds": 5.0,
+      "seconds": 47.7
+    }
+  },
+  "minutes": 19.6
+}
