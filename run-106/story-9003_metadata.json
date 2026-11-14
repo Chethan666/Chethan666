@@ -1,0 +1,46 @@
+{
+  "story_id": 9003,
+  "title": "The Baby Monitor",
+  "other_titles": [
+    "Mummy's Awake Now"
+  ],
+  "description": "At 3:12 the baby monitor picked up two voices. A Hollow Lines test story.\n\nMusic and sound:\n\"Measured Paces\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"Night Break\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"Heart of the Beast\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/\n\"Horror Hit\" by vividreality (OpenGameArt.org, https://opengameart.org/content/horror-hit), licensed CC-BY-3.0\n\"Electric Sound Effects Library\" by little-robot-sound-factory (OpenGameArt.org, https://opengameart.org/content/electric-sound-effects-library), licensed CC-BY-3.0\n\"Monster and Creatures Sound Effects PACK 001\" by jalastram (OpenGameArt.org, https://opengameart.org/content/monster-and-creatures-sound-effects-pack-001), licensed CC-BY-3.0",
+  "tags": [
+    "horror",
+    "scary story",
+    "baby monitor",
+    "creepy",
+    "short horror"
+  ],
+  "pinned_comment": "Would you have stayed in that room?",
+  "end_screen_line": "The monitor is still on.",
+  "credit": "",
+  "made_for_kids": false,
+  "duration_seconds": 64.5,
+  "chapters": [],
+  "sound_credits": [
+    "\"Measured Paces\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"Night Break\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"Heart of the Beast\" Kevin MacLeod (incompetech.com) Licensed under Creative Commons: By Attribution 4.0 License http://creativecommons.org/licenses/by/4.0/",
+    "\"Horror Hit\" by vividreality (OpenGameArt.org, https://opengameart.org/content/horror-hit), licensed CC-BY-3.0",
+    "\"Electric Sound Effects Library\" by little-robot-sound-factory (OpenGameArt.org, https://opengameart.org/content/electric-sound-effects-library), licensed CC-BY-3.0",
+    "\"Monster and Creatures Sound Effects PACK 001\" by jalastram (OpenGameArt.org, https://opengameart.org/content/monster-and-creatures-sound-effects-pack-001), licensed CC-BY-3.0"
+  ],
+  "sounds_used": [
+    "music-measured-paces-10bb0bc5",
+    "music-night-break-ec6d60d8",
+    "music-heart-of-the-beast-e5ddafef",
+    "ambience-loopable-dungeon-ambience-1af73809",
+    "sting-horror-hit-dd612c9d",
+    "sfx-electric-sound-effects-library-s-f25a5a3d",
+    "sfx-monster-and-creatures-sound-effe-000ded1c",
+    "ambience-sci-fi-ambience-sfx-cfb9c522",
+    "ambience-sci-fi-ambience-sfx-cfb9c522",
+    "ambience-sci-fi-ambience-sfx-cfb9c522"
+  ],
+  "thumbnails": [
+    "thumbnail_1.jpg"
+  ],
+  "end_screen_starts": 60.5,
+  "synthetic_media": true
+}

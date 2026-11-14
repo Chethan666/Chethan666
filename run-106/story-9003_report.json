@@ -1,0 +1,478 @@
+{
+  "mode": "stills",
+  "video": "/home/runner/work/Horror/Horror/out/story-9003/video.mp4",
+  "seconds": 64.5,
+  "story_seconds": 58.5,
+  "beats": 12,
+  "point_of_view": "first",
+  "voices": {
+    "engine": "elevenlabs",
+    "host": "Brian",
+    "teller": "Callum",
+    "teller_kind": "man",
+    "characters": {
+      "Lily": "Laura",
+      "Mara": "Alice",
+      "other_voice": "George"
+    }
+  },
+  "usd": 1.82,
+  "usd_by_task": {
+    "art_review": 0.0,
+    "picture_hero": 0.45,
+    "picture_reference": 0.08,
+    "picture_sheet": 0.28,
+    "picture_shot": 0.44,
+    "picture_shot_alt": 0.36,
+    "picture_thumbnail": 0.08,
+    "reference_check": 0.01,
+    "thumbnail_check": 0.0,
+    "vision": 0.04,
+    "voice": 0.08
+  },
+  "fal_balance_ran_out": false,
+  "qa": {
+    "status": "check",
+    "issues": [
+      "the scare picture (beat 5) passed no check: look at it",
+      "the scare picture (beat 10) passed no check: look at it"
+    ],
+    "video_seconds": 64.5,
+    "loudness_lufs": -15.4,
+    "true_peak_dbtp": -1.4,
+    "seconds": 8.1
+  },
+  "agents": {
+    "script_check": {
+      "words": 122,
+      "estimated_seconds": 43.6,
+      "target_seconds": 52.0,
+      "scenes": 9,
+      "issues": [],
+      "seconds": 0.0
+    },
+    "casting": {
+      "point_of_view": "first",
+      "teller": "man",
+      "why": "The story's perspective is Mara, the 'tired mother' identified in the story bible. The narrator is the mother of the child, Lily.",
+      "engine": "elevenlabs",
+      "host_voice": "Brian",
+      "teller_voice": "Callum",
+      "quoted_lines": 3,
+      "character_voices": {
+        "Lily": "Laura",
+        "Mara": "Alice",
+        "other_voice": "George"
+      },
+      "seconds": 3.8
+    },
+    "voice": {
+      "seconds_of_speech": 58.5,
+      "chunks": 26,
+      "speakers": [
+        "Lily",
+        "host",
+        "narrator"
+      ],
+      "lines_read_by_kokoro": 0,
+      "words_per_minute": 125,
+      "performance": {
+        "directed": true,
+        "sentences": 18,
+        "plain": 7,
+        "tags": {
+          "[fearfully]": 2,
+          "[hesitantly]": 3,
+          "[ominously]": 2,
+          "[quietly]": 2,
+          "[urgently]": 1,
+          "[whispers]": 1
+        },
+        "unknown_tags": []
+      },
+      "listener": {
+        "model": "base.en",
+        "takes": 12,
+        "reread": 0,
+        "worst_match": 0.82
+      },
+      "seconds": 44.8
+    },
+    "storyboard": {
+      "beats": 12,
+      "directed_by_model": 12,
+      "host_beats": 2,
+      "scares": 3,
+      "check": {
+        "checked": true,
+        "fixed": [
+          {
+            "beat": 4,
+            "problem": "LINE says Lily whispers 'I can't. Mummy will hear.' but PICTURE says 'Then another voice. Low. Patient.' Person and action mismatch."
+          },
+          {
+            "beat": 10,
+            "problem": "LINE says 'Then the voice came, so close it touched the microphone. \"Mummy's awake now.\"' but PICTURE shows the voice whispering directly behind Mara, misplacing the whisper's source; line specifies t"
+          }
+        ]
+      },
+      "average_seconds": 4.9,
+      "seconds": 31.2
+    },
+    "art": {
+      "style_frame": true,
+      "style_frame_by": "fal:reference",
+      "sheets": [
+        "Lily",
+        "Mara",
+        "The Storyteller"
+      ],
+      "portraits": [
+        "Lily",
+        "Mara",
+        "The Storyteller"
+      ],
+      "host_references": true,
+      "designs": {
+        "Mara": "a woman in her early thirties, exhausted, dark brown hair tied back loosely, a grey oversized cardigan over dark pyjamas, no jewellery; Caucasian, early 30s, petite frame with a tired posture. Oval face with a strong jawline, dark circles beneath grey eyes. Smooth, dark brown hair in a messy low ponytail. Dark pyjama trousers are navy blue. Never wears makeup.",
+        "Lily": "Exactly 4 years old, a small child, never older: toddler-like proportions with a large head for the body, round full cheeks, a small button nose, short arms and legs, small chubby hands, as tall as a kitchen table. a four-year-old girl with messy fair hair, pale yellow pyjamas with small stars; Caucasian, age 4, slight build. Round face with a light dusting of freckles across the nose and cheeks, wide-set blue eyes. Fine, straight fair hair is chin-length and looks recently slept on. Pale yellow pyjama top, matching bottoms.",
+        "The Storyteller": "a tall, gaunt man of indeterminate age with a long, lined, hollow-cheeked face, sunken tired eyes and grey stubble, in a long, worn charcoal greatcoat and a battered black felt hat with a wide brim (never a cowboy hat); his face is lit red from below by his lantern, the brim's shadow over his brow; he always carries a plain old iron railway lantern with glass panes (no faces, masks or carvings on it) whose flame burns blood red"
+      },
+      "places": [
+        {
+          "name": "Lily's Bedroom",
+          "scenes": [
+            1,
+            5,
+            6,
+            7
+          ],
+          "design": "A small child\u2019s bedroom in an old house. Peeling, pale grey floral wallpaper. Main colours are muted teal-grey shadows with dabs of sodium-amber from the light sources. Key objects: a single bed under the window with a star-patterned duvet, a wooden bedside table holding a now-dead ceramic star night-light (formerly warm amber) and a baby monitor, a low, cluttered bookshelf. The only available light at night is the red accent LED of the monitor. Pre-dawn brings a cold, grey cast through condensation-blurred windowpanes.",
+          "sheet": true
+        },
+        {
+          "name": "Mara's Bedroom",
+          "scenes": [
+            2,
+            3
+          ],
+          "design": "A spartan, dim adult bedroom. Walls are a flat, cold blue-grey. Furnished with a simple double bed on a wrought-iron frame and a single wooden nightstand. The only consistent light source is the row of red indicator LEDs on the baby monitor receiver. A small, muted digital clock adds a faint green glow. The bedding is plain, washed-out cotton. Shadows are deep and absolute in the corners beyond the bed.",
+          "sheet": true
+        },
+        {
+          "name": "The Upstairs Landing",
+          "scenes": [
+            4
+          ],
+          "design": "A long, narrow upstairs hallway in the same old house. Bare, scuffed wooden floorboards. Walls painted a now-grubby off-white. A single, old ceiling fixture with a failing, flickering filament bulb (cold, stark white) provides the only light, leaving deep pools of shadow at either end. A worn runner rug lies crumpled near the top of the stairs. The doors along the hall are heavy, dark-stained wood.",
+          "sheet": true
+        }
+      ],
+      "reference_checks": [
+        {
+          "sheet": "The Upstairs Landing",
+          "kind": "location",
+          "ok": true,
+          "why": "None"
+        },
+        {
+          "sheet": "Lily's Bedroom",
+          "kind": "location",
+          "ok": true,
+          "why": ""
+        },
+        {
+          "sheet": "Mara's Bedroom",
+          "kind": "location",
+          "ok": true,
+          "why": "The image matches the description of Mara's bedroom perfectly. It depicts a dim, spartan adult bedroom with a wrought-iron bed, wooden nightstand, a baby monitor with red LEDs, and a digital clock wit"
+        },
+        {
+          "sheet": "Lily",
+          "kind": "character",
+          "ok": true,
+          "why": "None"
+        },
+        {
+          "sheet": "Mara",
+          "kind": "character",
+          "ok": true,
+          "why": "None"
+        },
+        {
+          "sheet": "Mara",
+          "kind": "portrait",
+          "ok": true,
+          "why": "The image correctly depicts Mara as a woman in her early thirties, exhausted, with dark brown hair tied back, wearing a grey oversized cardigan over dark pyjamas. The setting is dark and subdued, matc"
+        },
+        {
+          "sheet": "Lily",
+          "kind": "portrait",
+          "ok": true,
+          "why": "The image matches the description of Lily at exactly 4 years old, with appropriate features and clothing. The lighting is dark, but the face is not kept in shadow, it's lit in full."
+        }
+      ],
+      "seconds": 183.7
+    },
+    "illustrator": {
+      "look": "cinematic",
+      "warned": "the exact action the line describes; faces show the line's feeling clearly; each person wears exactly the clothes on their sheet",
+      "faults_seen": {
+        "action": 3
+      },
+      "retry_usd": 0.44,
+      "retries_stopped": 4,
+      "cameras": {},
+      "pictures": 12,
+      "borrowed_neighbour": 0,
+      "placeholders": 0,
+      "scare_shots": [
+        4,
+        5,
+        10
+      ],
+      "key_beats": [
+        2,
+        3,
+        6
+      ],
+      "by_painter": {
+        "fal:reference (doubted)": 1,
+        "fal:sheet": 7,
+        "fal:hero": 1,
+        "fal:shot (doubted)": 7,
+        "fal:shot_alt (doubted)": 1,
+        "fal:shot_alt (corrected)": 2,
+        "fal:shot": 1
+      },
+      "doubted_beats": [
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        9,
+        10
+      ],
+      "painter_sizes": {
+        "fal:reference": "2752x1552",
+        "fal:sheet": "2560x1440",
+        "fal:hero": "2752x1536",
+        "fal:shot": "2752x1552",
+        "fal:shot_alt": "2752x1536"
+      },
+      "rejected": [
+        "style_frame (fal:reference): serious: The ceramic star night-light is described as 'now-dead' (formerly amber), but it is clearly lit and amber in the image. The image should show the night-light off.",
+        "style_frame (fal:reference): serious: The star night-light is glowing warmly amber, but the description states it is now dead and formerly warm amber.",
+        "beat_005 (fal:hero): serious: The picture shows only the baby monitor, but the narration 'Mummy is asleep' implies Mara should be present and asleep.",
+        "beat_010 (fal:hero): serious: The picture shows Mara sitting on Lily's bed, not a close-up of Mara's lap. The narrator describes the whisper as intimately close to the device's small speaker, but the picture shows Mara far from th",
+        "beat_005 (fal:shot): serious: The picture shows Mara asleep next to the baby monitor, but the description says it should only show 'The baby monitor receiver in the dark. Its red indicator lights remain steadily lit, a small, omin",
+        "beat_010 (fal:shot): serious: The image shows Mara's full body and Lily sleeping in her bed, but the prompt asked for a close-up of Mara's lap with the baby monitor receiver in her hands. It also shows a night-light that should be",
+        "beat_006 (fal:shot): serious: The picture shows light shining from the crack beneath Lily's door, but the narration states her night-light was off and no light should shine from beneath it.",
+        "beat_003 (fal:shot): serious: The picture looks like a 3D render, not a real film frame, and Lily's face is different from her portrait. It should show a photorealistic real child with her described face.",
+        "beat_006 (fal:shot_alt): serious: The image shows Mara with her hand on a closed door, but it doesn't show that it's Lily's bedroom door or that no light shines from beneath it, and the narrated line says 'Her night-light was off. I h",
+        "beat_011 (fal:shot): serious: The Storyteller is not addressing us, but standing in a distant shot. The story should be told from his perspective as he addresses us, with his face somber and illuminated by the red lantern, and the",
+        "beat_000 (fal:shot): serious: The Storyteller in the main image does not match the portrait of The Storyteller. The main image shows a different person.",
+        "beat_002 (fal:shot): serious: The picture shows the baby monitor's red lights as a solid bar, not 'frozen mid-jump, static captured' as described in the house style, and fails to capture the 'crackled' action described by the narr",
+        "beat_009 (fal:shot): serious: The picture shows Mara looking up and out of the frame, but the description states she should be staring down intently at the baby monitor receiver in her hands. The framing is also not a close-up of ",
+        "beat_001 (fal:shot): serious: The child in the picture is clearly a 3D render, not a photorealistic real person as required by the house style. The picture should show a photorealistic real person.",
+        "beat_007 (fal:shot): serious: The main image shows Lily facing the room, not facing away toward a pale wall as described. It should show Lily facing the wall while asleep."
+      ],
+      "seconds": 278.2
+    },
+    "art_review": {
+      "reviewed": true,
+      "score": 6,
+      "flagged": [
+        {
+          "picture": 1,
+          "problem": "Lily's Bedroom is described with 'peeling, pale grey floral wallpaper' and 'muted teal-grey shadows'. The picture shows a light blue wall without obvious peeling floral wallpaper, which contradicts th"
+        },
+        {
+          "picture": 3,
+          "problem": "Lily should be asleep according to the narrative for this line and the next. The image shows Lily awake, sitting up and looking surprised, which contradicts the story."
+        },
+        {
+          "picture": 4,
+          "problem": "Mara is wearing dark pyjamas but is described as also wearing 'a grey oversized cardigan over dark pyjamas'. The image shows her only in dark pyjamas without the cardigan."
+        },
+        {
+          "picture": 5,
+          "problem": "Mara is described as having 'dark brown hair tied back loosely'. In this picture, her hair is down and loose, not tied back."
+        },
+        {
+          "picture": 6,
+          "problem": "The Storyteller is not shown in this picture, but the prompt implies a threat that may appear as a shadow. There is a shadowy figure in the background that appears to be Mara, not an unnamed threat. T"
+        },
+        {
+          "picture": 7,
+          "problem": "The description states 'Her door was shut. Her night-light was off.' The image shows Lily's door open and a night-light that appears to be on, contradicting the narrative."
+        },
+        {
+          "picture": 8,
+          "problem": "Mara is described as wearing 'a grey oversized cardigan over dark pyjamas'. This picture shows her wearing the cardigan, but in picture 4 and 5 she is not wearing it. This inconsistency breaks charact"
+        },
+        {
+          "picture": 9,
+          "problem": "Mara is described as having 'dark brown hair tied back loosely'. In this picture, her hair is down and loose, not tied back, which is inconsistent with her initial description (and also picture 4 wher"
+        },
+        {
+          "picture": 10,
+          "problem": "Mara is described as having 'dark brown hair tied back loosely'. In this picture, her hair is down and loose, not tied back, which is inconsistent with her initial description (and also picture 4 wher"
+        }
+      ],
+      "redrawn": [],
+      "strongest_picture": 4,
+      "seconds": 7.9
+    },
+    "colorist": {
+      "graded": 12,
+      "pictures": 12,
+      "film_brightness": 40.0,
+      "printed_down": 0.12,
+      "film_contrast": 33.7,
+      "changes": {
+        "0": {
+          "brightness": -6.2,
+          "contrast": 1.04
+        },
+        "1": {
+          "brightness": -5.6
+        },
+        "2": {
+          "brightness": -5.8
+        },
+        "3": {
+          "brightness": -5.3
+        },
+        "4": {
+          "brightness": -4.0
+        },
+        "5": {
+          "brightness": -6.4
+        },
+        "6": {
+          "brightness": -4.2
+        },
+        "7": {
+          "brightness": -4.1
+        },
+        "8": {
+          "brightness": -5.0
+        },
+        "9": {
+          "brightness": -5.5
+        },
+        "10": {
+          "brightness": -5.7
+        },
+        "11": {
+          "brightness": -2.4
+        }
+      },
+      "seconds": 17.5
+    },
+    "motion": {
+      "enabled": false,
+      "seconds": 0.0
+    },
+    "edit_plan": {
+      "cold_open_beats": [],
+      "cold_open_seconds": 0.0,
+      "total_seconds": 64.5,
+      "seconds": 0.0
+    },
+    "sound": {
+      "music": [
+        "dread",
+        "terror",
+        "unease"
+      ],
+      "ambience": 4,
+      "effects": 3,
+      "synthesized": [],
+      "library": {
+        "library_sounds": 279,
+        "needs": 13,
+        "decided_by_model": 9,
+        "from_library": 10,
+        "made_new": 0,
+        "left_out": 2,
+        "from_library_by_kind": {
+          "music": 3,
+          "ambience": 4,
+          "sfx": 2,
+          "sting": 1
+        },
+        "picks": {
+          "music_unease": "music-measured-paces-10bb0bc5",
+          "music_dread": "music-night-break-ec6d60d8",
+          "music_terror": "music-heart-of-the-beast-e5ddafef",
+          "room_b9d1c7a39a8e47b3": "ambience-loopable-dungeon-ambience-1af73809",
+          "sting": "sting-horror-hit-dd612c9d",
+          "fx_002": "sfx-electric-sound-effects-library-s-f25a5a3d",
+          "fx_003": "sfx-monster-and-creatures-sound-effe-000ded1c",
+          "room_4cc20b250f1309d5": "ambience-sci-fi-ambience-sfx-cfb9c522",
+          "room_48c321019053676d": "ambience-sci-fi-ambience-sfx-cfb9c522",
+          "room_183a72bbe79863a1": "ambience-sci-fi-ambience-sfx-cfb9c522"
+        },
+        "made": {},
+        "library": true,
+        "fetched": 10,
+        "credits": 6
+      },
+      "generated": 0,
+      "saved_for_library": 0,
+      "mix": {
+        "checked": true,
+        "voice_over_bed_db": 9.5,
+        "after_db": 12.0,
+        "bed_lowered_db": 2.5
+      },
+      "seconds": 21.7
+    },
+    "edit": {
+      "segments": 14,
+      "size": "2560x1440",
+      "motion": "drift",
+      "moves": {
+        "push_in": 6,
+        "pan_right": 2,
+        "pan_left": 2,
+        "push_in_fast": 3,
+        "none": 1
+      },
+      "atmosphere": {
+        "fog": 2,
+        "flicker": 1
+      },
+      "seconds": 137.9
+    },
+    "packager": {
+      "thumbnails": 1,
+      "chapters": 0,
+      "thumbnail_checks": [
+        {
+          "thumbnail": 1,
+          "ok": true,
+          "why": "The words 'MUMMY'S AWAKE' are clear, correctly spelled, and the only prominent text. No other issues were found."
+        }
+      ],
+      "seconds": 22.8
+    },
+    "qa": {
+      "status": "check",
+      "issues": [
+        "the scare picture (beat 5) passed no check: look at it",
+        "the scare picture (beat 10) passed no check: look at it"
+      ],
+      "video_seconds": 64.5,
+      "loudness_lufs": -15.4,
+      "true_peak_dbtp": -1.4,
+      "seconds": 8.1
+    }
+  },
+  "review": "pending",
+  "render_minutes": 12.6
+}

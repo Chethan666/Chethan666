@@ -1,0 +1,237 @@
+[
+  {
+    "index": 0,
+    "scene": 0,
+    "t0": 0.0,
+    "t1": 5.621360544217687,
+    "text": "Some voices carry further than they should. The lantern is lit.",
+    "framing": "wide",
+    "picture": "A ghostly dim landscape. The Storyteller stands alone in mist, holding a glowing red lantern low by his boots. Far behind him, a single small window of a lone house is lit upstairs, a tiny beacon in the vast dark.",
+    "characters": [
+      "The Storyteller"
+    ],
+    "sound": "",
+    "motion": "",
+    "scare": false,
+    "importance": 3,
+    "directed": true,
+    "view": "film",
+    "atmosphere": [
+      "fog"
+    ]
+  },
+  {
+    "index": 1,
+    "scene": 1,
+    "t0": 5.621360544217687,
+    "t1": 9.75845804988662,
+    "text": "My daughter Lily is four. She sleeps with the baby monitor on.",
+    "framing": "wide",
+    "picture": "Lily sleeps peacefully in her small bedroom under a star-patterned duvet. A star-shaped night-light glows warmly on her bedside table, next to a baby monitor with a single small red light.",
+    "characters": [
+      "Lily"
+    ],
+    "sound": "",
+    "motion": "",
+    "scare": false,
+    "importance": 2,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 2,
+    "scene": 2,
+    "t0": 9.75845804988662,
+    "t1": 13.51845804988662,
+    "text": "Last night, at twelve past three, it crackled.",
+    "framing": "insert",
+    "picture": "Extreme close-up on the baby monitor receiver unit on a nightstand in a dark bedroom. Its row of red indicator lights is lit and frozen mid-jump, static captured. Mara sleeps, blurred and out of focus, in the bed behind it.",
+    "characters": [
+      "Mara"
+    ],
+    "sound": "electronic crackle",
+    "motion": "",
+    "scare": false,
+    "importance": 3,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 3,
+    "scene": 2,
+    "t0": 13.51845804988662,
+    "t1": 17.355895691609977,
+    "text": "Lily was whispering. \"I can't. Mummy will hear.\"",
+    "framing": "medium",
+    "picture": "Lily, still in her star-patterned bed. She is awake, her eyes wide and scared, whispering into the air towards the baby monitor on her nightstand. The star night-light and the monitor's red accent provide the only light.",
+    "characters": [
+      "Lily"
+    ],
+    "sound": "whisper",
+    "motion": "",
+    "scare": false,
+    "importance": 4,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 4,
+    "scene": 3,
+    "t0": 17.355895691609977,
+    "t1": 21.708503401360545,
+    "text": "Then another voice. Low. Patient.",
+    "framing": "close",
+    "picture": "Mara awake in her dark bedroom. She is bolt upright in bed, frozen, eyes wide with terror, staring directly at the baby monitor receiver. Her hand clenched in the bedsheets. The monitor's red lights glow in the darkness.",
+    "characters": [
+      "Mara"
+    ],
+    "sound": "low, patient whisper (off-screen)",
+    "motion": "",
+    "scare": true,
+    "importance": 4,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 5,
+    "scene": 3,
+    "t0": 21.708503401360545,
+    "t1": 25.185827664399092,
+    "text": "\"Mummy is asleep.\"",
+    "framing": "insert",
+    "picture": "The baby monitor receiver in the dark. Its red indicator lights remain steadily lit, a small, ominous accent in an otherwise black frame; the menace in the whisper is unseen.",
+    "characters": [
+      "Mara"
+    ],
+    "sound": "",
+    "motion": "",
+    "scare": true,
+    "importance": 4,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 6,
+    "scene": 4,
+    "t0": 25.185827664399092,
+    "t1": 30.624013605442176,
+    "text": "I ran. Her door was shut. Her night-light was off. I had left it on.",
+    "framing": "wide",
+    "picture": "A long, dark upstairs hallway lit by one flickering overhead bulb. Mara, silhouetted in her cardigan and pajamas, stands with her hand trembling on the handle of Lily's closed bedroom door. No light shines from the crack beneath it.",
+    "characters": [
+      "Mara"
+    ],
+    "sound": "distant flicker of bulb",
+    "motion": "",
+    "scare": false,
+    "importance": 5,
+    "directed": true,
+    "view": "film",
+    "atmosphere": [
+      "flicker"
+    ]
+  },
+  {
+    "index": 7,
+    "scene": 5,
+    "t0": 30.624013605442176,
+    "t1": 35.18485260770975,
+    "text": "Lily was asleep, facing the wall. Nobody else.",
+    "framing": "wide",
+    "picture": "A wide shot from the bedroom doorway. Lily sleeps in a small bed under the window, facing away toward a pale wall. The fairy night-light on the nightstand is dead and unplugged. The room's far corners are pools of deep, empty blackness.",
+    "characters": [
+      "Lily"
+    ],
+    "sound": "",
+    "motion": "",
+    "scare": false,
+    "importance": 1,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 8,
+    "scene": 6,
+    "t0": 35.18485260770975,
+    "t1": 39.40485260770975,
+    "text": "I sat on her floor until dawn, the monitor in my lap.",
+    "framing": "medium",
+    "picture": "Mara sits slumped against the wall on the floor of Lily's bedroom, exhausted, her back against the wall. The baby monitor receiver rests on her thighs. Grey pre-dawn light seeps through a foggy window beside Lily's sleeping form in her bed.",
+    "characters": [
+      "Mara",
+      "Lily"
+    ],
+    "sound": "",
+    "motion": "her head rests against the wall",
+    "scare": false,
+    "importance": 2,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 9,
+    "scene": 6,
+    "t0": 39.40485260770975,
+    "t1": 45.3240589569161,
+    "text": "At twenty to five, it crackled again. Lily hadn't moved.",
+    "framing": "close",
+    "picture": "A close-up of Mara's lap. She stares down intently at the baby monitor receiver in her hands, the red accent light glowing brightly on its edge. Her fingers are tense. Lily lies perfectly still and asleep in the blurred background of her bed.",
+    "characters": [
+      "Mara"
+    ],
+    "sound": "a sharp, low crackle of static",
+    "motion": "her fingers tighten on the receiver",
+    "scare": false,
+    "importance": 3,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 10,
+    "scene": 7,
+    "t0": 45.3240589569161,
+    "t1": 51.52510204081632,
+    "text": "Then the voice came, so close it touched the microphone. \"Mummy's awake now.\"",
+    "framing": "wide",
+    "picture": "A close-up of Mara's lap. The baby monitor receiver in her hands crackles with static, its red light glowing. In the dark room, Lily sleeps unmoving in her bed. The whisper feels intimately close to the device's small speaker.",
+    "characters": [
+      "Mara"
+    ],
+    "sound": "",
+    "motion": "the shadow's head tilts closer",
+    "scare": true,
+    "importance": 5,
+    "directed": true,
+    "view": "film",
+    "atmosphere": []
+  },
+  {
+    "index": 11,
+    "scene": 8,
+    "t0": 51.52510204081632,
+    "t1": 58.50326530612245,
+    "text": "Lily is five now. She still won't sleep without the monitor. She says he likes to listen.",
+    "framing": "medium",
+    "picture": "The Storyteller stands in his Hollow, a gravelly limbo between worlds, illuminated by his red lantern. His face is somber, touched by eerie red light as he addresses us. Far behind him, atop a distant dark hill, a small upstairs window glows softly, a tiny red monitor light visible inside.",
+    "characters": [
+      "The Storyteller"
+    ],
+    "sound": "",
+    "motion": "he lowers the lantern at his side",
+    "scare": false,
+    "importance": 4,
+    "directed": true,
+    "view": "film",
+    "atmosphere": [
+      "fog"
+    ]
+  }
+]
