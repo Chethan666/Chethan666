@@ -93,7 +93,7 @@ picture matters (see "Cost and quality" below for the evidence):
 | Style frame | Seedream 4.5 text-to-image, then once more if refused | $0.04 |
 | Character and place sheets | Seedream 4.5 edit, again, then Seedream 5.0 Lite | $0.04 / $0.035 |
 | Ordinary beats | Seedream 4.5 edit; a second Seedream try only for a serious fault | $0.04 |
-| Key beats (`key_importance` 4+, at most `key_share` 25% of the story) | Seedream 4.5, then Nano Banana 2 edit at 2K as the corrector | $0.04 / $0.12 |
+| Key beats (`key_importance` 3+, at most `key_share` 25% of the story) | Seedream 4.5, then Nano Banana 2 edit at 2K as the corrector | $0.04 / $0.12 |
 | Scares (`scare_shots`, at most 4) | Nano Banana Pro edit at 2K, then Seedream 4.5 | $0.15 / $0.04 |
 | Thumbnail | Nano Banana 2 edit (clean lettering) | $0.08 |
 
@@ -116,7 +116,9 @@ The critic rejects a picture where a named person clearly contradicts their desi
 or plastic-skinned picture, broken hands or faces, written text, or a different action than
 the narrated words, and says whether the fault is **serious** (a viewer would notice it in the
 five seconds the picture is on screen) or a **detail** (a prop's state, the exact framing, which
-hand holds what). An ordinary beat refused only for a detail keeps its picture; no money is
+hand holds what). A picture that contradicts its own line (someone asleep shown awake, a
+light the line says is off shown on) is always serious. An ordinary beat refused only for a
+detail keeps its picture; no money is
 spent correcting what nobody would see. The next painter is told what was refused (the fault
 leads its prompt), so a redraw is a correction. If every try is refused, the first picture
 whose fault was only a detail is kept, so the strongest painter's picture is not lost to a

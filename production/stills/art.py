@@ -386,7 +386,7 @@ class IllustratorAgent:
         # the story) get the best corrector when refused; every other beat keeps a picture refused
         # only for a detail rather than paying to correct it.
         rest = sorted((b for b in beats if b.index not in strongest and b.index not in host_beats
-                       and b.importance >= int(cfg.get("key_importance", 4))),
+                       and b.importance >= int(cfg.get("key_importance", 3))),
                       key=lambda b: (-b.importance, b.index))
         key_beats = {b.index for b in rest[: max(1, round(float(cfg.get("key_share", 0.25)) * len(beats)))]}
 

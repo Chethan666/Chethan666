@@ -293,7 +293,7 @@ DEFAULTS: dict[str, Any] = {
         # How many scare beats are painted by the strongest painter (`chains.scare`, about $0.15 each).
         "scare_shots": 4,
         # Key beats: at least this important (1-5, from the storyboard), at most this share of the beats.
-        "key_importance": 4, "key_share": 0.25,
+        "key_importance": 3, "key_share": 0.25,
         # The first try is meant to be right: retries and art-review redraws may spend at most this share
         # of max_usd; past it, every picture keeps its best try. `lessons`: the faults the critic refused
         # most often in earlier videos are named in every picture prompt (counted in the story database).

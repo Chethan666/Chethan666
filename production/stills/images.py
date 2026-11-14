@@ -88,19 +88,33 @@ def house_look(cfg: dict[str, Any]) -> dict[str, Any]:
 SERIOUS = ("panel", "split", "collage", "two different", "side by side", "text", "lettering", "written", "watermark",
            "timestamp", "anatomy", "extra finger", "extra limb", "melted", "doubled", "warped", "cartoon",
            "drawing", "painting", "3d render", "plastic", "too bright", "no person", "nobody", "not visible",
-           "unrelated", "does not show", "doesn't show")
+           "unrelated", "does not show", "doesn't show",
+           # the wrong action, or the opposite of what the line says
+           "instead of", "rather than", "not sleeping", "not lying", "not standing", "not sitting",
+           "contradict", "opposite")
 
 
 MINOR = "minor: "
+SEVERE = "serious: "
 
 
 def serious(reason: str) -> bool:
     """A refusal for a fault that ruins a picture, rather than a detail of the description: the
     critic's own judgement when it gave one, else the words of its reason."""
+    if reason.startswith(SEVERE):
+        return True
     if reason.startswith(MINOR):
         return False
     text = reason.lower()
     return any(s in text for s in SERIOUS)
+
+
+def plain(reason: str) -> str:
+    """The critic's reason without the serious/minor mark."""
+    for mark in (SEVERE, MINOR):
+        if reason.startswith(mark):
+            return reason[len(mark):]
+    return reason
 
 
 class Critic:
@@ -139,8 +153,9 @@ class Critic:
                   "detail. When you fail it, say in one sentence what is wrong "
                   "and what the picture should show instead, and whether it is serious: true when a viewer "
                   "would notice it in the five seconds the picture is on screen (the wrong person, place or "
-                  "action, a calm face where the line is terror, split frames, text, broken anatomy, the wrong "
-                  "look); false for a detail of the description (a prop's state or position, the exact framing, "
+                  "action, anything that contradicts what the line says happens (someone asleep shown awake, "
+                  "a shut door shown open, a light the line says is off shown on), a calm face where the line "
+                  "is terror, split frames, text, broken anatomy, the wrong look); false for a detail of the description (a prop's state or position, the exact framing, "
                   "which hand holds what, a small costume detail). Reply exactly as JSON: "
                   '{"ok": true or false, "serious": true or false, "reason": "short reason"}')
         try:
@@ -162,6 +177,8 @@ class Critic:
         reason = str(verdict.get("reason", ""))[:200]
         if not verdict.get("ok") and verdict.get("serious") is False:
             reason = MINOR + reason  # the critic's own word that this is a detail
+        elif not verdict.get("ok") and verdict.get("serious") is True:
+            reason = SEVERE + reason  # ... or that a viewer would notice it
         return bool(verdict.get("ok")), reason
 
 
@@ -243,7 +260,7 @@ class Painter:
             if paid_picture and not paid:
                 continue  # a refused paid picture still has the right people and place; a free one would not
             # the correction leads the prompt: at the end of 400 words it would be the least-read part
-            fault = why[len(MINOR):] if why.startswith(MINOR) else why
+            fault = plain(why)
             text = f"Correct this from the previous attempt: {fault[:300].rstrip('. ')}. {prompt}" if why else prompt
             raw = self.work / f"raw_{out.stem}_{k}.png"
             extra = capped and paid and (bool(why) or redraw)  # money spent beyond a first try

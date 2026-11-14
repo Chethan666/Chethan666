@@ -458,7 +458,7 @@ class PainterRules(unittest.TestCase):
         import json
 
         from production.paid import Budget
-        from production.stills.images import MINOR, Critic, serious
+        from production.stills.images import MINOR, SEVERE, Critic, plain, serious
 
         answers = [{"ok": False, "serious": False, "reason": "the duvet is blue"},
                    {"ok": False, "serious": True, "reason": "her face is calm"},
@@ -475,9 +475,15 @@ class PainterRules(unittest.TestCase):
         detail, face, panels = (critic.look(image, "x")[1] for _ in range(3))
         self.assertEqual(detail, MINOR + "the duvet is blue")
         self.assertFalse(serious(detail))
-        self.assertTrue(serious(face) or not face.startswith(MINOR))  # the critic called it serious
-        self.assertFalse(face.startswith(MINOR))
+        self.assertEqual(face, SEVERE + "her face is calm")
+        self.assertTrue(serious(face))  # the critic called it serious, whatever the words
         self.assertTrue(serious(panels))  # no word from the critic: judged from the reason
+        self.assertEqual(plain(face), "her face is calm")
+        self.assertEqual(plain(detail), "the duvet is blue")
+        # a picture that contradicts its own line is never kept as a detail (run 100 kept
+        # "Lily crawling on the floor" for "Lily hadn't moved")
+        self.assertTrue(serious("Lily is crawling on the floor, not sleeping in the bed"))
+        self.assertTrue(serious("the door is ajar, contradicting 'her door was shut'"))
 
     def test_a_sheet_that_fails_its_own_check_is_painted_again_by_the_same_painter(self):
         p, asked = self.painter([], ("fal:sheet",))
