@@ -91,8 +91,14 @@ SERIOUS = ("panel", "split", "collage", "two different", "side by side", "text",
            "unrelated", "does not show", "doesn't show")
 
 
+MINOR = "minor: "
+
+
 def serious(reason: str) -> bool:
-    """A refusal for a fault that ruins a picture, rather than a detail of the description."""
+    """A refusal for a fault that ruins a picture, rather than a detail of the description: the
+    critic's own judgement when it gave one, else the words of its reason."""
+    if reason.startswith(MINOR):
+        return False
     text = reason.lower()
     return any(s in text for s in SERIOUS)
 
@@ -131,8 +137,12 @@ class Critic:
                   "a colour, a person a little nearer or further than described, more or less shadow on them, the "
                   "direction someone looks or faces, a slightly different pose, a missing small prop or background "
                   "detail. When you fail it, say in one sentence what is wrong "
-                  "and what the picture should show instead. Reply exactly as JSON: "
-                  '{"ok": true or false, "reason": "short reason"}')
+                  "and what the picture should show instead, and whether it is serious: true when a viewer "
+                  "would notice it in the five seconds the picture is on screen (the wrong person, place or "
+                  "action, a calm face where the line is terror, split frames, text, broken anatomy, the wrong "
+                  "look); false for a detail of the description (a prop's state or position, the exact framing, "
+                  "which hand holds what, a small costume detail). Reply exactly as JSON: "
+                  '{"ok": true or false, "serious": true or false, "reason": "short reason"}')
         try:
             result = studio.fal.run(model, dict(studio.args.get("vision", {}), prompt=prompt,
                                                 system_prompt=CRITIC_SYSTEM, image_urls=[data_uri(_small(image))]))
@@ -149,7 +159,10 @@ class Critic:
             verdict = {}
         if not isinstance(verdict, dict) or "ok" not in verdict:
             return True, "unreadable verdict"
-        return bool(verdict.get("ok")), str(verdict.get("reason", ""))[:200]
+        reason = str(verdict.get("reason", ""))[:200]
+        if not verdict.get("ok") and verdict.get("serious") is False:
+            reason = MINOR + reason  # the critic's own word that this is a detail
+        return bool(verdict.get("ok")), reason
 
 
 class Painter:
@@ -201,13 +214,16 @@ class Painter:
         return uri
 
     def paint(self, prompt: str, refs: list[Path], out: Path, key: Any, chain: list[str],
-              check: str | Callable[[Path], tuple[bool, str]] | None = None) -> tuple[Path | None, str]:
+              check: str | Callable[[Path], tuple[bool, str]] | None = None,
+              accept_minor: bool = False) -> tuple[Path | None, str]:
         """The first picture in the chain that passes its check. `check` is what the picture
         should show (the critic looks at it), or a check of its own for a reference sheet
         (picture -> passed, reason); None takes the first picture made.
 
         Each painter after a refusal is told what was wrong; a chain may name the same painter
-        twice for that. If none passes, the picture kept (and counted as doubted) is the first one
+        twice for that. With `accept_minor` (an ordinary beat), a picture refused only for a detail
+        is kept at once: no money is spent correcting what a viewer would not notice. If none
+        passes, the picture kept (and counted as doubted) is the first one
         whose fault was not serious, so the strongest painter's picture wins over a correction that
         broke something worse (run 96: a reveal refused for the way she looked lost to a split
         screen); with only serious faults, the last one."""
@@ -220,7 +236,8 @@ class Painter:
             if paid_picture and not paid:
                 continue  # a refused paid picture still has the right people and place; a free one would not
             # the correction leads the prompt: at the end of 400 words it would be the least-read part
-            text = f"Correct this from the previous attempt: {why[:300].rstrip('. ')}. {prompt}" if why else prompt
+            fault = why[len(MINOR):] if why.startswith(MINOR) else why
+            text = f"Correct this from the previous attempt: {fault[:300].rstrip('. ')}. {prompt}" if why else prompt
             raw = self.work / f"raw_{out.stem}_{k}.png"
             try:
                 made = self._one(step, text, refs, raw, key, retry=k if why else 0)
@@ -257,6 +274,12 @@ class Painter:
             if ok:
                 candidate.replace(out)
                 self._count(step + " (corrected)" if why else step)
+                return out, step
+            if accept_minor and doubted is not None and doubted[0] == candidate and not serious(reason):
+                candidate.replace(out)
+                self._count(step + " (minor fault kept)")
+                with self.lock:
+                    self.rejections.append(f"{out.stem} ({step}, kept): {reason}")
                 return out, step
             why = reason
             if mild is None and doubted is not None and doubted[0] == candidate and not serious(reason):

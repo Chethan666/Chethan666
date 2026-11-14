@@ -289,6 +289,8 @@ DEFAULTS: dict[str, Any] = {
         "set_design": True, "location_sheets": 3,
         # How many scare beats are painted by the strongest painter (`chains.scare`, about $0.15 each).
         "scare_shots": 4,
+        # Key beats: at least this important (1-5, from the storyboard), at most this share of the beats.
+        "key_importance": 4, "key_share": 0.25,
         "beat_min_seconds": 5.0, "beat_max_seconds": 11.0,
         "scene_dip_seconds": 0.35,
         # Painters tried in order until the critic passes a picture; each is told what the critic
@@ -296,11 +298,16 @@ DEFAULTS: dict[str, Any] = {
         # CF_API_TOKEN (free daily allowance); pollinations is keyless. The free painters take no
         # references, so they only paint when no paid picture could be made (no key, over the cap).
         "chains": {
+            # Spent by importance (runs 96 and 98 compared: PRODUCTION.md, "Cost and quality").
             # A style frame or a sheet that fails its check is painted once more, told what was wrong.
             "reference": ["fal:reference", "fal:reference", "cloudflare", "pollinations"],
-            # Seedream as the sheets' second painter: Nano Banana declined to paint a child's sheet (run 96).
             "sheet": ["fal:sheet", "fal:sheet", "fal:shot", "cloudflare", "pollinations"],
-            "beat": ["fal:shot", "fal:shot_alt", "cloudflare", "pollinations"],
+            # Ordinary beats: Seedream, and a second Seedream try only for a serious fault (a picture
+            # refused for a detail is kept).
+            "beat": ["fal:shot", "fal:shot", "cloudflare", "pollinations"],
+            # Key beats (`key_importance`, at most `key_share` of the story): Nano Banana 2 corrects
+            # a refused picture far more often than Seedream does (about 2 in 3 against 1 in 7).
+            "key": ["fal:shot", "fal:shot_alt", "cloudflare", "pollinations"],
             # The scares (at most `scare_shots`, most important first) are the frames a viewer
             # remembers and the ones a thumbnail is made from: the strongest painter first.
             "scare": ["fal:hero", "fal:shot", "cloudflare", "pollinations"],
@@ -310,11 +317,12 @@ DEFAULTS: dict[str, Any] = {
         "pollinations": True, "pollinations_gap_seconds": 16,
         "cloudflare_model": "@cf/black-forest-labs/flux-1-schnell", "cloudflare_steps": 4,  # 4 keeps ~170 pictures a day free
         "models": {
-            "reference": "fal-ai/nano-banana-2",                  # style frame (text only)
-            "sheet": "fal-ai/nano-banana-2/edit",                 # character and location sheets from the style frame
+            "reference": "fal-ai/bytedance/seedream/v4.5/text-to-image",  # style frame (text only)
+            "sheet": "fal-ai/bytedance/seedream/v5/lite/edit",    # character and location sheets (paints children too)
             "shot": "fal-ai/bytedance/seedream/v4.5/edit",        # every beat, from the references
             "shot_text": "fal-ai/bytedance/seedream/v4.5/text-to-image",
-            "shot_alt": "fal-ai/nano-banana-2/edit",              # the redraw when the critic rejects one
+            "shot_alt": "fal-ai/nano-banana-2/edit",              # the corrector for key beats
+            "shot_alt_text": "fal-ai/nano-banana-2",
             "hero": "fal-ai/nano-banana-pro/edit",                # the scare shots
             "hero_text": "fal-ai/nano-banana-pro",
             "thumbnail": "fal-ai/nano-banana-2/edit",
@@ -326,17 +334,18 @@ DEFAULTS: dict[str, Any] = {
             "vision": "fal-ai/any-llm/vision",                   # the critic's eye
         },
         # An edit model asked without references uses its text-to-image twin.
-        "text_roles": {"shot": "shot_text", "shot_alt": "reference", "sheet": "reference", "thumbnail": "reference",
-                       "hero": "hero_text"},
+        "text_roles": {"shot": "shot_text", "shot_alt": "shot_alt_text", "sheet": "reference",
+                       "thumbnail": "shot_alt_text", "hero": "hero_text"},
         "model_args": {
-            "reference": {"aspect_ratio": "16:9", "num_images": 1},
-            "sheet": {"aspect_ratio": "16:9", "num_images": 1},
+            "reference": {"image_size": {"width": 2752, "height": 1548}, "num_images": 1},
+            "sheet": {"image_size": {"width": 2560, "height": 1440}, "num_images": 1},
             # Pictures that go into the film are painted at 2K, a little larger than the 1440p frame,
             # so they stay sharp under a camera move. Seedream: a custom size (from 2560x1440 up). Nano
             # Banana 2 and Pro: "2K" (the default "1K" is 1376x768, which goes soft when enlarged).
             "shot": {"image_size": {"width": 2752, "height": 1548}, "num_images": 1},
             "shot_text": {"image_size": {"width": 2752, "height": 1548}, "num_images": 1},
             "shot_alt": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
+            "shot_alt_text": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "hero": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "hero_text": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "thumbnail": {"aspect_ratio": "16:9", "num_images": 1},
@@ -344,11 +353,12 @@ DEFAULTS: dict[str, Any] = {
             "vision": {"model": "google/gemini-2.5-flash"},
         },
         # A role whose settings cost more than the model's base price (Nano Banana 2 at 2K: 1.5x).
-        "model_units": {"shot_alt": 1.5},
+        "model_units": {"shot_alt": 1.5, "shot_alt_text": 1.5},
         # Estimated USD per picture, per 1,000 characters of speech, or per second of audio.
         "prices": {
             "fal-ai/nano-banana-2": 0.08, "fal-ai/nano-banana-2/edit": 0.08,
             "fal-ai/nano-banana-pro": 0.15, "fal-ai/nano-banana-pro/edit": 0.15,  # 1K and 2K; 4K is double
+            "fal-ai/bytedance/seedream/v5/lite/edit": 0.035,
             "fal-ai/bytedance/seedream/v4.5/edit": 0.04, "fal-ai/bytedance/seedream/v4.5/text-to-image": 0.04,
             "fal-ai/elevenlabs/tts/eleven-v3": 0.10, "fal-ai/elevenlabs/sound-effects/v2": 0.002,
             # ElevenLabs music on fal: $0.80 a minute, billed in whole minutes (the score rounds up).

@@ -434,6 +434,51 @@ class PainterRules(unittest.TestCase):
         out, step = p.paint("A bus.", [], self.root / "beat.png", "k", ["fal:shot", "pollinations"], check="a bus")
         self.assertEqual(step, "pollinations")
 
+    def test_an_ordinary_beat_keeps_a_picture_refused_only_for_a_detail(self):
+        from production.stills.images import MINOR
+
+        p, asked = self.painter([(False, MINOR + "the monitor's screen should be dark")], ("fal:shot",))
+        out, step = p.paint("A mother on the floor.", [], self.root / "beat.png", "k", ["fal:shot", "fal:shot"],
+                            check="x", accept_minor=True)
+        self.assertEqual(len(asked), 1)  # no money spent on the detail
+        self.assertEqual(p.counts, {"fal:shot (minor fault kept)": 1})
+        # a serious fault on an ordinary beat is still corrected
+        p, asked = self.painter([(False, "a split screen of two panels"), (True, "fine")], ("fal:shot",))
+        p.paint("x", [], self.root / "b2.png", "k2", ["fal:shot", "fal:shot"], check="x", accept_minor=True)
+        self.assertEqual(len(asked), 2)
+        self.assertIn("Correct this from the previous attempt: a split screen", asked[1][1])
+        # a key beat corrects details too, and the prompt does not carry the severity label
+        p, asked = self.painter([(False, MINOR + "she holds it in the wrong hand"), (True, "fine")],
+                                ("fal:shot", "fal:shot_alt"))
+        p.paint("x", [], self.root / "b3.png", "k3", ["fal:shot", "fal:shot_alt"], check="x")
+        self.assertEqual(len(asked), 2)
+        self.assertTrue(asked[1][1].startswith("Correct this from the previous attempt: she holds it"))
+
+    def test_the_critic_says_whether_a_fault_is_serious(self):
+        import json
+
+        from production.paid import Budget
+        from production.stills.images import MINOR, Critic, serious
+
+        answers = [{"ok": False, "serious": False, "reason": "the duvet is blue"},
+                   {"ok": False, "serious": True, "reason": "her face is calm"},
+                   {"ok": False, "reason": "it is split into two panels"}]
+
+        class Vision:
+            def run(self, model, args):
+                return {"output": json.dumps(answers.pop(0))}
+
+        studio = SimpleNamespace(models={"vision": "v"}, args={}, fal=Vision(), budget=Budget(1.0, {"v": 0.002}))
+        image = self.root / "p.png"
+        Image.new("RGB", (64, 36), (20, 20, 20)).save(image)
+        critic = Critic(studio, "dark")
+        detail, face, panels = (critic.look(image, "x")[1] for _ in range(3))
+        self.assertEqual(detail, MINOR + "the duvet is blue")
+        self.assertFalse(serious(detail))
+        self.assertTrue(serious(face) or not face.startswith(MINOR))  # the critic called it serious
+        self.assertFalse(face.startswith(MINOR))
+        self.assertTrue(serious(panels))  # no word from the critic: judged from the reason
+
     def test_a_sheet_that_fails_its_own_check_is_painted_again_by_the_same_painter(self):
         p, asked = self.painter([], ("fal:sheet",))
         seen = []

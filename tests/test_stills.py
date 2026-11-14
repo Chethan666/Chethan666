@@ -227,8 +227,8 @@ class PainterTests(unittest.TestCase):
         studio = Studio(fal, Budget(5.0, c["prices"]), self.root / "cache", c)
         painter = Painter(studio, c, self.root / "art", Critic(studio, "dark"))
         ref = painted(self.root / "ref.png")
-        out, source = painter.paint("a bus", [ref], self.root / "beat.png", "k", c["chains"]["beat"], check="a bus")
-        self.assertEqual(source, "fal:shot_alt")
+        out, source = painter.paint("a bus", [ref], self.root / "beat.png", "k", c["chains"]["key"], check="a bus")
+        self.assertEqual(source, "fal:shot_alt")  # a key beat's corrector
         self.assertTrue(out.exists())
         self.assertIn("too bright", painter.rejections[0])
         with Image.open(out) as im:
@@ -296,7 +296,8 @@ class TeamTests(unittest.TestCase):
         self.assertEqual(summary["qa"]["status"], "pass", summary["qa"])
         self.assertEqual(summary["point_of_view"], "third")
         endpoints = [e for e, _ in fal.calls]
-        self.assertIn("fal-ai/nano-banana-2", endpoints)  # the style frame
+        self.assertIn("fal-ai/bytedance/seedream/v4.5/text-to-image", endpoints)  # the style frame
+        self.assertIn("fal-ai/nano-banana-2/edit", endpoints)  # the thumbnail
         self.assertIn("fal-ai/bytedance/seedream/v4.5/edit", endpoints)  # the beats, from references
         self.assertIn("fal-ai/ace-step-1.5", endpoints)  # music the library lacked, when making is allowed
         self.assertIn("art_review", summary["agents"])
@@ -347,7 +348,7 @@ class TeamTests(unittest.TestCase):
         places = summary["agents"]["art"]["places"]
         self.assertEqual([(x["name"], x["scenes"], x["sheet"]) for x in places], [("the night bus", [1, 2, 3], True)])
         sheet = [a["prompt"] for e, a in fal.calls
-                 if "nano-banana" in e and "location reference sheet" in a.get("prompt", "")]
+                 if e == "fal-ai/bytedance/seedream/v5/lite/edit" and "location reference sheet" in a.get("prompt", "")]
         self.assertEqual(len(sheet), 1)
         self.assertIn("Two views of the same place side by side", sheet[0])
         in_bus = [p for p in prompts if "Place: the night bus: Outside: a cream" in p]
@@ -355,7 +356,7 @@ class TeamTests(unittest.TestCase):
         host = [p for p in prompts if "character sheet of The Storyteller" in p]
         self.assertTrue(host and not any("Place:" in p for p in host))  # the host stands in his own place
         # the style frame is the story's main place, and every sheet passed its check before use
-        frame = [a["prompt"] for e, a in fal.calls if e == "fal-ai/nano-banana-2"]
+        frame = [a["prompt"] for e, a in fal.calls if e == "fal-ai/bytedance/seedream/v4.5/text-to-image"]
         self.assertIn("A wide establishing view of the night bus: Outside: a cream", frame[0])
         checked = summary["agents"]["art"]["reference_checks"]
         self.assertEqual(sorted(c["sheet"] for c in checked), ["Dana", "The Storyteller", "the night bus"])
@@ -398,8 +399,9 @@ class TeamTests(unittest.TestCase):
         summary, out, fal = self.make(lambda root: FakeFal(root, reject_sheets=True), Router(), first_person=True)
         sheets = [(e, a["prompt"]) for e, a in fal.calls
                   if "A character reference sheet of one person, Dana" in a.get("prompt", "")]
-        # Nano Banana twice, then Seedream: each told what was wrong
-        self.assertEqual([e for e, _ in sheets], ["fal-ai/nano-banana-2/edit", "fal-ai/nano-banana-2/edit",
+        # Seedream 5.0 Lite twice, then Seedream 4.5: each told what was wrong
+        self.assertEqual([e for e, _ in sheets], ["fal-ai/bytedance/seedream/v5/lite/edit",
+                                                  "fal-ai/bytedance/seedream/v5/lite/edit",
                                                   "fal-ai/bytedance/seedream/v4.5/edit"])
         self.assertIn("Correct this from the previous attempt: three different people", sheets[1][1])
         self.assertIn("reference: character sheet of Dana: three different people", summary["qa"]["issues"])

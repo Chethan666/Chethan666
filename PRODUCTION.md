@@ -83,19 +83,29 @@ What has to stay the same from picture to picture is designed once and painted f
   than none (run 96: an empty room as a child's sheet). Sheets have a second paid painter,
   Seedream, after Nano Banana. Places are painted at night, in their darkest light.
 
-**Painters.** Tried in order (`stills.chains`) until the critic passes a picture: Seedream 4.5
-edit (about $0.04), then Nano Banana 2 edit as the redraw (about $0.12 at 2K). The scare shots
-(`scare_shots`, at most 4, most important first) start with Nano Banana Pro edit instead (about
-$0.15 at 2K), then Seedream: they are the frames a viewer remembers and the ones a thumbnail is
-made from. About $0.30-0.60 more a video. The critic
-rejects a picture where a named person clearly contradicts their design, a cartoon or
-plastic-skinned picture, broken hands or faces, written text, or a different action than the
-narrated words; it is told not to fail a picture for small differences. The second painter is
-told what the critic refused in the first (the fault leads its prompt), so the redraw is a
-correction. If every try is refused, the first picture whose fault was only a detail (a gaze,
-a pose) is kept, so the strongest painter's picture is not lost to a correction that broke
-something worse (run 96: a split screen); it is counted as doubted, and QA flags a doubted
-scare. The free painters
+**Painters, spent by importance.** Each picture is asked of the painters in its chain
+(`stills.chains`) until the critic passes one. Where the money goes depends on how much the
+picture matters (see "Cost and quality" below for the evidence):
+
+| Pictures | Chain | Price per try |
+|---|---|---|
+| Style frame | Seedream 4.5 text-to-image, then once more if refused | $0.04 |
+| Character and place sheets | Seedream 5.0 Lite edit, again, then Seedream 4.5 | $0.035 / $0.04 |
+| Ordinary beats | Seedream 4.5 edit; a second Seedream try only for a serious fault | $0.04 |
+| Key beats (`key_importance` 4+, at most `key_share` 25% of the story) | Seedream 4.5, then Nano Banana 2 edit at 2K as the corrector | $0.04 / $0.12 |
+| Scares (`scare_shots`, at most 4) | Nano Banana Pro edit at 2K, then Seedream 4.5 | $0.15 / $0.04 |
+| Thumbnail | Nano Banana 2 edit (clean lettering) | $0.08 |
+
+The critic rejects a picture where a named person clearly contradicts their design, a cartoon
+or plastic-skinned picture, broken hands or faces, written text, or a different action than
+the narrated words, and says whether the fault is **serious** (a viewer would notice it in the
+five seconds the picture is on screen) or a **detail** (a prop's state, the exact framing, which
+hand holds what). An ordinary beat refused only for a detail keeps its picture; no money is
+spent correcting what nobody would see. The next painter is told what was refused (the fault
+leads its prompt), so a redraw is a correction. If every try is refused, the first picture
+whose fault was only a detail is kept, so the strongest painter's picture is not lost to a
+correction that broke something worse (run 96: a split screen); it is counted as doubted, and
+QA flags a doubted scare. The free painters
 take no references, so they paint only when no paid picture could be made (no key, or over
 the cap): Cloudflare Workers AI's FLUX.1 schnell (secrets `CF_ACCOUNT_ID` and `CF_API_TOKEN`;
 10,000 free neurons a day, roughly 170 pictures; square output, cropped to 16:9) and
@@ -197,6 +207,43 @@ Every video run also pushes small review images (the contact sheet, thumbnails, 
 20 s, four full-size frames, the reports) to the `review-media` branch under `run-<number>/`,
 so a run can be judged without downloading the artifact; `mode = video-share` with a run id
 does the same for an earlier run.
+
+## Cost and quality
+
+The same 60-second story was made twice in November 2026 with different picture models (runs
+96 and 98; the narration, sound and edit were the same):
+
+| | Run 96: premium | Run 98: cheap |
+|---|---|---|
+| Models | Seedream 4.5, Nano Banana 2 (2K redraws, sheets, style frame, thumbnail), Nano Banana Pro (scares) | Seedream 5.0 Lite and 4.5 for everything |
+| Total | $2.20 (pictures $2.06) | $1.41 (pictures $1.27) |
+| Pictures refused | 9 | 18 |
+| Pictures used though no check passed them | about 2 of 11 | 7 of 11 |
+| First try passed | Seedream 4.5: about 1 in 2 | Seedream 5.0 Lite: about 1 in 3 |
+| A refused picture corrected | Nano Banana 2: about 2 in 3 | Seedream 4.5: about 1 in 7 |
+| Scares | Nano Banana Pro: 1 of 2 passed | Seedream 4.5: 0 of 3 passed |
+| Sharpness, same rooms | full 2K; the same rooms throughout | the same |
+| Acting | fear reads | often a neutral face where the line is terror |
+| Thumbnail | clean | a fake logo and misspelled words on the first try |
+
+What it showed: the cheap models keep the look, the sharpness and the continuity, but follow
+direction less well; Nano Banana is worth its price as a corrector and for faces that must act,
+not as the first painter of every picture; and about half of all refusals were for details no
+viewer would notice, each paid for with a redraw. Hence the chains above: Seedream paints
+almost everything, the corrector and the strongest painter are kept for the key beats and the
+scares, and a detail no longer buys a redraw.
+
+Estimates for the balanced setup (the budget's prices, not fal's invoice):
+
+| | 60-second test | 8-10 minute episode (about 100 beats, 9,000 characters) |
+|---|---|---|
+| Premium (run 96's setup) | $2.20 | about $10-11 |
+| Balanced (the default) | about $1.50 | about $7-8 |
+| Cheap (run 98's setup, `production/samples/one_minute_cheap.json`) | $1.41 | about $6-7 |
+
+The balanced estimate is worked out from the two runs' pass rates; the first run with it will
+show the real figure. Every other cost is small: the narration about $0.10 a minute, the vision
+checks about $0.002 each, the sound library free.
 
 ## Review, then publish
 

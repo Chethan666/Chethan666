@@ -368,6 +368,16 @@ class IllustratorAgent:
         scares = sorted((b for b in beats if b.scare), key=lambda b: (-b.importance, b.index))
         strongest = {b.index for b in scares[: int(cfg.get("scare_shots", 4))]}
         chains = cfg["chains"]
+        # Key beats: the most important of the rest (at least `key_importance`, at most `key_share` of
+        # the story) get the best corrector when refused; every other beat keeps a picture refused
+        # only for a detail rather than paying to correct it.
+        rest = sorted((b for b in beats if b.index not in strongest and b.index not in host_beats
+                       and b.importance >= int(cfg.get("key_importance", 4))),
+                      key=lambda b: (-b.importance, b.index))
+        key_beats = {b.index for b in rest[: max(1, round(float(cfg.get("key_share", 0.25)) * len(beats)))]}
+
+        def tier(beat: Shot) -> str:
+            return "scare" if beat.index in strongest else "key" if beat.index in key_beats else "beat"
 
         def one(beat: Shot, fix: str = "") -> tuple[int, Path | None]:
             names = [n for n in beat.characters if n in sheets][:3]
@@ -380,9 +390,8 @@ class IllustratorAgent:
                 text = f"Correct this from the previous attempt: {fix[:300].rstrip('. ')}. {text}"
             tag = f"_fix{abs(hash(fix)) % 10_000}" if fix else ""
             path, source = painter.paint(text, refs, folder / f"beat_{beat.index:03d}{tag}.png",
-                                         ["beat", beat.index, text],
-                                         chains.get("scare", chains["beat"]) if beat.index in strongest else chains["beat"],
-                                         check=self.check_text(beat, cast))
+                                         ["beat", beat.index, text], chains.get(tier(beat), chains["beat"]),
+                                         check=self.check_text(beat, cast), accept_minor=tier(beat) == "beat")
             sources[beat.index] = source
             return beat.index, path  # clean: the colorist grades it, the edit adds grain and vignette
 
@@ -408,6 +417,7 @@ class IllustratorAgent:
         d["pictures"] = pictures
         return {"look": look.get("name"), "cameras": {b.index: b.view for b in beats if b.view != "film"},
                 "pictures": len(beats) - borrowed - placeholders, "borrowed_neighbour": borrowed,
-                "placeholders": placeholders, "scare_shots": sorted(strongest), "by_painter": dict(painter.counts),
+                "placeholders": placeholders, "scare_shots": sorted(strongest), "key_beats": sorted(key_beats),
+                "by_painter": dict(painter.counts),
                 "doubted_beats": sorted(b.index for b in beats if f"beat_{b.index:03d}" in painter.doubted),
                 "painter_sizes": dict(painter.sizes), "rejected": painter.rejections[:30]}
