@@ -341,12 +341,15 @@ DEFAULTS: dict[str, Any] = {
         # The picture bake-off (`produce --bakeoff`, workflow overrides `bakeoff=...`): the same
         # references, then every beat painted by each setup, side by side, with a judge's scores.
         "bakeoff": {
-            "max_usd": 7.0, "retry_share": 0.06,
+            "max_usd": 8.0, "retry_share": 0.06,
             "setups": {
                 "mix": {"label": "Today's mix: Seedream 4.5, Nano Banana Pro for scares"},
                 "nb21": {"label": "Nano Banana 2.1, every picture",
                          "chains": {"beat": ["fal:nb21", "fal:nb21"], "key": ["fal:nb21", "fal:nb21"],
                                     "scare": ["fal:nb21", "fal:nb21"]}},
+                "sd35": {"label": "Stable Diffusion 3.5 Large, from words only (it takes no references)",
+                         "chains": {"beat": ["fal:sd", "fal:sd"], "key": ["fal:sd", "fal:sd"],
+                                    "scare": ["fal:sd", "fal:sd"]}},
                 "seedream_detail": {"label": "Seedream 4.5 (today's setup) + 4K detail pass", "detail": True},
                 "flux2": {"label": "FLUX.2 pro, every picture",
                           "chains": {"beat": ["fal:flux", "fal:flux"], "key": ["fal:flux", "fal:flux"],
@@ -381,6 +384,8 @@ DEFAULTS: dict[str, Any] = {
             "flux": "fal-ai/flux-2-pro/edit", "flux_text": "fal-ai/flux-2-pro",
             # Nano Banana 2.1 (October 2026): ranked at or above Pro, at about half its price
             "nb21": "google/nano-banana-2.1/edit", "nb21_text": "google/nano-banana-2.1",
+            # Stable Diffusion 3.5 Large: paints from words only (no reference pictures)
+            "sd": "fal-ai/stable-diffusion-v35-large",
             "upscale": "fal-ai/seedvr/upscale/image",
             # Image-to-video models for the motion stage (off while empty): e.g. a Kling, Seedance or
             # Wan image-to-video endpoint on fal.ai, with its price per second in `prices`.
@@ -392,6 +397,8 @@ DEFAULTS: dict[str, Any] = {
                        "nb21": "nb21_text"},
         # References sent to a model, longest side in pixels (FLUX.2 counts every input megapixel).
         "reference_px": {"flux": 1024},
+        # Models that take no reference pictures: they are sent the words alone.
+        "text_only_roles": ["sd"],
         "model_args": {
             "reference": {"image_size": {"width": 2752, "height": 1548}, "num_images": 1},
             "sheet": {"image_size": {"width": 2560, "height": 1440}, "num_images": 1},
@@ -414,6 +421,9 @@ DEFAULTS: dict[str, Any] = {
             "upscale": {"upscale_mode": "target", "target_resolution": "2160p", "output_format": "png"},
             "nb21": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
             "nb21_text": {"aspect_ratio": "16:9", "resolution": "2K", "num_images": 1},
+            "sd": {"image_size": {"width": 1536, "height": 864}, "num_images": 1, "output_format": "png",
+                   "negative_prompt": "cartoon, illustration, painting, 3d render, text, letters, watermark, "
+                                      "bright, cheerful, deformed hands, extra fingers, split frame, collage"},
         },
         # A role whose settings cost more than the model's base price (Nano Banana 2 at 2K: 1.5x).
         "model_units": {"shot_alt": 1.5, "shot_alt_text": 1.5},
@@ -431,6 +441,7 @@ DEFAULTS: dict[str, Any] = {
             "fal-ai/flux-2-pro/edit": 0.14, "fal-ai/flux-2-pro": 0.08, "fal-ai/seedvr/upscale/image": 0.03,
             # billed by tokens on fal: about $0.06 a 2K picture reported; estimated on the high side
             "google/nano-banana-2.1/edit": 0.08, "google/nano-banana-2.1": 0.08,
+            "fal-ai/stable-diffusion-v35-large": 0.07,
         },
         # Voices. The host reads the intro and outro; a first-person story's teller gets a voice
         # matched to them; characters get distinct voices by kind. Kokoro names are the free fallback.

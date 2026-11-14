@@ -373,6 +373,8 @@ class Painter:
         same painter asked twice is paid twice rather than handed its first picture again."""
         if step.startswith("fal:"):
             role = step[4:]
+            if role in (self.cfg.get("text_only_roles") or ()):  # it takes no pictures: the words alone
+                refs = []
             if refs:
                 px = int((self.cfg.get("reference_px") or {}).get(role, 2048))
                 args = {"prompt": prompt, "image_urls": [self.reference(p, px) for p in refs if p.exists()]}

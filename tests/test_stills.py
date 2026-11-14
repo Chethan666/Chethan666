@@ -96,6 +96,7 @@ class FakeFal:
     def __init__(self, folder, bright_shots=0, reject_vision=0, reject_sheets=False):
         self.calls = []
         self.vision_images: list[int] = []
+        self.references: list[tuple[str, int]] = []
         self.reject_sheets = reject_sheets
         self.good = painted(folder / "good.png")
         self.bright = painted(folder / "bright.png", bright=True)
@@ -113,6 +114,7 @@ class FakeFal:
     def run(self, endpoint, args):
         self.calls.append((endpoint, {k: v for k, v in args.items() if not str(v).startswith("data:")
                                       and k != "image_urls"}))
+        self.references.append((endpoint, len(args.get("image_urls") or [])))
         if "any-llm" in endpoint:
             self.vision_images.append(len(args.get("image_urls") or []))
             if "versions of the same picture" in args.get("prompt", ""):  # the bake-off's judge
@@ -337,9 +339,14 @@ class TeamTests(unittest.TestCase):
         self.addCleanup(shutil.rmtree, root, ignore_errors=True)
         fal = FakeFal(root)
         summary = bakeoff.run(story(first_person=True), root / "out", voice.SilentVoice(), Router(), cfg(max_usd=7.0),
-                              fal, names=["mix", "nb21"])
+                              fal, names=["mix", "nb21", "sd35"])
         endpoints = [e for e, _ in fal.calls]
         self.assertIn("google/nano-banana-2.1/edit", endpoints)
+        sd = [a for e, a in fal.calls if e == "fal-ai/stable-diffusion-v35-large"]
+        self.assertTrue(sd)
+        self.assertEqual({n for e, n in fal.references if e == "fal-ai/stable-diffusion-v35-large"}, {0})  # words alone
+        self.assertTrue(all(n > 0 for e, n in fal.references if e == "google/nano-banana-2.1/edit"))
+        self.assertEqual(sd[0]["image_size"], {"width": 1536, "height": 864})
         self.assertNotIn("fal-ai/seedvr/upscale/image", endpoints)  # today's mix has no detail pass
         self.assertEqual(summary["setups"]["nb21"]["by_painter"].get("fal:nb21"), summary["beats"])
         nb21 = [a for e, a in fal.calls if e == "google/nano-banana-2.1/edit"]
