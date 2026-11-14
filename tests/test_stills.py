@@ -100,9 +100,10 @@ class FakeFal:
         self.bright_shots = bright_shots
         self.reject_vision = reject_vision
         self.clip = folder / "fake_clip.mp4"
-        subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i",
-                        "testsrc=size=640x360:rate=24:duration=5,eq=brightness=-0.35", "-pix_fmt", "yuv420p",
-                        str(self.clip)], check=True)
+        if shutil.which("ffmpeg"):   # only the clip tests use it, and they need ffmpeg anyway
+            subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i",
+                            "testsrc=size=640x360:rate=24:duration=5,eq=brightness=-0.35", "-pix_fmt", "yuv420p",
+                            str(self.clip)], check=True)
         self.audio = folder / "fake.wav"
         t = np.arange(44100 * 2) / 44100
         soundfile.write(self.audio, (0.2 * np.sin(2 * np.pi * 220 * t)).astype(np.float32), 44100)
